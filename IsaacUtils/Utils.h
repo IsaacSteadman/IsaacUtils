@@ -64,6 +64,10 @@ namespace Utils{
 		bool RFind(unsigned long &Pos, char Ch, bool PosIsStart = false);
 		bool Find(unsigned long &Pos, String Ch, bool PosIsStart = false) const;
 		bool RFind(unsigned long &Pos, String Ch, bool PosIsStart = false);
+		unsigned long Replace(const String &FindStr, const String &Write);
+		unsigned long Replace(const char FindStr, const String &Write);
+		unsigned long Replace(const String &FindStr, const char Write);
+		unsigned long Replace(const char FindStr, const char Write);
 		String SubStr(unsigned long Start, unsigned long Stop = 0xFFFFFFFF, signed long Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		char &AtEnd();
 		void ToLower();
@@ -132,6 +136,10 @@ namespace Utils{
 		bool RFind(unsigned long &Pos, wchar_t Ch, bool PosIsStart = false);
 		bool Find(unsigned long &Pos, wString Ch, bool PosIsStart = false) const;
 		bool RFind(unsigned long &Pos, wString Ch, bool PosIsStart = false);
+		unsigned long Replace(const wString &FindStr, const wString &Write);
+		unsigned long Replace(const wchar_t FindStr, const wString &Write);
+		unsigned long Replace(const wString &FindStr, const wchar_t Write);
+		unsigned long Replace(const wchar_t FindStr, const wchar_t Write);
 		wString SubStr(unsigned long Start, unsigned long Stop = 0xFFFFFFFF, signed long Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		wchar_t &AtEnd();
 		void ToLower();
@@ -365,7 +373,6 @@ namespace Utils{
 			virtual long GetMode() = 0;
 			virtual ~FileBase() = 0;
 		};
-		Array<DriveBase *> Drives;
 		class ISAACUTILS_API DriveBase {
 		public:
 			virtual wString GetName() = 0;
@@ -383,8 +390,18 @@ namespace Utils{
 			virtual FileDesc Stat(wString Path) = 0;
 			virtual FileDescA Stat(String Path) = 0;
 		};
-		FileBase *OpenFile(wString Path);
-		FileBase *OpenFile(String Path);
+		enum OpenMode {
+			F_IN = 1,
+			F_OUT = 2,
+			F_BIN = 4,
+			F_APP = 8,
+			F_ATE = 16,
+			F_NOREPLACE = 32
+		};
+		extern wString LastError;
+		Array<DriveBase *> Drives;
+		FileBase *GetFileObj(wString Path, unsigned long Mode = F_IN);
+		FileBase *GetFileObj(String Path, unsigned long Mode = F_IN);
 	}
 	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
 	BigLong ISAACUTILS_API GetNumStrTest(wString Str);

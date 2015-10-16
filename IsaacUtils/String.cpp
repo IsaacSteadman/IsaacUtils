@@ -348,6 +348,125 @@ namespace Utils{
 		++Str.Data;
 		return false;
 	}
+	unsigned long String::Replace(const String &FindStr, const String &Write) {
+		if (FindStr.Length() == 0) return 0;
+		if (FindStr.Length() == 1 && Write.Length() == 1) return Replace(FindStr[0], Write[0]);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		char *NewData = 0;
+		unsigned long NewLen = 0;
+		if (FindStr.Length() > Write.Length()) {
+			unsigned long DifLen = FindStr.Length() - Write.Length();
+			NewLen = AllocNum - PosFinds.Length() * DifLen;
+			NewData = new char[NewLen];
+			unsigned long CurPosFind = 0;
+			unsigned long CurOff = 0;
+			for (unsigned long c = 0; c < AllocNum; ++c) {
+				if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+				{
+					for (unsigned long c0 = 0; c0 < Write.Length(); ++c, ++c0) {
+						NewData[c - CurOff] = Write[c0];
+					}
+					CurOff += DifLen;
+					++CurPosFind;
+				}
+				NewData[c - CurOff] = Data[c];
+			}
+		}
+		else
+		{
+			unsigned long DifLen = Write.Length() - FindStr.Length();
+			NewLen = AllocNum + PosFinds.Length() * DifLen;
+			NewData = new char[NewLen];
+			unsigned long CurPosFind = 0;
+			unsigned long CurOff = 0;
+			for (unsigned long c = 0; c < AllocNum; ++c) {
+				if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+				{
+					for (unsigned long c0 = 0; c0 < Write.Length(); ++c0) {
+						NewData[c + CurOff + c0] = Write[c0];
+					}
+					CurOff += DifLen;
+					++CurPosFind;
+				}
+				NewData[c + CurOff] = Data[c];
+			}
+		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewLen;
+		return PosFinds.Length();// return the number of replacements we did
+	}
+	unsigned long String::Replace(const char FindStr, const String &Write) {
+		if (Write.Length() == 1) return Replace(FindStr, Write[0]);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		unsigned long DifLen = Write.Length() - 1;
+		unsigned long NewLen = AllocNum + PosFinds.Length() * DifLen;
+		char *NewData = new char[NewLen];
+		unsigned long CurPosFind = 0;
+		unsigned long CurOff = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			{
+				for (unsigned long c0 = 0; c0 < Write.Length(); ++c0) {
+					NewData[c + CurOff + c0] = Write[c0];
+				}
+				CurOff += DifLen;
+				++CurPosFind;
+			}
+			NewData[c + CurOff] = Data[c];
+		}
+		return PosFinds.Length();
+	}
+	unsigned long String::Replace(const String &FindStr, const char Write) {
+		if (FindStr.Length() == 0) return 0;
+		if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		//length of FindStr is always greater than 1 (length of Write) at this point
+		unsigned long DifLen = FindStr.Length() - 1;
+		unsigned long NewLen = AllocNum - PosFinds.Length() * DifLen;
+		char *NewData = new char[NewLen];
+		unsigned long CurPosFind = 0;
+		unsigned long CurOff = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			{
+				NewData[c - CurOff] = Write;
+				CurOff += DifLen;
+				++CurPosFind;
+			}
+			NewData[c - CurOff] = Data[c];
+		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewLen;
+		return PosFinds.Length();
+	}
+	unsigned long String::Replace(const char FindStr, const char Write) {
+		unsigned long Rtn = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (Data[c] == FindStr)
+			{
+				++Rtn;
+				Data[c] = Write;
+			}
+		}
+		return Rtn;
+	}
 	String String::SubStr(unsigned long Start, unsigned long Stop, signed long Step) const{
 		if (AllocNum == 0) return "";
 		if ((Stop > AllocNum) && Stop != 0xFFFFFFFF) Stop = AllocNum;
@@ -827,6 +946,125 @@ namespace Utils{
 		++Data;
 		++Ch.Data;
 		return false;
+	}
+	unsigned long wString::Replace(const wString &FindStr, const wString &Write) {
+		if (FindStr.Length() == 0) return 0;
+		if (FindStr.Length() == 1 && Write.Length() == 1) return Replace(FindStr[0], Write[0]);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		wchar_t *NewData = 0;
+		unsigned long NewLen = 0;
+		if (FindStr.Length() > Write.Length()) {
+			unsigned long DifLen = FindStr.Length() - Write.Length();
+			NewLen = AllocNum - PosFinds.Length() * DifLen;
+			NewData = new wchar_t[NewLen];
+			unsigned long CurPosFind = 0;
+			unsigned long CurOff = 0;
+			for (unsigned long c = 0; c < AllocNum; ++c) {
+				if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+				{
+					for (unsigned long c0 = 0; c0 < Write.Length(); ++c, ++c0) {
+						NewData[c - CurOff] = Write[c0];
+					}
+					CurOff += DifLen;
+					++CurPosFind;
+				}
+				NewData[c - CurOff] = Data[c];
+			}
+		}
+		else
+		{
+			unsigned long DifLen = Write.Length() - FindStr.Length();
+			NewLen = AllocNum + PosFinds.Length() * DifLen;
+			NewData = new wchar_t[NewLen];
+			unsigned long CurPosFind = 0;
+			unsigned long CurOff = 0;
+			for (unsigned long c = 0; c < AllocNum; ++c) {
+				if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+				{
+					for (unsigned long c0 = 0; c0 < Write.Length(); ++c0) {
+						NewData[c + CurOff + c0] = Write[c0];
+					}
+					CurOff += DifLen;
+					++CurPosFind;
+				}
+				NewData[c + CurOff] = Data[c];
+			}
+		}
+		if (AllocNum > 0) delete [] Data;
+		Data = NewData;
+		AllocNum = NewLen;
+		return PosFinds.Length();// return the number of replacements we did
+	}
+	unsigned long wString::Replace(const wchar_t FindStr, const wString &Write) {
+		if (Write.Length() == 1) return Replace(FindStr, Write[0]);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		unsigned long DifLen = Write.Length() - 1;
+		unsigned long NewLen = AllocNum + PosFinds.Length() * DifLen;
+		wchar_t *NewData = new wchar_t[NewLen];
+		unsigned long CurPosFind = 0;
+		unsigned long CurOff = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			{
+				for (unsigned long c0 = 0; c0 < Write.Length(); ++c0) {
+					NewData[c + CurOff + c0] = Write[c0];
+				}
+				CurOff += DifLen;
+				++CurPosFind;
+			}
+			NewData[c + CurOff] = Data[c];
+		}
+		return PosFinds.Length();
+	}
+	unsigned long wString::Replace(const wString &FindStr, const wchar_t Write) {
+		if (FindStr.Length() == 0) return 0;
+		if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		Array<unsigned long> PosFinds;
+		unsigned long Pos = 0;
+		while (Find(Pos, FindStr, true)) {
+			PosFinds += Pos;
+		}
+		if (PosFinds.Length() == 0) return 0;
+		//length of FindStr is always greater than 1 (length of Write) at this point
+		unsigned long DifLen = FindStr.Length() - 1;
+		unsigned long NewLen = AllocNum - PosFinds.Length() * DifLen;
+		wchar_t *NewData = new wchar_t[NewLen];
+		unsigned long CurPosFind = 0;
+		unsigned long CurOff = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			{
+				NewData[c - CurOff] = Write;
+				CurOff += DifLen;
+				++CurPosFind;
+			}
+			NewData[c - CurOff] = Data[c];
+		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewLen;
+		return PosFinds.Length();
+	}
+	unsigned long wString::Replace(const wchar_t FindStr, const wchar_t Write) {
+		unsigned long Rtn = 0;
+		for (unsigned long c = 0; c < AllocNum; ++c) {
+			if (Data[c] == FindStr)
+			{
+				++Rtn;
+				Data[c] = Write;
+			}
+		}
+		return Rtn;
 	}
 	wString wString::SubStr(unsigned long Start, unsigned long Stop, signed long Step) const{
 		if (AllocNum == 0) return "";
