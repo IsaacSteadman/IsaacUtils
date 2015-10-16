@@ -345,6 +345,55 @@ namespace Utils{
 			Path.Insert(Path.Length(), 0);
 			return SetCurrentDirectoryA(Path.GetData());
 		}
+		class WinFile : public FileBase{
+		private:
+			HFILE hFile;
+			wString fName;
+		public:
+			WinFile(wString fName, long Mode);
+			virtual Array<Byte> Read();
+			virtual Array<Byte> Read(unsigned long long Num);
+			virtual bool Seek(long long Pos, int From = SEEK_SET);
+			virtual long long Tell();
+			virtual void Write(Array<Byte> Data);
+			virtual void Close();
+			virtual wString GetName();
+			virtual long GetMode();
+		};
+		WinFile::WinFile(wString fName, long Mode) {
+			wchar_t * wStr = fName.GetCString();
+			hFile = CreateFileW(wStr, )
+		}
+		Array<Byte> WinFile::Read()
+		{
+			return Array<Byte>();
+		}
+		Array<Byte> WinFile::Read(unsigned long long Num)
+		{
+			return Array<Byte>();
+		}
+		bool WinFile::Seek(long long Pos, int From)
+		{
+			return false;
+		}
+		long long WinFile::Tell()
+		{
+			return 0;
+		}
+		void WinFile::Write(Array<Byte> Data)
+		{
+		}
+		void WinFile::Close()
+		{
+		}
+		wString WinFile::GetName()
+		{
+			return wString();
+		}
+		long WinFile::GetMode()
+		{
+			return 0;
+		}
 	}
 	void ShowError(wString Caption, wString Text){
 		wchar_t *Cap = Caption.GetCString(), *Txt = Text.GetCString();

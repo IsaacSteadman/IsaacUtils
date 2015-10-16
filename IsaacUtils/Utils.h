@@ -55,7 +55,7 @@ namespace Utils{
 		unsigned long GetNumCh(const char Val) const;
 		//null terminated string allocated using new wchar_t[len + 1]
 		char *GetCString() const;
-		//non null terminated wide character string, less cpu intensive for higher performance. NOTE: do NOT deallocate or the string object becomes invalid
+		//non null terminated wide character string, less computation for higher performance. NOTE: do NOT deallocate or the string object becomes invalid
 		const char *GetData() const;
 		bool Insert(unsigned long Pos, char Val);
 		bool Insert(unsigned long Pos, String &Str);
@@ -154,7 +154,6 @@ namespace Utils{
 	private:
 		Array<unsigned long> Longs;
 		bool Sign;
-		//void (*DtorProc)(Array<unsigned long> &, bool &); //First is the reference to the array of longs, second is the refence to the sign byte/bit
 	public:
 		static BigLong NomMul(const BigLong &Bl1, const BigLong &Bl2);
 		static BigLong KarMul(const BigLong &Bl1, const BigLong &Bl2);
@@ -169,8 +168,6 @@ namespace Utils{
 		BigLong MulPow(unsigned long Num);
 		unsigned long RemNulls();
 		Array<unsigned long> &GetLongs();
-		//~BigLong();
-		//void SetDtorProc(void (*Proc)(Array<unsigned long> &, bool &));
 		Byte &GetByte(unsigned long Pos);
 		bool GetBit(unsigned long long Pos);
 		void SetBit(unsigned long long Pos, bool Set);
@@ -237,7 +234,6 @@ namespace Utils{
 	//TODO: big errors in cryptography and primes
 	BigLong ISAACUTILS_API RandNoMultiple(Random * Rnd, Array<BigLong> &Against, BigLong a, BigLong b, unsigned short NumQuit = 0);
 
-	bool ISAACUTILS_API TrialDivTest(Random *, const BigLong &Num);
 	bool ISAACUTILS_API FermatBaseTest(Random *, const BigLong &Num, unsigned long NumTest = 16);
 
 	BigLong ISAACUTILS_API GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), unsigned long BitLen, unsigned long NumTimes);
@@ -294,7 +290,9 @@ namespace Utils{
 	//===========================================================end windows specific================================================================
 
 	wString FromNumber(unsigned long Num, unsigned char Radix = 10);
-
+	/* File System namespace:
+	 *   Can be hooked to expose virtual file systems in the same process
+	*/
 	namespace fs{
 		struct ISAACUTILS_API FileDesc{
 			wString fName;
@@ -349,6 +347,44 @@ namespace Utils{
 		Array<FileDescA> ISAACUTILS_API ListDirStats(String Path);
 		String ISAACUTILS_API GetcwdA();
 		bool ISAACUTILS_API Setcwd(String Path);
+		enum SEEK_POS {
+			SEEK_SET = 0,
+			SEEK_CUR = 1,
+			SEEK_END = 2
+		};
+		//abstract file class representing a file from a drive
+		class ISAACUTILS_API FileBase {
+		public:
+			virtual Array<Byte> Read() = 0;
+			virtual Array<Byte> Read(unsigned long long Num) = 0;
+			virtual bool Seek(long long Pos, int From = SEEK_SET) = 0;
+			virtual long long Tell() = 0;
+			virtual void Write(Array<Byte> Data) = 0;
+			virtual void Close() = 0;
+			virtual wString GetName() = 0;
+			virtual long GetMode() = 0;
+			virtual ~FileBase() = 0;
+		};
+		Array<DriveBase *> Drives;
+		class ISAACUTILS_API DriveBase {
+		public:
+			virtual wString GetName() = 0;
+			virtual String GetNameA() = 0;
+			virtual FileBase *OpenFile(wString Path, long Mode) = 0;
+			virtual FileBase *OpenFile(String Path, long Mode) = 0;
+			virtual bool IsFile(wString Path) = 0;
+			virtual bool IsFile(String Path) = 0;
+			virtual bool Exists(wString Path) = 0;
+			virtual bool Exists(String Path) = 0;
+			virtual bool IsDir(wString Path) = 0;
+			virtual bool IsDir(String Path) = 0;
+			virtual Array<wString> ListDir(wString Path) = 0;
+			virtual Array<String> ListDir(String Path) = 0;
+			virtual FileDesc Stat(wString Path) = 0;
+			virtual FileDescA Stat(String Path) = 0;
+		};
+		FileBase *OpenFile(wString Path);
+		FileBase *OpenFile(String Path);
 	}
 	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
 	BigLong ISAACUTILS_API GetNumStrTest(wString Str);

@@ -36,17 +36,14 @@ namespace Utils{
 	}
 
 	BigLong::BigLong(){
-		//DtorProc = 0;
 		Longs = Array<unsigned long>((unsigned long)0, 1);
 		Sign = false;
 	}
 	BigLong::BigLong(unsigned long Ul){
-		//DtorProc = 0;
 		Longs = Array<unsigned long>(Ul, 1);
 		Sign = false;
 	}
 	BigLong::BigLong(unsigned long long Ull){
-		//DtorProc = 0;
 		Longs = Array<unsigned long>((unsigned long)(Ull & 0x00000000FFFFFFFF), 2);
 		Longs[1] = (Ull & 0xFFFFFFFF00000000) >> 32;
 		Sign = false;
@@ -352,9 +349,6 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	//All Fixed :)
-	// - -  yay! it's all|
-	//\___/ FIXED!!      V
 	BigLong* BigLong::DivRem(const BigLong &Denom) const{
 		if (Denom == (unsigned long)0) return 0;
 		FuncTimer Tmr(BlDivTm);
@@ -409,7 +403,6 @@ namespace Utils{
 		BigLong &Rtn = *(new BigLong[2]);
 		BigLong &Tmp = (&Rtn)[1];
 		Tmp = (*this);
-		//unsigned long long Count0 = 0, Count1 = 0;
 		while (Tmp >= Denom){
 			if (d <= Tmp){
 				Tmp -= d;
@@ -419,18 +412,6 @@ namespace Utils{
 			while ((d > Tmp) && (d > Denom)){
 				e >>= 1;
 				d >>= 1;
-				/*unsigned long long PrevC = Count0++;
-				if (PrevC > Count0)
-				{
-				++Count1;
-				}
-				if (e < (unsigned long)16)
-				{
-				std::cout << "not the e == 1 thing!at count: ";
-				if (Count1 > 0) std::cout << Count1;
-				std::cout << Count0 << std::endl;
-				std::cin.ignore(2);
-				}*/
 			}
 		}
 		if (Denom.Sign ^ Sign)
@@ -501,7 +482,7 @@ namespace Utils{
 		else if (Sign == true) return IsGreaterThan(Longs, Cmp.Longs);
 		else return IsGreaterThan(Cmp.Longs, Longs);
 	}
-	bool BigLong::operator>(const BigLong &Cmp) const{//DUDE you messed up big time on your semantics here{}{}{}{}{}{[][][][][]} Now it's a maybe
+	bool BigLong::operator>(const BigLong &Cmp) const{
 		if ((Sign == true) && (Cmp.Sign == false)) return false;
 		else if ((Cmp.Sign == true) && (Sign == false)) return true;
 		else if (Sign == true) return IsGreaterThan(Cmp.Longs, Longs);
@@ -596,7 +577,7 @@ namespace Utils{
 				if (c >= LeastLongs.Length()) continue;
 				else
 				{
-					if (/*(*/Rtn.Longs[c] < LeastLongs[c]/*) && ((c + 1) < MostLongs.Length())*/)// since MostLongs always has a greater absolute value
+					if (Rtn.Longs[c] < LeastLongs[c])// since MostLongs always has a greater absolute value
 					{
 						unsigned long long Tmp = Rtn.Longs[c];
 						Tmp += 0x0000000100000000;
