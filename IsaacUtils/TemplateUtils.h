@@ -1,3 +1,12 @@
+#if defined(_WIN64)
+typedef unsigned long long SizeL;
+typedef signed long long SnzL; //signed version of SizeL
+#define MAX_INT 0xFFFFFFFFFFFFFFFF
+#else
+typedef unsigned long SizeL;
+typedef signed long SnzL;
+#define MAX_INT 0xFFFFFFFF
+#endif
 namespace Utils{
 	template<typename T>
 	class IterArray;
@@ -5,43 +14,43 @@ namespace Utils{
 	class Array{
 	private:
 		T * Data;
-		unsigned long AllocNum;
+		SizeL AllocNum;
 	public:
 		Array();
 		Array(Array<T> &&Cpy);
-		Array(const T *StrIn, unsigned long Len);
+		Array(const T *StrIn, SizeL Len);
 		Array(const Array<T> &Cpy);
-		Array(const T ChFill, const unsigned long Len);
-		Array(const Array<T> &Cpy, unsigned long Len);
+		Array(const T ChFill, const SizeL Len);
+		Array(const Array<T> &Cpy, SizeL Len);
 		~Array();
 		void Swap(Array<T> &Other);
 		void AddMissing(const Array<T> &Other);
-		void AddMissing(const Array<T> &Other, unsigned long Until);
-		void RemBeg(unsigned long NumRem);
-		void AddBeg(unsigned long NumAdd);
-		void AddBeg(unsigned long NumAdd, T Val);
-		void SetLength(unsigned long Len);
+		void AddMissing(const Array<T> &Other, SizeL Until);
+		void RemBeg(SizeL NumRem);
+		void AddBeg(SizeL NumAdd);
+		void AddBeg(SizeL NumAdd, T Val);
+		void SetLength(SizeL Len);
 		bool operator==(const Array<T> &Cmp) const;
 		bool operator!=(const Array<T> &Cmp) const;
 		Array<T> operator+(const Array<T> &Add) const;
 		Array<T> operator+(const T &Add) const;
-		T operator[](const unsigned long Pos) const;
+		T operator[](const SizeL Pos) const;
 		Array<T> &operator=(Array<T> &&Cpy);
 		Array<T> &operator=(const Array<T> &Cpy);
 		Array<T> &operator+=(const Array<T> &Add);
 		Array<T> &operator+=(const T &Add);
 		//less cpu intensive for higher performance. NOTE: do NOT deallocate or the Array object becomes invalid
 		const T *GetData() const;
-		bool Insert(unsigned long Pos, T Val);
-		bool Remove(unsigned long Pos);
-		T &operator[](const unsigned long Pos);
-		bool Find(unsigned long &Pos, T Val, bool PosIsStart = false);
-		bool RFind(unsigned long &Pos, T Val, bool PosIsStart = false);
-		unsigned long Length() const;
+		bool Insert(SizeL Pos, T Val);
+		bool Remove(SizeL Pos);
+		T &operator[](const SizeL Pos);
+		bool Find(SizeL &Pos, T Val, bool PosIsStart = false);
+		bool RFind(SizeL &Pos, T Val, bool PosIsStart = false);
+		SizeL Length() const;
 		T &AtEnd();
 		const T AtEnd() const;
-		Array<T> &operator*=(unsigned long Num);
-		Array<T> operator*(unsigned long Num) const;
+		Array<T> &operator*=(SizeL Num);
+		Array<T> operator*(SizeL Num) const;
 		IterArray<T> begin();
 		IterArray<T> end();
 		//friend class ReprArray;
@@ -50,9 +59,9 @@ namespace Utils{
 	class IterArray{
 	private:
 		Array<T> *Str;
-		unsigned long Pos;
+		SizeL Pos;
 	public:
-		IterArray(Array<T> *Iter, unsigned long CharPos);
+		IterArray(Array<T> *Iter, SizeL CharPos);
 		IterArray<T> &operator++();
 		bool operator==(IterArray<T> &Cmp);
 		bool operator!=(IterArray<T> &Cmp);
@@ -79,10 +88,10 @@ namespace Utils{
 	}
 
 	template<typename T>
-	Array<T>::Array(const T *Cpy, unsigned long Len){
+	Array<T>::Array(const T *Cpy, SizeL Len){
 		AllocNum = Len;
 		Data = new T[AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Data[c] = Cpy[c];
 			++c;
@@ -93,7 +102,7 @@ namespace Utils{
 	Array<T>::Array(const Array<T> &Cpy){
 		AllocNum = Cpy.AllocNum;
 		Data = new T[AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Data[c] = Cpy.Data[c];
 			++c;
@@ -101,10 +110,10 @@ namespace Utils{
 	}
 
 	template<typename T>
-	Array<T>::Array(const T ChFill, const unsigned long Len){
+	Array<T>::Array(const T ChFill, const SizeL Len){
 		AllocNum = Len;
 		Data = new T[AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Data[c] = ChFill;
 			++c;
@@ -112,10 +121,10 @@ namespace Utils{
 	}
 
 	template<typename T>
-	Array<T>::Array(const Array<T> &Cpy, unsigned long Len){
+	Array<T>::Array(const Array<T> &Cpy, SizeL Len){
 		AllocNum = (Len < Cpy.AllocNum) ? Len : Cpy.AllocNum;
 		Data = new T[AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Data[c] = Cpy.Data[c];
 			++c;
@@ -130,16 +139,16 @@ namespace Utils{
 	template<typename T>
 	void Array<T>::Swap(Array<T> &Other){
 		T *TmpData = Data;
-		unsigned long TmpLen = AllocNum;
+		SizeL TmpLen = AllocNum;
 		AllocNum = Other.AllocNum;
 		Data = Other.Data;
 		Other.AllocNum = TmpLen;
 		Other.Data = TmpData;
 	}
 	template<typename T>
-	void Array<T>::SetLength(unsigned long Len){
+	void Array<T>::SetLength(SizeL Len){
 		T *NewData = new T[Len];
-		for (unsigned long c = 0; (c < Len) && (c < AllocNum); ++c){
+		for (SizeL c = 0; (c < Len) && (c < AllocNum); ++c){
 			NewData[c] = Data[c];
 		}
 		delete[] Data;
@@ -151,7 +160,7 @@ namespace Utils{
 	void Array<T>::AddMissing(const Array<T> &Other){
 		if (Other.AllocNum <= AllocNum) return;
 		T * NewData = new T[Other.AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
 			++c;
@@ -165,10 +174,10 @@ namespace Utils{
 		AllocNum = Other.AllocNum;
 	}
 	template<typename T>
-	void Array<T>::AddMissing(const Array<T> &Other, unsigned long Until){
+	void Array<T>::AddMissing(const Array<T> &Other, SizeL Until){
 		if (Until <= AllocNum) return;
 		T * NewData = new T[Other.AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
 			++c;
@@ -182,8 +191,8 @@ namespace Utils{
 		AllocNum = Until;
 	}
 	template<typename T>
-	void Array<T>::RemBeg(unsigned long NumRem){
-		unsigned long c = 0, Until = AllocNum - NumRem;
+	void Array<T>::RemBeg(SizeL NumRem){
+		SizeL c = 0, Until = AllocNum - NumRem;
 		T * NewData = new T[Until];
 		Data += Until;
 		while (c < Until){
@@ -195,10 +204,10 @@ namespace Utils{
 		AllocNum = Until;
 	}
 	template<typename T>
-	void Array<T>::AddBeg(unsigned long NumAdd){
+	void Array<T>::AddBeg(SizeL NumAdd){
 		if (NumAdd == 0) return;
 		T * NewData = new T[AllocNum + NumAdd];
-		unsigned long c = 0;
+		SizeL c = 0;
 		NewData += NumAdd;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
@@ -210,10 +219,10 @@ namespace Utils{
 		Data = NewData;
 	}
 	template<typename T>
-	void Array<T>::AddBeg(unsigned long NumAdd, T Val){
+	void Array<T>::AddBeg(SizeL NumAdd, T Val){
 		if (NumAdd == 0) return;
 		T * NewData = new T[AllocNum + NumAdd];
-		unsigned long c = 0;
+		SizeL c = 0;
 		NewData += NumAdd;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
@@ -233,7 +242,7 @@ namespace Utils{
 	template<typename T>
 	bool Array<T>::operator==(const Array<T> &Cmp) const{
 		if (AllocNum != Cmp.AllocNum) return false;
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			if (Data[c] != Cmp.Data[c]) return false;
 			++c;
@@ -244,7 +253,7 @@ namespace Utils{
 	template<typename T>
 	bool Array<T>::operator!=(const Array<T> &Cmp) const{
 		if (AllocNum != Cmp.AllocNum) return true;
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			if (Data[c] != Cmp.Data[c]) return true;
 			++c;
@@ -257,7 +266,7 @@ namespace Utils{
 		Array<T> Rtn;
 		Rtn.AllocNum = AllocNum + Add.AllocNum;
 		Rtn.Data = new T[Rtn.AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Rtn.Data[c] = Data[c];
 			++c;
@@ -274,7 +283,7 @@ namespace Utils{
 		Array<T> Rtn;
 		Rtn.AllocNum = AllocNum + 1;
 		Rtn.Data = new T[Rtn.AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Rtn.Data[c] = Data[c];
 			++c;
@@ -284,7 +293,7 @@ namespace Utils{
 	}
 
 	template<typename T>
-	T Array<T>::operator[](const unsigned long Pos) const{
+	T Array<T>::operator[](const SizeL Pos) const{
 		if (Pos >= AllocNum) return T();
 		return Data[Pos];
 	}
@@ -304,7 +313,7 @@ namespace Utils{
 		if (AllocNum > 0) delete[] Data;
 		AllocNum = Cpy.AllocNum;
 		Data = new T[AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			Data[c] = Cpy.Data[c];
 			++c;
@@ -315,13 +324,13 @@ namespace Utils{
 	template<typename T>
 	Array<T> &Array<T>::operator+=(const Array<T> &Add){
 		T *NewData = new T[AllocNum + Add.AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
 			++c;
 		}
 		if (AllocNum > 0) delete[] Data;
-		const unsigned long PrevAllocNum = AllocNum;
+		const SizeL PrevAllocNum = AllocNum;
 		AllocNum += Add.AllocNum;
 		while (c < AllocNum){
 			NewData[c] = Add.Data[c - PrevAllocNum];
@@ -334,7 +343,7 @@ namespace Utils{
 	template<typename T>
 	Array<T> &Array<T>::operator+=(const T &Add){
 		T *NewData = new T[AllocNum + 1];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
 			++c;
@@ -353,11 +362,11 @@ namespace Utils{
 	}
 
 	template<typename T>
-	bool Array<T>::Insert(unsigned long Pos, T Val){
+	bool Array<T>::Insert(SizeL Pos, T Val){
 		if (Pos > AllocNum) return false;
 		T *NewData = new T[AllocNum + 1];
 		++AllocNum;
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < Pos){
 			NewData[c] = Data[c];
 			++c;
@@ -374,11 +383,11 @@ namespace Utils{
 	}
 
 	template<typename T>
-	bool Array<T>::Remove(unsigned long Pos){
+	bool Array<T>::Remove(SizeL Pos){
 		if (Pos >= AllocNum) return false;
 		T *NewData = new T[AllocNum - 1];
 		--AllocNum;
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < Pos){
 			NewData[c] = Data[c];
 			++c;
@@ -393,13 +402,13 @@ namespace Utils{
 	}
 
 	template<typename T>
-	T &Array<T>::operator[](const unsigned long Pos){
+	T &Array<T>::operator[](const SizeL Pos){
 		return Data[Pos];
 	}
 
 	template<typename T>
-	bool Array<T>::Find(unsigned long &Pos, T Val, bool PosIsStart){
-		for (unsigned long c = PosIsStart ? Pos : 0; c < AllocNum; ++c){
+	bool Array<T>::Find(SizeL &Pos, T Val, bool PosIsStart){
+		for (SizeL c = PosIsStart ? Pos : 0; c < AllocNum; ++c){
 			if (Data[c] == Val)
 			{
 				Pos = c;
@@ -409,10 +418,10 @@ namespace Utils{
 		return false;
 	}
 	template<typename T>
-	bool Array<T>::RFind(unsigned long &Pos, T Val, bool PosIsStart){
+	bool Array<T>::RFind(SizeL &Pos, T Val, bool PosIsStart){
 		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		unsigned long Until = PosIsStart ? Pos : 0;
-		for (unsigned long c = AllocNum; c > Until; --c){
+		SizeL Until = PosIsStart ? Pos : 0;
+		for (SizeL c = AllocNum; c > Until; --c){
 			if (Data[c] == Val)
 			{
 				Pos = c;
@@ -424,7 +433,7 @@ namespace Utils{
 		return false;
 	}
 	template<typename T>
-	unsigned long Array<T>::Length() const{
+	SizeL Array<T>::Length() const{
 		return AllocNum;
 	}
 
@@ -439,11 +448,11 @@ namespace Utils{
 	}
 
 	template<typename T>
-	Array<T> &Array<T>::operator*=(unsigned long Num){
+	Array<T> &Array<T>::operator*=(SizeL Num){
 		T *NewData = new T[Num * AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < Num){
-			unsigned long c1 = 0;
+			SizeL c1 = 0;
 			while (c1 < AllocNum){
 				NewData[(c * AllocNum) + c1] = Data[c1];
 				++c1;
@@ -457,12 +466,12 @@ namespace Utils{
 	}
 
 	template<typename T>
-	Array<T> Array<T>::operator*(unsigned long Num) const{
+	Array<T> Array<T>::operator*(SizeL Num) const{
 		Array<T> Rtn;
 		Rtn.Data = new T[Num * AllocNum];
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < Num){
-			unsigned long c1 = 0;
+			SizeL c1 = 0;
 			while (c1 < AllocNum){
 				Rtn.Data[(c * AllocNum) + c1] = Data[c1];
 				++c1;
@@ -482,7 +491,7 @@ namespace Utils{
 	}
 
 	template<typename T>
-	IterArray<T>::IterArray(Array<T> *Iter, unsigned long Index){
+	IterArray<T>::IterArray(Array<T> *Iter, SizeL Index){
 		Str = Iter;
 		Pos = Index;
 	}
@@ -506,7 +515,7 @@ namespace Utils{
 	template<typename T1, typename T2>
 	class HashMap {
 	public:
-		typedef unsigned long(*HashFunc)(T1 &, unsigned long);
+		typedef SizeL(*HashFunc)(const T1 &, SizeL);
 		struct DataPair {
 			T1 Key;
 			T2 Val;
@@ -519,19 +528,29 @@ namespace Utils{
 	private:
 		HashFunc Hasher;
 		DataPair *Datas;
-		unsigned long AllocNum;
+		SizeL AllocNum;
 		//returns false if the key holder is in the root list: pointer points to it, returns true if not: pointer points to previous key holder in linked list
 		bool GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev);
+		void CleanUp(Array<DataPair *> *Pairs = 0);
 	public:
-		HashMap(HashFunc hasher = 0);
+		HashMap();
+		HashMap(HashMap &&Other);
+		HashMap(const HashMap &Other);
+		HashMap &operator=(const HashMap &Other);
+		HashMap &operator=(HashMap &&Other);
+		void SetHashFunc(HashFunc hf, bool ReHash = true);
 		T2 &AtKey(const T1 &KeyVal);
 		const T2 Get(const T1 &KeyVal) const;
+		T2 *GetPtrVal(T1 KeyVal);
 		void Put(const T1 &KeyVal, const T2 &Value);
 		bool Rem(const T1 &KeyVal);
-		void PreAlloc(unsigned long Num);
-		unsigned long NumHashes();
+		const T2 operator[](const T1 KeyVal) const;
+		T2 &operator[](const T1 KeyVal);
+		void PreAlloc(SizeL Num);
+		SizeL NumHashes();
 		const T1 *FindKey(const T2 &Value) const;
 		Array<DataPair *> GetKeyPairs() const;
+		~HashMap();
 	};
 	template<typename T1, typename T2>
 	HashMap<T1, T2>::DataPair::DataPair() {
@@ -553,10 +572,102 @@ namespace Utils{
 		IsValid = true;
 	}
 	template<typename T1, typename T2>
-	HashMap<T1, T2>::HashMap(HashFunc hasher = 0) {
-		Hasher = hasher;
+	HashMap<T1, T2>::HashMap() {
+		Hasher = 0;
 		AllocNum = 8;
 		Datas = new DataPair[AllocNum];
+	}
+	template<typename T1, typename T2>
+	void HashMap<T1, T2>::SetHashFunc(typename HashMap<T1, T2>::HashFunc hf, bool ReHash) {
+		Hasher = hf;
+		if (ReHash) PreAlloc(AllocNum);
+	}
+	template<typename T1, typename T2>
+	HashMap<T1, T2>::HashMap(HashMap<T1, T2> &&Other) {
+		Datas = Other.Datas;
+		AllocNum = Other.AllocNum;
+		Hasher = Other.Hasher;
+		Other.Datas = 0;
+		Other.AllocNum = 0
+	}
+	template<typename T1, typename T2>
+	HashMap<T1, T2>::HashMap(const HashMap<T1, T2> &Other) {
+		Hasher = Other.Hasher;
+		AllocNum = Other.AllocNum;
+		Datas = new DataPair[AllocNum];
+		const Array<DataPair *> OrigPairs = Other.GetKeyPairs();
+		for (const DataPair *Pair : OrigPairs) {
+			SizeL Pos = Hasher(Pair->Key, AllocNum);
+			DataPair *NewPair = &Datas[Pos];
+			if (Datas[Pos].IsValid)
+			{
+				while (NewPair->Next != 0) NewPair = NewPair->Next;
+				NewPair->Next = new DataPair();
+				NewPair = NewPair->Next;
+			}
+			NewPair->Key.operator=(Pair->Key);
+			NewPair->Val.operator=(Pair->Val);
+			NewPair->IsValid = true;
+		}
+	}
+	template<typename T1, typename T2>
+	HashMap<T1, T2> &HashMap<T1, T2>::operator=(const HashMap<T1, T2> &Other) {
+		CleanUp();
+		Hasher = Other.Hasher;
+		AllocNum = Other.AllocNum;
+		Datas = new DataPair[AllocNum];
+		const Array<DataPair *> OrigPairs = Other.GetKeyPairs();
+		for (const DataPair *Pair : OrigPairs) {
+			SizeL Pos = Hasher(Pair->Key, AllocNum);
+			DataPair *NewPair = &Datas[Pos];
+			if (Datas[Pos].IsValid)
+			{
+				while (NewPair->Next != 0) NewPair = NewPair->Next;
+				NewPair->Next = new DataPair();
+				NewPair = NewPair->Next;
+			}
+			NewPair->Key.operator=(Pair->Key);
+			NewPair->Val.operator=(Pair->Val);
+			NewPair->IsValid = true;
+		}
+	}
+	template<typename T1, typename T2>
+	HashMap<T1, T2> &HashMap<T1, T2>::operator=(HashMap<T1, T2> &&Other) {
+		CleanUp();
+		Datas = Other.Datas;
+		AllocNum = Other.AllocNum;
+		Other.Datas = 0;
+		Other.AllocNum = 0
+	}
+	template<typename T1, typename T2>
+	void HashMap<T1, T2>::CleanUp(Array<typename HashMap<T1, T2>::DataPair *> *Pairs) {
+		if (AllocNum == 0) return;
+		bool IsDelEnd = Pairs == 0;
+		if (IsDelEnd) Pairs = new Array<DataPair *>((Array<DataPair *> &&)GetKeyPairs());
+		//deallocate the pairs that not directly in the array of pairs
+		SizeL c = Pairs->Length();
+		while (c > 0)
+		{
+			--c;
+			if ((SizeL)((*Pairs)[c] - Datas) >= AllocNum)
+			{
+				delete (*Pairs)[c];
+			}
+		}
+		//deallocate the array of pairs
+		delete[] Datas;
+		if (IsDelEnd) delete Pairs;
+	}
+	template<typename T1, typename T2>
+	HashMap<T1, T2>::~HashMap() {
+		CleanUp();
+	}
+	template<typename T1, typename T2>
+	T2 *HashMap<T1, T2>::GetPtrVal(T1 KeyVal) {
+		DataPair *GetPair = 0;
+		bool Tmp = GetWithKey(KeyVal, GetPair);
+		if (Tmp) GetPair = GetPair->Next;
+		return &GetPair->Val;
 	}
 	template<typename T1, typename T2>
 	T2 &HashMap<T1, T2>::AtKey(const T1 &KeyVal) {
@@ -583,7 +694,7 @@ namespace Utils{
 		}
 		else
 		{
-			unsigned long Pos = Hasher(KeyVal, AllocNum);
+			SizeL Pos = Hasher(KeyVal, AllocNum);
 			GetPair = Datas[Pos];
 			if (Datas[Pos].IsValid) GetPair = Datas[Pos]->Next;
 			else
@@ -629,12 +740,20 @@ namespace Utils{
 		}
 	}
 	template<typename T1, typename T2>
-	void HashMap<T1, T2>::PreAlloc(unsigned long Num) {
+	const T2 HashMap<T1, T2>::operator[](const T1 KeyVal) const {
+		return this->Get(KeyVal);
+	}
+	template<typename T1, typename T2>
+	T2 &HashMap<T1, T2>::operator[](const T1 KeyVal) {
+		return this->AtKey(KeyVal);
+	}
+	template<typename T1, typename T2>
+	void HashMap<T1, T2>::PreAlloc(SizeL Num) {
 		//basically this is rehashing the entire map with a different number of hashes
 		DataPair *NewDatas = new DataPair[Num];
 		Array<DataPair *> OrigPairs = (Array<DataPair *>)GetKeyPairs();
 		for (DataPair *&Pair : OrigPairs) {
-			unsigned long Pos = Hasher(Pair->Key, Num);
+			SizeL Pos = Hasher(Pair->Key, Num);
 			DataPair *NewPair = &NewDatas[Pos];
 			if (NewDatas[Pos].IsValid)
 			{
@@ -642,30 +761,19 @@ namespace Utils{
 				NewPair->Next = new DataPair();
 				NewPair = NewPair->Next;
 			}
-			NewPair->Key.operator=((T1 &&)Pair->Key);
-			NewPair->Val.operator=((T2 &&)Pair->Val);
+			NewPair->Key = (T1 &&)Pair->Key;
+			NewPair->Val = (T2 &&)Pair->Val;
 			NewPair->IsValid = true;
 		}
-		//deallocate the pairs that not directly in the array of pairs
-		unsigned long c = OrigPairs.Length();
-		while (c > 0)
-		{
-			--c;
-			if ((unsigned long)(OrigPairs[c] - Datas) >= AllocNum)
-			{
-				delete OrigPairs[c];
-			}
-		}
-		//deallocate the array of pairs
-		delete[] Datas;
+		CleanUp(&OrigPairs);
 		//set the array of pairs to the new array
 		AllocNum = Num;
 		Datas = NewDatas;
 	}
 	template<typename T1, typename T2>
-	unsigned long HashMap<T1, T2>::NumHashes() {
-		unsigned long Rtn = 0;
-		for (unsigned long c = 0; c < AllocNum; ++c) if (Datas[c].IsValid) ++Rtn;
+	SizeL HashMap<T1, T2>::NumHashes() {
+		SizeL Rtn = 0;
+		for (SizeL c = 0; c < AllocNum; ++c) if (Datas[c].IsValid) ++Rtn;
 		return Rtn;
 	}
 	template<typename T1, typename T2>
@@ -677,9 +785,9 @@ namespace Utils{
 	}
 	template<typename T1, typename T2>
 	Array<typename HashMap<T1, T2>::DataPair *> HashMap<T1, T2>::GetKeyPairs() const {
-		unsigned long NumDats = 0;
+		SizeL NumDats = 0;
 		Array<DataPair *> DataPairs;
-		for (unsigned long c = 0; c < AllocNum; ++c) {
+		for (SizeL c = 0; c < AllocNum; ++c) {
 			if (!Datas[c].IsValid) continue;
 			++NumDats;
 			DataPair *Cur = &Datas[c];
@@ -690,11 +798,11 @@ namespace Utils{
 		}
 		DataPairs.SetLength(NumDats);
 		IterArray<DataPair *> IterPairs = DataPairs.begin();
-		for (unsigned long c = 0; c < AllocNum; ++c) {
+		for (SizeL c = 0; c < AllocNum; ++c) {
 			if (!Datas[c].IsValid) continue;
-			*IterPairs = Datas[c];
-			++IterPairs;
 			DataPair *Cur = &Datas[c];
+			*IterPairs = Cur;
+			++IterPairs;
 			while (Cur->Next != 0) {
 				Cur = Cur->Next;
 				*IterPairs = Cur;
@@ -705,10 +813,10 @@ namespace Utils{
 	}
 	template<typename T1, typename T2>
 	bool HashMap<T1, T2>::GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev) {
-		unsigned long Pos = Hasher(KeyVal, AllocNum);
+		SizeL Pos = Hasher(KeyVal, AllocNum);
 		PtrPrev = 0;
 		if (!Datas[Pos].IsValid) return false;
-		PtrPrev = Datas[Pos];
+		PtrPrev = &Datas[Pos];
 		if (Datas[Pos].Key == KeyVal) return false;
 		while (PtrPrev->Next != 0) {
 			DataPair *Cur = PtrPrev->Next;
