@@ -107,8 +107,8 @@ Utils::BigLong GetHighestPrime(unsigned long BitLen, unsigned long NumPTest){
 	}
 }
 Utils::Array<void *> Objects;//wStrPos is at 0
-unsigned long BigLongPos = 0;
-unsigned long ByteArrayPos = 0;
+SizeL BigLongPos = 0;
+SizeL ByteArrayPos = 0;
 void *AddObject(Utils::wString *Obj){
 	Objects.Insert(0, Obj);
 	++BigLongPos;
@@ -125,7 +125,7 @@ void *AddObject(Utils::ByteArray *Obj){
 	return Obj;
 }
 void *RemoveNoDel(Utils::wString *Obj){
-	unsigned long Pos = 0;
+	SizeL Pos = 0;
 	if (!Objects.Find(Pos, Obj)) return 0;
 	void *Rtn = Objects[Pos];
 	Objects.Remove(Pos);
@@ -134,7 +134,7 @@ void *RemoveNoDel(Utils::wString *Obj){
 	return Rtn;
 }
 void *RemoveNoDel(Utils::BigLong *Obj){
-	unsigned long Pos = 0;
+	SizeL Pos = 0;
 	if (!Objects.Find(Pos, Obj)) return 0;
 	void *Rtn = Objects[Pos];
 	Objects.Remove(Pos);
@@ -142,7 +142,7 @@ void *RemoveNoDel(Utils::BigLong *Obj){
 	return Rtn;
 }
 void *RemoveNoDel(Utils::ByteArray *Obj){
-	unsigned long Pos = 0;
+	SizeL Pos = 0;
 	if (!Objects.Find(Pos, Obj)) return 0;
 	void *Rtn = Objects[Pos];
 	Objects.Remove(Pos);
@@ -158,13 +158,13 @@ extern "C"{
 			HashPrimesLst1 = GenListnPrimes(18);
 		}
 	}
-	void *wStr_newWLen(wchar_t *Str, unsigned long Len){
+	void *wStr_newWLen(wchar_t *Str, SizeL Len){
 		return AddObject(new Utils::wString(Str, Len));
 	}
 	void *wStr_newW(wchar_t *Str){
 		return AddObject(new Utils::wString(Str));
 	}
-	void *wStr_newALen(char *Str, unsigned long Len){
+	void *wStr_newALen(char *Str, SizeL Len){
 		return AddObject(new Utils::wString(Str, Len));
 	}
 	void *wStr_newA(char *Str){
@@ -186,12 +186,12 @@ extern "C"{
 		return AddObject(new Utils::Array<Utils::Byte>());
 	}
 	void *ByteArray_newA(char *Str){
-		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, (unsigned long)strlen(Str)));
+		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, strlen(Str)));
 	}
 	void *ByteArray_newW(wchar_t *Str, Utils::Byte ChOpt){
 		if (ChOpt == 0) return new Utils::Array<Utils::Byte>((unsigned char *)Str, 2 * Utils::wStrLen(Str));
 		Utils::ByteArray *Rtn = new Utils::Array<Utils::Byte>(Utils::Byte(0), Utils::wStrLen(Str));
-		for (unsigned long c = 0; c < Rtn->Length(); ++c){
+		for (SizeL c = 0; c < Rtn->Length(); ++c){
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
 		}
 		return AddObject(Rtn);
@@ -200,7 +200,7 @@ extern "C"{
 		Utils::wString &Str = *(Utils::wString *)wStr;
 		if (ChOpt == 0) return new Utils::Array<Utils::Byte>((unsigned char *)Str.GetData(), 2 * Str.Length());
 		Utils::ByteArray *Rtn = new Utils::ByteArray(Utils::Byte(0), Str.Length());
-		for (unsigned long c = 0; c < Rtn->Length(); ++c){
+		for (SizeL c = 0; c < Rtn->Length(); ++c){
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
 		}
 		return AddObject(Rtn);
@@ -210,7 +210,7 @@ extern "C"{
 		if (Utils::IsBigEnd) return new Utils::Array<Utils::Byte>((Utils::Byte)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4);
 		Utils::Array<unsigned long> &Longs = Bl.GetLongs();
 		Utils::ByteArray &Rtn = *new Utils::ByteArray(Utils::Byte(0), Longs.Length() * 4);
-		for (unsigned long c = 0; c < Longs.Length(); ++c){
+		for (SizeL c = 0; c < Longs.Length(); ++c){
 			if (Utils::IsBigEnd)
 			{
 				Rtn[c * 4] = Longs[c] & 0xFF;
@@ -228,7 +228,7 @@ extern "C"{
 		}
 		return AddObject(&Rtn);
 	}
-	unsigned long ByteArray_Len(void *bArray){
+	SizeL ByteArray_Len(void *bArray){
 		return ((Utils::ByteArray *)bArray)->Length();
 	}
 	void *ByteArray_DataPtr(void *bArray){
@@ -256,7 +256,7 @@ extern "C"{
 		Utils::BigLong &Rtn = *new Utils::BigLong();
 		Utils::ByteArray &BArr = *(Utils::ByteArray *)BArray;
 		Rtn.GetLongs().SetLength((BArr.Length() + 3) / 4);
-		for (unsigned long c = 0; c < BArr.Length(); ++c){
+		for (SizeL c = 0; c < BArr.Length(); ++c){
 			Rtn.GetByte(c) = BArr[c];
 		}
 		return AddObject(&Rtn);
@@ -392,7 +392,7 @@ extern "C"{
 	}
 
 	bool DelObj(void *Obj){
-		unsigned long Pos = 0;
+		SizeL Pos = 0;
 		if (!Objects.Find(Pos, Obj)) return false;
 		if (Pos < BigLongPos)
 		{
@@ -410,14 +410,14 @@ extern "C"{
 		return true;
 	}
 	void CleanHeap(){
-		for (unsigned long c = 0; c < BigLongPos; ++c){
+		for (SizeL c = 0; c < BigLongPos; ++c){
 			delete (Utils::wString *)(Objects[c]);
 		}
-		for (unsigned long c = BigLongPos; c < ByteArrayPos; ++c){
+		for (SizeL c = BigLongPos; c < ByteArrayPos; ++c){
 			delete (Utils::BigLong *)(Objects[c]);
 		}
-		unsigned long Len = Objects.Length();
-		for (unsigned long c = ByteArrayPos; c < Len; ++c){
+		SizeL Len = Objects.Length();
+		for (SizeL c = ByteArrayPos; c < Len; ++c){
 			delete (Utils::Array<Utils::Byte> *)(Objects[c]);
 		}
 		Objects.SetLength(0);

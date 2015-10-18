@@ -14,9 +14,9 @@
 
 extern "C"{
 	ISAACUTILS_API void Init();
-	ISAACUTILS_API void *wStr_newWLen(wchar_t *Str, unsigned long Len);
+	ISAACUTILS_API void *wStr_newWLen(wchar_t *Str, SizeL Len);
 	ISAACUTILS_API void *wStr_newW(wchar_t *Str);
-	ISAACUTILS_API void *wStr_newALen(char *Str, unsigned long Len);
+	ISAACUTILS_API void *wStr_newALen(char *Str, SizeL Len);
 	ISAACUTILS_API void *wStr_newA(char *Str);
 	ISAACUTILS_API void *wStr_new();
 	ISAACUTILS_API unsigned long wStr_Len(void *wStr);
@@ -27,7 +27,7 @@ extern "C"{
 	ISAACUTILS_API void *ByteArray_newW(wchar_t *Str, Utils::Byte ChOpt);
 	ISAACUTILS_API void *ByteArray_newWStr(void *wStr, Utils::Byte ChOpt);
 	ISAACUTILS_API void *ByteArray_newBigLong(void *BLong);
-	ISAACUTILS_API unsigned long ByteArray_Len(void *bArray);
+	ISAACUTILS_API SizeL ByteArray_Len(void *bArray);
 	ISAACUTILS_API void *ByteArray_DataPtr(void *bArray);
 	//ISAACUTILS_API void ByteArray_del(void *ByteArray);
 	ISAACUTILS_API void *BigLong_newLong(long L);

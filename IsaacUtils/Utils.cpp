@@ -3,16 +3,16 @@
 namespace Utils{
 	unsigned long BlMulTm = 0, BlDivTm = 0, RandTm = 0;
 
-	unsigned long GetMost(unsigned long a, unsigned long b){
+	SizeL GetMost(SizeL a, SizeL b){
 		return (a > b) ? a : b;
 	}
-	unsigned long GetLeast(unsigned long a, unsigned long b){
+	SizeL GetLeast(SizeL a, SizeL b){
 		return (a < b) ? a : b;
 	}
 	bool IsGreaterThan(const Utils::Array<unsigned long> &Par1, const Utils::Array<unsigned long> &Par2){
 		if (Par1.Length() > Par2.Length())
 		{
-			unsigned long c = Par2.Length();
+			SizeL c = Par2.Length();
 			while (c < Par1.Length()){
 				if (Par1[c] != 0) return true;
 				++c;
@@ -20,13 +20,13 @@ namespace Utils{
 		}
 		else
 		{
-			unsigned long c = Par1.Length();
+			SizeL c = Par1.Length();
 			while (c < Par2.Length()){
 				if (Par2[c] != 0) return false;
 				++c;
 			}
 		}
-		unsigned long c = GetLeast(Par1.Length(), Par2.Length());
+		SizeL c = GetLeast(Par1.Length(), Par2.Length());
 		while (c > 0){
 			--c;
 			if (Par1[c] > Par2[c]) return true;
@@ -56,7 +56,7 @@ namespace Utils{
 		Longs = Cpy.Longs;
 		Sign = Cpy.Sign;
 	}
-	BigLong::BigLong(const BigLong &Cpy, unsigned long BtCopy){
+	BigLong::BigLong(const BigLong &Cpy, SizeL BtCopy){
 		unsigned long MaskEnd = 1 << (BtCopy % 32);
 		--MaskEnd;
 		unsigned long NumLongCpy = BtCopy / 32;
@@ -68,16 +68,16 @@ namespace Utils{
 			Longs += Cpy.Longs[NumLongCpy] & MaskEnd;
 		Sign = Cpy.Sign;
 	}
-	void BigLong::IMulPow(unsigned long Num){
+	void BigLong::IMulPow(SizeL Num){
 		Longs.AddBeg(Num, 0);
 	}
-	BigLong BigLong::MulPow(unsigned long Num){
+	BigLong BigLong::MulPow(SizeL Num){
 		BigLong Rtn = *this;
 		Rtn.Longs.AddBeg(Num, 0);
 		return Rtn;
 	}
-	unsigned long BigLong::RemNulls(){
-		unsigned long LenNoNull = Longs.Length();
+	SizeL BigLong::RemNulls(){
+		SizeL LenNoNull = Longs.Length();
 		while (LenNoNull > 0){
 			--LenNoNull;
 			if (Longs[LenNoNull] != 0) break;
@@ -89,17 +89,17 @@ namespace Utils{
 	Array<unsigned long> &BigLong::GetLongs(){
 		return Longs;
 	}
-	Byte &BigLong::GetByte(unsigned long Pos){
+	Byte &BigLong::GetByte(SizeL Pos){
 		if (IsBigEnd) return ((Byte*)Longs.GetData())[Pos];
 		return ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
 	}
 	bool BigLong::GetBit(unsigned long long Pos){
-		unsigned long BytePos = Pos / 8;
+		SizeL BytePos = Pos / 8;
 		Byte Mask = 1 << (Pos % 8), RtnMid = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
 		return (RtnMid & Mask) > 0;
 	}
 	void BigLong::SetBit(unsigned long long Pos, bool Set){
-		unsigned long BytePos = Pos / 8;
+		SizeL BytePos = Pos / 8;
 		Byte Mask = 1 << (Pos % 8);
 		Byte &ByteMod = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
 		if (Set) ByteMod |= Mask;
@@ -115,7 +115,7 @@ namespace Utils{
 		for (unsigned long &Long : Longs){
 			Mid += Long;
 			Long = 0x00000000FFFFFFFF & Mid;
-			if (Mid & 0xFFFFFFFF00000000 == 0) break;
+			if ((Mid & 0xFFFFFFFF00000000) == 0) break;
 			Mid >>= 32;
 		}
 		return Rtn;
@@ -125,7 +125,7 @@ namespace Utils{
 		for (unsigned long &Long : Longs){
 			Mid += Long;
 			Long = 0x00000000FFFFFFFF & Mid;
-			if (Mid & 0xFFFFFFFF00000000 == 0) break;
+			if ((Mid & 0xFFFFFFFF00000000) == 0) break;
 			Mid >>= 32;
 		}
 		return (*this);
@@ -208,7 +208,7 @@ namespace Utils{
 		return *this;
 	}
 	bool BigLong::FromwStr(wString &wStr, Byte Radix){
-		unsigned long c = wStr.Length();
+		SizeL c = wStr.Length();
 		BigLong Power = (unsigned long)1;
 		while (c > 0){
 			--c;
@@ -217,21 +217,21 @@ namespace Utils{
 				Sign = true;
 				return true;
 			}
-			if ((wStr[c] >= '0') && (wStr[c] <= (Radix < 10) ? '0' + Radix - 1 : '9'))
+			if ((wStr[c] >= '0') && (wStr[c] <= (Radix < 10 ? '0' + Radix - 1 : '9')))
 				(*this) += Power * (unsigned long)(wStr[c] - '0');
 			else if (Radix <= 36)
 			{
-				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36) ? 'a' + (Radix - 10) - 1 : 'z'))
+				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
 					(*this) += Power * (unsigned long)((wStr[c] - 'a') + 10);
-				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 36) ? 'A' + (Radix - 10) - 1 : 'Z'))
+				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 36 ? 'A' + (Radix - 10) - 1 : 'Z')))
 					(*this) += Power * (unsigned long)((wStr[c] - 'A') + 10);
 				else return false;
 			}
 			else if (Radix <= 64)
 			{
-				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36) ? 'a' + (Radix - 10) - 1 : 'z'))
+				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
 					(*this) += Power * (unsigned long)((wStr[c] - 'a') + 10);
-				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 62) ? 'A' + (Radix - 36) - 1 : 'Z'))
+				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 62 ? 'A' + (Radix - 36) - 1 : 'Z')))
 					(*this) += Power * (unsigned long)((wStr[c] - 'A') + 36);
 				else if ((wStr[c] == '_') && (Radix >= 63))
 					(*this) += Power * (unsigned long)62;
@@ -246,7 +246,7 @@ namespace Utils{
 		return true;
 	}
 	bool BigLong::FromStr(String &Str, Byte Radix){
-		unsigned long c = Str.Length();
+		SizeL c = Str.Length();
 		BigLong Power = (unsigned long)1;
 		while (c > 0){
 			--c;
@@ -255,21 +255,21 @@ namespace Utils{
 				Sign = true;
 				return true;
 			}
-			if ((Str[c] >= '0') && (Str[c] <= (Radix < 10) ? '0' + Radix - 1 : '9'))
+			if ((Str[c] >= '0') && (Str[c] <= (Radix < 10 ? '0' + Radix - 1 : '9')))
 				(*this) += Power * (unsigned long)(Str[c] - '0');
 			else if (Radix <= 36)
 			{
-				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36) ? 'a' + (Radix - 10) - 1 : 'z'))
+				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
 					(*this) += Power * (unsigned long)((Str[c] - 'a') + 10);
-				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 36) ? 'A' + (Radix - 10) - 1 : 'Z'))
+				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 36 ? 'A' + (Radix - 10) - 1 : 'Z')))
 					(*this) += Power * (unsigned long)((Str[c] - 'A') + 10);
 				else return false;
 			}
 			else if (Radix <= 64)
 			{
-				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36) ? 'a' + (Radix - 10) - 1 : 'z'))
+				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
 					(*this) += Power * (unsigned long)((Str[c] - 'a') + 10);
-				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 62) ? 'A' + (Radix - 36) - 1 : 'Z'))
+				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 62 ? 'A' + (Radix - 36) - 1 : 'Z')))
 					(*this) += Power * (unsigned long)((Str[c] - 'A') + 36);
 				else if ((Str[c] == '_') && (Radix >= 63))
 					(*this) += Power * (unsigned long)62;
@@ -354,7 +354,7 @@ namespace Utils{
 		FuncTimer Tmr(BlDivTm);
 		if (Denom.IsPow2())
 		{
-			unsigned long ShiftNum = Denom.BitLength() - 1;
+			SizeL ShiftNum = Denom.BitLength() - 1;
 			BigLong &Rtn = *new BigLong[2];
 			BigLong &Tmp = (&Rtn)[1];
 			Tmp = BigLong(*this, ShiftNum);
@@ -431,9 +431,9 @@ namespace Utils{
 		if ((Longs != Cmp.Longs) && (Longs.Length() == Cmp.Longs.Length())) return false;
 		else if (Longs != Cmp.Longs)
 		{
-			unsigned long c = 0;
+			SizeL c = 0;
 			const Array<unsigned long> &Longest = (Longs.Length() > Cmp.Longs.Length()) ? Longs : Cmp.Longs;
-			unsigned long LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
+			SizeL LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
 			while (c < LenShort){
 				if (Longs[c] != Cmp.Longs[c]) return false;
 				++c;
@@ -450,9 +450,9 @@ namespace Utils{
 		if ((Longs != Cmp.Longs) && (Longs.Length() == Cmp.Longs.Length())) return true;
 		else if (Longs != Cmp.Longs)
 		{
-			unsigned long c = 0;
+			SizeL c = 0;
 			const Array<unsigned long> &Longest = (Longs.Length() > Cmp.Longs.Length()) ? Longs : Cmp.Longs;
-			unsigned long LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
+			SizeL LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
 			while (c < LenShort){
 				if (Longs[c] != Cmp.Longs[c]) return true;
 				++c;
@@ -527,11 +527,10 @@ namespace Utils{
 		BigLong Rtn;
 		if (Sign == Add.Sign)
 		{
-			unsigned long Next = 0;
-			unsigned long c = 0, Len = GetLeast(Longs.Length(), Add.Longs.Length());
+			SizeL c = 0, Len = GetLeast(Longs.Length(), Add.Longs.Length());
 			Rtn.Longs += 0;
 			Rtn.Longs *= GetMost(Longs.Length(), Add.Longs.Length());
-			unsigned long MostLen = Rtn.Longs.Length();
+			SizeL MostLen = Rtn.Longs.Length();
 			Rtn.Longs += 0;
 			bool ThisIsMost = Longs.Length() > Add.Longs.Length();
 			while (c < Len){
@@ -570,7 +569,7 @@ namespace Utils{
 			const Array<unsigned long> &LeastLongs = ThisMost ? Add.Longs : Longs;
 			Rtn.Longs += 0;
 			Rtn.Longs *= MostLongs.Length();
-			unsigned long c = MostLongs.Length();
+			SizeL c = MostLongs.Length();
 			while (c > 0){
 				--c;
 				Rtn.Longs[c] = MostLongs[c];
@@ -646,8 +645,8 @@ namespace Utils{
 		delete[] Tmp;
 		return Rtn;
 	}
-	BigLong BigLong::operator<<(const unsigned long Shift) const{
-		unsigned long LongShift = (Shift / 32);
+	BigLong BigLong::operator<<(const SizeL Shift) const{
+		SizeL LongShift = (Shift / 32);
 		unsigned short MidShift = Shift % 32;
 		BigLong Rtn;
 		Rtn.Longs.SetLength(Longs.Length() + 1);
@@ -662,8 +661,8 @@ namespace Utils{
 		Rtn.RemNulls();
 		return Rtn;
 	}
-	BigLong BigLong::operator>>(const unsigned long Shift) const{
-		unsigned long LongShift = (Shift / 32);
+	BigLong BigLong::operator>>(const SizeL Shift) const{
+		SizeL LongShift = (Shift / 32);
 		unsigned short MidShift = Shift % 32;
 		BigLong Rtn;
 		if (Longs.Length() > LongShift) Rtn.Longs.SetLength(Longs.Length() - LongShift);
@@ -674,7 +673,7 @@ namespace Utils{
 			return Rtn;
 		}
 
-		unsigned long c = Longs.Length(), c0 = Longs.Length() - LongShift;
+		SizeL c = Longs.Length(), c0 = Longs.Length() - LongShift;
 		if (c0 > 0) Rtn.Longs[c0 - 1] = 0;
 		while (c > LongShift){
 			--c;
@@ -687,11 +686,11 @@ namespace Utils{
 		Rtn.RemNulls();
 		return Rtn;
 	}
-	BigLong &BigLong::operator<<=(const unsigned long Shift){
+	BigLong &BigLong::operator<<=(const SizeL Shift){
 		(*this) = this->operator<<(Shift);
 		return (*this);
 	}
-	BigLong &BigLong::operator>>=(const unsigned long Shift){
+	BigLong &BigLong::operator>>=(const SizeL Shift){
 		(*this) = this->operator>>(Shift);
 		return (*this);
 	}
@@ -704,8 +703,8 @@ namespace Utils{
 		Sign |= Num.Sign;
 		if (Longs.Length() >= Num.Longs.Length())
 		{
-			unsigned long c = 0;
-			unsigned long Len = Num.Longs.Length();
+			SizeL c = 0;
+			SizeL Len = Num.Longs.Length();
 			while (c < Len){
 				Longs[c] |= Num.Longs[c];
 				++c;
@@ -713,8 +712,8 @@ namespace Utils{
 		}
 		else
 		{
-			unsigned long c = 0;
-			unsigned long Len = Longs.Length();
+			SizeL c = 0;
+			SizeL Len = Longs.Length();
 			while (c < Len){
 				Longs[c] |= Num.Longs[c];
 				++c;
@@ -730,9 +729,9 @@ namespace Utils{
 	}
 	BigLong &BigLong::operator&=(const BigLong Num){
 		Sign &= Num.Sign;
-		unsigned long Len = (Longs.Length() < Num.Longs.Length()) ? Longs.Length() : Num.Longs.Length();
+		SizeL Len = (Longs.Length() < Num.Longs.Length()) ? Longs.Length() : Num.Longs.Length();
 		if (Longs.Length() > Len) Longs.SetLength(Len);
-		for (unsigned long c = 0; c < Len; ++c){
+		for (SizeL c = 0; c < Len; ++c){
 			Longs[c] &= Num.Longs[c];
 		}
 		return (*this);
@@ -746,8 +745,8 @@ namespace Utils{
 		Sign ^= Num.Sign;
 		if (Longs.Length() >= Num.Longs.Length())
 		{
-			unsigned long c = 0;
-			unsigned long Len = Num.Longs.Length();
+			SizeL c = 0;
+			SizeL Len = Num.Longs.Length();
 			while (c < Len){
 				Longs[c] ^= Num.Longs[c];
 				++c;
@@ -755,8 +754,8 @@ namespace Utils{
 		}
 		else
 		{
-			unsigned long c = 0;
-			unsigned long Len = Longs.Length();
+			SizeL c = 0;
+			SizeL Len = Longs.Length();
 			while (c < Len){
 				Longs[c] ^= Num.Longs[c];
 				++c;
@@ -773,11 +772,11 @@ namespace Utils{
 	}
 	BigLong BigLong::NomMul(const BigLong &Bl1, const BigLong &Bl2){
 		BigLong Sum;
-		unsigned long c = 0;
+		SizeL c = 0;
 		while (c < Bl1.Longs.Length()){
 			BigLong CurrNum;
 			CurrNum.Longs = Array<unsigned long>((unsigned long)0, Bl2.Longs.Length() + 1);
-			for (unsigned long c1 = 0; c1 < Bl2.Longs.Length(); ++c1){
+			for (SizeL c1 = 0; c1 < Bl2.Longs.Length(); ++c1){
 				unsigned long long Tmp = (unsigned long long)Bl1.Longs[c] * (unsigned long long)Bl2.Longs[c1];
 				CurrNum.Longs[c1] += Tmp & 0x00000000FFFFFFFF;
 				CurrNum.Longs[c1 + 1] = (Tmp & 0xFFFFFFFF00000000) >> 32;
@@ -793,7 +792,7 @@ namespace Utils{
 		if (Bl1.Longs.Length() <= 2 || Bl2.Longs.Length() <= 2) return NomMul(Bl1, Bl2);
 		else if (Bl1.Zero() == 1 || Bl2.Zero() == 1) return Utils::Zero;
 		BigLong High1 = Bl1, High2 = Bl2, Low1, Low2;
-		unsigned long Power = 0;
+		SizeL Power = 0;
 		KarSplit(High1, High2, Power, Low1, Low2);
 		High1.Sign = false;
 		High2.Sign = false;
@@ -805,7 +804,7 @@ namespace Utils{
 		z1 = KarMul((Low1 + High1), (Low2 + High2)) - (z2 + z0);
 		return z2.MulPow(2 * Power) + z1.MulPow(Power) + z0;
 	}
-	void BigLong::KarSplit(BigLong &Bl1, BigLong &Bl2, unsigned long &Power, BigLong &BlRem1, BigLong &BlRem2){
+	void BigLong::KarSplit(BigLong &Bl1, BigLong &Bl2, SizeL &Power, BigLong &BlRem1, BigLong &BlRem2){
 		Power = ((Bl1.Longs.Length() > Bl2.Longs.Length()) ? Bl1.Longs.Length() : Bl2.Longs.Length()) / 2;
 		BlRem1.Longs.SetLength(0);
 		BlRem2.Longs.SetLength(0);
@@ -822,7 +821,7 @@ namespace Utils{
 
 	
 	Array<Clock *> Clock::Clks;
-	Clock::Clock(unsigned long ClkId){
+	Clock::Clock(SizeL ClkId){
 		CurClk = 0;
 		Id = ClkId;
 		NumTimes = 0;
@@ -844,18 +843,18 @@ namespace Utils{
 		Clks += new Clock(Clks.Length());
 		return Clks.AtEnd();
 	}
-	Clock *Clock::GetClock(unsigned long Id){
+	Clock *Clock::GetClock(SizeL Id){
 		if (Id < Clks.Length()) return Clks[Id];
 		else return 0;
 	}
 	Clock::~Clock(){
 		Clks.Remove(Id);
-		for (unsigned long c = Id; c < Clks.Length(); ++c){
+		for (SizeL c = Id; c < Clks.Length(); ++c){
 			Clks[c]->Id = c;
 		}
 	}
 
-	unsigned long Clock::GetId(){
+	SizeL Clock::GetId(){
 		return Id;
 	}
 	unsigned long Clock::GetNumTimes(){
@@ -867,7 +866,7 @@ namespace Utils{
 	double Clock::GetTotalTime(){
 		return TotTime;
 	}
-	FuncTimer::FuncTimer(unsigned long ClkId){
+	FuncTimer::FuncTimer(SizeL ClkId){
 		Clk = Clock::GetClock(ClkId);
 		Clk->StartTime();
 	}
@@ -883,7 +882,7 @@ namespace Utils{
 			if (Against.Length() > 4) NumQuit = 2 * Against.Length();
 			else NumQuit = 8;
 		}
-		unsigned long Len = Against.Length();
+		SizeL Len = Against.Length();
 		for (unsigned short c = 0; c < NumQuit; ++c){
 			BigLong Rtn = Rnd->GetRand(a, b);
 			bool Cont = false;
@@ -911,7 +910,7 @@ namespace Utils{
 		return true;
 	}
 
-	BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), unsigned long BitLen, unsigned long NumTimes){
+	BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes){
 		BigLong LowerK = (unsigned long)1;
 		LowerK <<= BitLen - 1;
 		LowerK += (unsigned long)1;
@@ -935,7 +934,7 @@ namespace Utils{
 			}
 		}
 	}
-	BigLong GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), unsigned long BitLen){
+	BigLong GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen){
 		BigLong LowerK = (unsigned long)1;
 		LowerK <<= BitLen - 1;
 		LowerK += (unsigned long)1;
@@ -962,7 +961,100 @@ namespace Utils{
 
 	Random::Random(){}
 	Random::~Random(){}
-	
+	SizeL wStringHash(wString wStr, SizeL Range) {
+		register unsigned long len = wStr.Length() * 2;
+		register unsigned char *p;
+		register unsigned long x;
+
+		p = (unsigned char *)wStr.GetData();
+		x = *p << 7;
+		while (--len >= 0)
+			x = (1000003 * x) ^ *p++;
+		x ^= wStr.Length() * 2;
+		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		return x;
+	}
+	SizeL StringHash(String Str, SizeL Range) {
+		register unsigned long len = Str.Length();
+		register unsigned char *p;
+		register unsigned long x;
+
+		p = (unsigned char *)Str.GetData();
+		x = *p << 7;
+		while (--len >= 0)
+			x = (1000003 * x) ^ *p++;
+		x ^= Str.Length();
+		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		return x;
+	}
+	SizeL wStringHash(const wString &wStr, SizeL Range) {
+		register unsigned long len = wStr.Length() * 2;
+		register unsigned char *p;
+		register unsigned long x;
+
+		p = (unsigned char *)wStr.GetData();
+		x = *p << 7;
+		while (--len >= 0)
+			x = (1000003 * x) ^ *p++;
+		x ^= wStr.Length() * 2;
+		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		return x;
+	}
+	SizeL StringHash(const String &Str, SizeL Range) {
+		register unsigned long len = Str.Length();
+		register unsigned char *p;
+		register unsigned long x;
+
+		p = (unsigned char *)Str.GetData();
+		x = *p << 7;
+		while (--len >= 0)
+			x = (1000003 * x) ^ *p++;
+		x ^= Str.Length();
+		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		return x;
+	}
+	namespace fs {
+		wString LastError;
+		HashMap<wString, DriveBase *> DriveMap;
+		FileBase *GetFileObj(String Path, unsigned long Mode) {
+			Path.Replace('\\', '/');
+			if (Path[0] == '/')
+			{
+				return DriveMap["/"]->OpenFile(Path, Mode);
+			}
+			else
+			{
+				SizeL Pos = 0;
+				if (!Path.Find(Pos, '/')) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
+				String DrvName = Path.SubStr(0, Pos);
+				String DrvPath = Path.SubStr(Pos);
+				DriveBase **Drv = DriveMap.GetPtrVal(wString(DrvPath.GetData(), DrvPath.Length()));
+				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
+				return (*Drv)->OpenFile(Path, Mode);
+			}
+		}
+		FileBase *GetFileObj(wString Path, unsigned long Mode) {
+			Path.Replace('\\', '/');
+			if (Path[0] == '/')
+			{
+				return DriveMap["/"]->OpenFile(Path, Mode);
+			}
+			else
+			{
+				SizeL Pos = 0;
+				if (!Path.Find(Pos, '/')) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
+				wString DrvName = Path.SubStr(0, Pos);
+				wString DrvPath = Path.SubStr(Pos);
+				DriveBase **Drv = DriveMap.GetPtrVal(DrvName);
+				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
+				return (*Drv)->OpenFile(Path, Mode);
+			}
+		}
+		FileError::FileError(wString Cap, wString Txt) {
+			Msg = Txt;
+			Type = Cap;
+		}
+	}
 	wString FromNumber(unsigned long Num, unsigned char Radix){
 		char *Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$_";
 		if ((Radix > 64) || (Radix == 0)) return "/ERROR: invalid radix";
@@ -1028,13 +1120,14 @@ namespace Utils{
 		BtuLongConv Test;
 		Test.uLong = 0xFF000000;
 		IsBigEnd = Test.Bts[3] > 0;
+		fs::DriveMap.SetHashFunc(wStringHash, false);
 		OsInit();
 		BlMulTm = Clock::GetNewClock()->GetId();
 		BlDivTm = Clock::GetNewClock()->GetId();
 		RandTm = Clock::GetNewClock()->GetId();
 	}
-	unsigned long wStrLen(wchar_t *wStr){
-		unsigned long c = 0;
+	SizeL wStrLen(wchar_t *wStr){
+		SizeL c = 0;
 		while (wStr[c] != 0)++c;
 		return c;
 	}

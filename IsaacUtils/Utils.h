@@ -17,7 +17,7 @@ namespace Utils{
 	class wString;
 	class ISAACUTILS_API String{
 	private:
-		unsigned long AllocNum;
+		SizeL AllocNum;
 		char *Data;
 	public:
 		class Iterator{
@@ -25,7 +25,7 @@ namespace Utils{
 			String *Str;
 			unsigned long Pos;
 		public:
-			Iterator(String *Iter, unsigned long CharPos);
+			Iterator(String *Iter, SizeL CharPos);
 			Iterator &operator++();
 			bool operator==(Iterator &Cmp);
 			bool operator!=(Iterator &Cmp);
@@ -35,10 +35,10 @@ namespace Utils{
 		String(String &&Cpy);
 		String(const wchar_t *StrIn);
 		String(const char *StrIn);
-		String(const wchar_t *StrIn, unsigned long Len);
-		String(const char *StrIn, unsigned long Len);
+		String(const wchar_t *StrIn, SizeL Len);
+		String(const char *StrIn, SizeL Len);
 		String(const String &StrCp);
-		String(const char ChFill, const unsigned long Len);
+		String(const char ChFill, const SizeL Len);
 		~String();
 		bool operator==(const String &Cmp) const;
 		bool operator!=(const String &Cmp) const;
@@ -52,23 +52,23 @@ namespace Utils{
 		String &operator+=(const String &Add);
 		String &operator+=(const char Add);
 		bool Contains(const char Val) const;
-		unsigned long GetNumCh(const char Val) const;
+		SizeL GetNumCh(const char Val) const;
 		//null terminated string allocated using new wchar_t[len + 1]
 		char *GetCString() const;
 		//non null terminated wide character string, less computation for higher performance. NOTE: do NOT deallocate or the string object becomes invalid
 		const char *GetData() const;
-		bool Insert(unsigned long Pos, char Val);
-		bool Insert(unsigned long Pos, String &Str);
-		bool Remove(unsigned long Pos, unsigned long Num = 1);
-		bool Find(unsigned long &Pos, char Ch, bool PosIsStart = false) const;
-		bool RFind(unsigned long &Pos, char Ch, bool PosIsStart = false);
-		bool Find(unsigned long &Pos, String Ch, bool PosIsStart = false) const;
-		bool RFind(unsigned long &Pos, String Ch, bool PosIsStart = false);
-		unsigned long Replace(const String &FindStr, const String &Write);
-		unsigned long Replace(const char FindStr, const String &Write);
-		unsigned long Replace(const String &FindStr, const char Write);
-		unsigned long Replace(const char FindStr, const char Write);
-		String SubStr(unsigned long Start, unsigned long Stop = 0xFFFFFFFF, signed long Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		bool Insert(SizeL Pos, char Val);
+		bool Insert(SizeL Pos, String &Str);
+		bool Remove(SizeL Pos, SizeL Num = 1);
+		bool Find(SizeL &Pos, char Ch, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, char Ch, bool PosIsStart = false);
+		bool Find(SizeL &Pos, String Ch, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, String Ch, bool PosIsStart = false);
+		SizeL Replace(const String &FindStr, const String &Write);
+		SizeL Replace(const char FindStr, const String &Write);
+		SizeL Replace(const String &FindStr, const char Write);
+		SizeL Replace(const char FindStr, const char Write);
+		String SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		char &AtEnd();
 		void ToLower();
 		void ToUpper();
@@ -77,26 +77,26 @@ namespace Utils{
 		bool IsDigit(bool Hex = false) const;
 		bool IsAlpha() const;
 		bool IsAlnum() const;
-		char &operator[](const unsigned long Pos);
-		char operator[](const unsigned long Pos) const;
-		unsigned long Length() const;
-		String &operator*=(unsigned long Num);
-		String operator*(unsigned long Num) const;
+		char &operator[](const SizeL Pos);
+		char operator[](const SizeL Pos) const;
+		SizeL Length() const;
+		String &operator*=(SizeL Num);
+		String operator*(SizeL Num) const;
 		wString wStr() const;
 		Iterator begin();
 		Iterator end();
 	};
 	class ISAACUTILS_API wString{
 	private:
-		unsigned long AllocNum;
+		SizeL AllocNum;
 		wchar_t *Data;
 	public:
 		class Iterator{
 		private:
 			wString *Str;
-			unsigned long Pos;
+			SizeL Pos;
 		public:
-			Iterator(wString *Iter, unsigned long CharPos);
+			Iterator(wString *Iter, SizeL CharPos);
 			Iterator &operator++();
 			bool operator==(Iterator &Cmp);
 			bool operator!=(Iterator &Cmp);
@@ -106,10 +106,10 @@ namespace Utils{
 		wString(wString &&Cpy);
 		wString(const wchar_t *StrIn);
 		wString(const char *StrIn);
-		wString(const wchar_t *StrIn, unsigned long Len);
-		wString(const char *StrIn, unsigned long Len);
+		wString(const wchar_t *StrIn, SizeL Len);
+		wString(const char *StrIn, SizeL Len);
 		wString(const wString &StrCp);
-		wString(const wchar_t ChFill, const unsigned long Len);
+		wString(const wchar_t ChFill, const SizeL Len);
 		~wString();
 		bool operator==(const wString &Cmp) const;
 		bool operator!=(const wString &Cmp) const;
@@ -118,29 +118,29 @@ namespace Utils{
 		bool operator>(const wString &Cmp) const;
 		bool operator>=(const wString &Cmp) const;
 		wString operator+(const wString &Add) const;
-		wchar_t operator[](const unsigned long Pos) const;
+		wchar_t operator[](const SizeL Pos) const;
 		wString &operator=(const wString &Cp);
 		wString &operator=(wString &&Cp);
 		wString &operator+=(const wString &Add);
 		wString &operator+=(const wchar_t Add);
 		bool Contains(const wchar_t Val) const;
-		unsigned long GetNumCh(const wchar_t Val) const;
+		SizeL GetNumCh(const wchar_t Val) const;
 		//null terminated string allocated using new wchar_t[len + 1]
 		wchar_t *GetCString() const;
 		//non null terminated wide character string, less cpu intensive for higher performance. NOTE: do NOT deallocate or the string object becomes invalid
 		const wchar_t *GetData() const;
-		bool Insert(unsigned long Pos, wchar_t Val);
-		bool Insert(unsigned long Pos, wString &Str);
-		bool Remove(unsigned long Pos, unsigned long Num = 1);
-		bool Find(unsigned long &Pos, wchar_t Ch, bool PosIsStart = false) const;
-		bool RFind(unsigned long &Pos, wchar_t Ch, bool PosIsStart = false);
-		bool Find(unsigned long &Pos, wString Ch, bool PosIsStart = false) const;
-		bool RFind(unsigned long &Pos, wString Ch, bool PosIsStart = false);
-		unsigned long Replace(const wString &FindStr, const wString &Write);
-		unsigned long Replace(const wchar_t FindStr, const wString &Write);
-		unsigned long Replace(const wString &FindStr, const wchar_t Write);
-		unsigned long Replace(const wchar_t FindStr, const wchar_t Write);
-		wString SubStr(unsigned long Start, unsigned long Stop = 0xFFFFFFFF, signed long Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		bool Insert(SizeL Pos, wchar_t Val);
+		bool Insert(SizeL Pos, wString &Str);
+		bool Remove(SizeL Pos, SizeL Num = 1);
+		bool Find(SizeL &Pos, wchar_t Ch, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart = false);
+		bool Find(SizeL &Pos, wString Ch, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, wString Ch, bool PosIsStart = false);
+		SizeL Replace(const wString &FindStr, const wString &Write);
+		SizeL Replace(const wchar_t FindStr, const wString &Write);
+		SizeL Replace(const wString &FindStr, const wchar_t Write);
+		SizeL Replace(const wchar_t FindStr, const wchar_t Write);
+		wString SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		wchar_t &AtEnd();
 		void ToLower();
 		void ToUpper();
@@ -149,34 +149,34 @@ namespace Utils{
 		bool IsDigit(bool Hex = false) const;
 		bool IsAlpha() const;
 		bool IsAlnum() const;
-		wchar_t &operator[](const unsigned long Pos);
-		unsigned long Length() const;
-		wString &operator*=(unsigned long Num);
-		wString operator*(unsigned long Num) const;
+		wchar_t &operator[](const SizeL Pos);
+		SizeL Length() const;
+		wString &operator*=(SizeL Num);
+		wString operator*(SizeL Num) const;
 		String Str() const;
 		Iterator begin();
 		Iterator end();
 	};
 	typedef unsigned char Byte;
-	class ISAACUTILS_API BigLong{
+	class ISAACUTILS_API BigLong {
 	private:
 		Array<unsigned long> Longs;
 		bool Sign;
 	public:
 		static BigLong NomMul(const BigLong &Bl1, const BigLong &Bl2);
 		static BigLong KarMul(const BigLong &Bl1, const BigLong &Bl2);
-		static void KarSplit(BigLong &Bl1, BigLong &Bl2, unsigned long &Power, BigLong &BlRem1, BigLong &BlRem2);
+		static void KarSplit(BigLong &Bl1, BigLong &Bl2, SizeL &Power, BigLong &BlRem1, BigLong &BlRem2);
 		BigLong();
 		BigLong(unsigned long Ul);
 		BigLong(unsigned long long Ull);
 		BigLong(BigLong &&Cpy);
 		BigLong(const BigLong &Cpy);
-		BigLong(const BigLong &Cpy, unsigned long BtCopy);
-		void IMulPow(unsigned long Num);
-		BigLong MulPow(unsigned long Num);
-		unsigned long RemNulls();
+		BigLong(const BigLong &Cpy, SizeL BtCopy);
+		void IMulPow(SizeL Num);
+		BigLong MulPow(SizeL Num);
+		SizeL RemNulls();
 		Array<unsigned long> &GetLongs();
-		Byte &GetByte(unsigned long Pos);
+		Byte &GetByte(SizeL Pos);
 		bool GetBit(unsigned long long Pos);
 		void SetBit(unsigned long long Pos, bool Set);
 		BigLong PostInc(unsigned long Num);
@@ -214,10 +214,10 @@ namespace Utils{
 		BigLong operator/(const BigLong Num) const;
 		BigLong &operator-=(const BigLong Num);
 		BigLong operator-(BigLong Num) const;
-		BigLong operator<<(const unsigned long Shift) const;
-		BigLong operator>>(const unsigned long Shift) const;
-		BigLong &operator<<=(const unsigned long Shift);
-		BigLong &operator>>=(const unsigned long Shift);
+		BigLong operator<<(const SizeL Shift) const;
+		BigLong operator>>(const SizeL Shift) const;
+		BigLong &operator<<=(const SizeL Shift);
+		BigLong &operator>>=(const SizeL Shift);
 		BigLong operator|(const BigLong Num) const;
 		BigLong &operator|=(const BigLong Num);
 		BigLong operator&(const BigLong Num) const;
@@ -232,8 +232,8 @@ namespace Utils{
 	class ISAACUTILS_API Random{
 	public:
 		Random();
-		virtual BigLong RandBit(unsigned long BitLen, bool NoLessBitLen = false) = 0;
-		virtual BigLong GetRand(unsigned long ByteLen) = 0;
+		virtual BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false) = 0;
+		virtual BigLong GetRand(SizeL ByteLen) = 0;
 		virtual double GetRand() = 0;
 		virtual BigLong GetRand(BigLong a, BigLong b) = 0;
 		virtual void Seed(BigLong Val) = 0;
@@ -251,19 +251,19 @@ namespace Utils{
 	private:
 		unsigned long NumTimes;
 		double TotTime;
-		unsigned long Id;
+		SizeL Id;
 		long long CurClk;
 		static Array<Clock *> Clks;
-		Clock(unsigned long ClkId);
+		Clock(SizeL ClkId);
 		Clock(const Clock &Clk);
 		Clock &operator=(const Clock &Cpy);
 		static long long Tps;//ticks per seconds
 	public:
 		static Clock *GetNewClock();
-		static Clock *GetClock(unsigned long Id);
+		static Clock *GetClock(SizeL Id);
 		~Clock();
 		unsigned long GetNumTimes();
-		unsigned long GetId();
+		SizeL GetId();
 		double GetAvgTime();
 		double GetTotalTime();
 		void StartTime();
@@ -274,7 +274,7 @@ namespace Utils{
 	private:
 		Clock *Clk;
 	public:
-		FuncTimer(unsigned long ClkId);
+		FuncTimer(SizeL ClkId);
 		~FuncTimer();
 	};
 
@@ -287,8 +287,8 @@ namespace Utils{
 	public:
 		CryptRandom();
 		//NoLessBitLen if true means that no numbers of lesser bit length are produced
-		BigLong RandBit(unsigned long BitLen, bool NoLessBitLen = false);
-		BigLong GetRand(unsigned long ByteLen);
+		BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false);
+		BigLong GetRand(SizeL ByteLen);
 		BigLong GetRand(BigLong a, BigLong b);
 		double GetRand();
 		void Seed(BigLong Val);
@@ -298,6 +298,10 @@ namespace Utils{
 	//===========================================================end windows specific================================================================
 
 	wString FromNumber(unsigned long Num, unsigned char Radix = 10);
+	SizeL StringHash(String Str, SizeL Range);
+	SizeL wStringHash(wString wStr, SizeL Range);
+	SizeL StringHash(const String &Str, SizeL Range);
+	SizeL wStringHash(const wString &wStr, SizeL Range);
 	/* File System namespace:
 	 *   Can be hooked to expose virtual file systems in the same process
 	*/
@@ -360,25 +364,31 @@ namespace Utils{
 			SEEK_CUR = 1,
 			SEEK_END = 2
 		};
+		class FileError {
+		public:
+			wString Msg;
+			wString Type;
+			FileError(wString Cap, wString Txt);
+		};
 		//abstract file class representing a file from a drive
 		class ISAACUTILS_API FileBase {
 		public:
 			virtual Array<Byte> Read() = 0;
-			virtual Array<Byte> Read(unsigned long long Num) = 0;
+			virtual Array<Byte> Read(unsigned long Num) = 0;
 			virtual bool Seek(long long Pos, int From = SEEK_SET) = 0;
 			virtual long long Tell() = 0;
-			virtual void Write(Array<Byte> Data) = 0;
+			virtual unsigned long Write(Array<Byte> Data) = 0;
 			virtual void Close() = 0;
 			virtual wString GetName() = 0;
-			virtual long GetMode() = 0;
+			virtual unsigned long GetMode() = 0;
 			virtual ~FileBase() = 0;
 		};
 		class ISAACUTILS_API DriveBase {
 		public:
 			virtual wString GetName() = 0;
 			virtual String GetNameA() = 0;
-			virtual FileBase *OpenFile(wString Path, long Mode) = 0;
-			virtual FileBase *OpenFile(String Path, long Mode) = 0;
+			virtual FileBase *OpenFile(wString Path, unsigned long Mode) = 0;
+			virtual FileBase *OpenFile(String Path, unsigned long Mode) = 0;
 			virtual bool IsFile(wString Path) = 0;
 			virtual bool IsFile(String Path) = 0;
 			virtual bool Exists(wString Path) = 0;
@@ -396,10 +406,11 @@ namespace Utils{
 			F_BIN = 4,
 			F_APP = 8,
 			F_ATE = 16,
-			F_NOREPLACE = 32
+			F_NOREPLACE = 32,
+			F_TRUNC = 64
 		};
 		extern wString LastError;
-		Array<DriveBase *> Drives;
+		extern HashMap<wString, DriveBase *> DriveMap;
 		FileBase *GetFileObj(wString Path, unsigned long Mode = F_IN);
 		FileBase *GetFileObj(String Path, unsigned long Mode = F_IN);
 	}
@@ -410,7 +421,7 @@ namespace Utils{
 	extern bool ISAACUTILS_API IsBigEnd;
 	void ISAACUTILS_API Init();
 	void OsInit();
-	unsigned long ISAACUTILS_API wStrLen(wchar_t *wStr);
+	SizeL ISAACUTILS_API wStrLen(wchar_t *wStr);
 	typedef Array<Byte> ISAACUTILS_API ByteArray;
 	void ShowError(wString Caption, wString Text);
 	extern const Utils::BigLong ISAACUTILS_API Two;
