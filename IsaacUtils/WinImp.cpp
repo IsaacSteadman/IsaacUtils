@@ -6,14 +6,14 @@ namespace Utils{
 		Data = 0;
 		IsValid = CryptAcquireContextW(&Data, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
 	}
-	BigLong CryptRandom::GetRand(unsigned long ByteLen){
+	BigLong CryptRandom::GetRand(SizeL ByteLen){
 		if (!IsValid) return (unsigned long)0;
 		BigLong Rtn;
 		Rtn.GetLongs() = Array<unsigned long>((unsigned long)0, (ByteLen + 3) / 4);
 		CryptGenRandom(Data, ByteLen, (Byte*)Rtn.GetLongs().GetData());
 		return Rtn;
 	}
-	BigLong CryptRandom::RandBit(unsigned long BitLen, bool NoLessBitLen){
+	BigLong CryptRandom::RandBit(SizeL BitLen, bool NoLessBitLen){
 		if (BitLen == 0) return (unsigned long)0;
 		if (NoLessBitLen && (BitLen == 1)) return (unsigned long)1;
 		BigLong Rtn;
@@ -349,50 +349,112 @@ namespace Utils{
 		private:
 			HFILE hFile;
 			wString fName;
+			unsigned long Md;
 		public:
-			WinFile(wString fName, long Mode);
+			WinFile(wString fName, unsigned long Mode);
 			virtual Array<Byte> Read();
-			virtual Array<Byte> Read(unsigned long long Num);
+			virtual Array<Byte> Read(unsigned long Num);
 			virtual bool Seek(long long Pos, int From = SEEK_SET);
 			virtual long long Tell();
-			virtual void Write(Array<Byte> Data);
+			virtual unsigned long Write(Array<Byte> Data);
 			virtual void Close();
 			virtual wString GetName();
-			virtual long GetMode();
+			virtual unsigned long GetMode();
 		};
-		WinFile::WinFile(wString fName, long Mode) {
+		WinFile::WinFile(wString fName, unsigned long Mode){
 			wchar_t * wStr = fName.GetCString();
-			hFile = CreateFileW(wStr, )
+			unsigned long Generic = 0;
+			if (Mode & F_IN > 0) Generic |= GENERIC_READ;
+			if (Mode & F_OUT > 0) Generic |= GENERIC_WRITE;
+			SECURITY_ATTRIBUTES SecAttr;
+			SecAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+			SecAttr.lpSecurityDescriptor = NULL;
+			SecAttr.bInheritHandle = FALSE;
+			unsigned long Create = 0;
+			if (Mode & F_OUT)
+			{
+				if (Mode & F_TRUNC > 0)
+				{
+					if (Mode & F_NOREPLACE > 0) Create |= TRUNCATE_EXISTING;
+					else Create |= CREATE_NEW;
+				}
+				else
+				{
+					if (Mode & F_NOREPLACE == 0) Create |= OPEN_ALWAYS;
+					else Create |= OPEN_EXISTING;
+				}
+			}
+			else Create |= OPEN_EXISTING;
+			hFile = (HFILE)CreateFileW(wStr, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
+			delete[] wStr;
+			if (hFile == NULL)
+			{
+				wchar_t *BuffErr = 0;
+				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
+				FileError Err("OpenFileFailed", wString(BuffErr));
+				LocalFree(BuffErr);
+				throw Err;
+			}
+			Md = Mode;
 		}
 		Array<Byte> WinFile::Read()
 		{
-			return Array<Byte>();
+			Array<Byte> Rtn;
+			long long Sz = 0;
+			GetFileSizeEx((HANDLE)hFile, (PLARGE_INTEGER)Sz);
+			long long Fp = 0;
+			LARGE_INTEGER Zero;
+			Zero.u.HighPart = 0;
+			Zero.u.LowPart = 0;
+			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Fp, FILE_CURRENT);
+			if (Sz - Fp > 0xFFFFFFFF) throw FileError("Too much to read", "since one cannot easily read more than 2^32 bytes without running into major memory issues");
+			Rtn.SetLength(Sz - Fp);
+			unsigned long NumHasRead = 0;
+			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), (unsigned long)(Sz - Fp), &NumHasRead, NULL);
+			Rtn.SetLength(NumHasRead);
+			return Rtn;
 		}
-		Array<Byte> WinFile::Read(unsigned long long Num)
+		Array<Byte> WinFile::Read(unsigned long Num)
 		{
-			return Array<Byte>();
+			Array<Byte> Rtn;
+			Rtn.SetLength(Num);
+			unsigned long NumHasRead = 0;
+			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), Num, &NumHasRead, NULL);
+			Rtn.SetLength(NumHasRead);
+			return Rtn;
 		}
 		bool WinFile::Seek(long long Pos, int From)
 		{
-			return false;
+			LARGE_INTEGER ToPos;
+			ToPos.QuadPart = Pos;
+			if (From > 2) From = 0;
+			return SetFilePointerEx((HANDLE)hFile, ToPos, NULL, From);
 		}
 		long long WinFile::Tell()
 		{
-			return 0;
+			long long Rtn = 0;
+			LARGE_INTEGER Zero;
+			Zero.QuadPart = 0;
+			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Rtn, FILE_CURRENT);
+			return Rtn;
 		}
-		void WinFile::Write(Array<Byte> Data)
+		unsigned long WinFile::Write(Array<Byte> Data)
 		{
+			unsigned long Rtn = 0;
+			WriteFile((HANDLE)hFile, (LPCVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
+			return Rtn;
 		}
 		void WinFile::Close()
 		{
+			CloseHandle((HANDLE)hFile);
 		}
 		wString WinFile::GetName()
 		{
-			return wString();
+			return fName;
 		}
-		long WinFile::GetMode()
+		unsigned long WinFile::GetMode()
 		{
-			return 0;
+			return Md;
 		}
 	}
 	void ShowError(wString Caption, wString Text){
