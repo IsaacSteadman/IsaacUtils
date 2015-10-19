@@ -1025,10 +1025,11 @@ namespace Utils{
 			else
 			{
 				SizeL Pos = 0;
-				if (!Path.Find(Pos, '/')) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
+				if (!Path.Find(Pos, ":/")) Path = GetFullPath(Path.wStr()).Str();
+				if (!Path.Find(Pos, ":/")) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
 				String DrvName = Path.SubStr(0, Pos);
-				String DrvPath = Path.SubStr(Pos);
-				DriveBase **Drv = DriveMap.GetPtrVal(wString(DrvPath.GetData(), DrvPath.Length()));
+				String DrvPath = Path.SubStr(Pos + 1);
+				DriveBase **Drv = DriveMap.GetPtrVal(DrvPath.wStr());
 				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
 				return (*Drv)->OpenFile(Path, Mode);
 			}
@@ -1042,9 +1043,10 @@ namespace Utils{
 			else
 			{
 				SizeL Pos = 0;
-				if (!Path.Find(Pos, '/')) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
+				if (!Path.Find(Pos, ":/")) Path = GetFullPath(Path);
+				if (!Path.Find(Pos, ":/")) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
 				wString DrvName = Path.SubStr(0, Pos);
-				wString DrvPath = Path.SubStr(Pos);
+				wString DrvPath = Path.SubStr(Pos + 1);
 				DriveBase **Drv = DriveMap.GetPtrVal(DrvName);
 				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
 				return (*Drv)->OpenFile(Path, Mode);

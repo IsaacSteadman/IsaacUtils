@@ -244,8 +244,8 @@ namespace Utils{
 
 	bool ISAACUTILS_API FermatBaseTest(Random *, const BigLong &Num, unsigned long NumTest = 16);
 
-	BigLong ISAACUTILS_API GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), unsigned long BitLen, unsigned long NumTimes);
-	BigLong ISAACUTILS_API GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), unsigned long BitLen);
+	BigLong ISAACUTILS_API GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes);
+	BigLong ISAACUTILS_API GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen);
 
 	class ISAACUTILS_API Clock{
 	private:
@@ -297,11 +297,11 @@ namespace Utils{
 
 	//===========================================================end windows specific================================================================
 
-	wString FromNumber(unsigned long Num, unsigned char Radix = 10);
-	SizeL StringHash(String Str, SizeL Range);
-	SizeL wStringHash(wString wStr, SizeL Range);
-	SizeL StringHash(const String &Str, SizeL Range);
-	SizeL wStringHash(const wString &wStr, SizeL Range);
+	wString ISAACUTILS_API FromNumber(unsigned long Num, unsigned char Radix = 10);
+	SizeL ISAACUTILS_API StringHash(String Str, SizeL Range);
+	SizeL ISAACUTILS_API wStringHash(wString wStr, SizeL Range);
+	SizeL ISAACUTILS_API StringHash(const String &Str, SizeL Range);
+	SizeL ISAACUTILS_API wStringHash(const wString &wStr, SizeL Range);
 	/* File System namespace:
 	 *   Can be hooked to expose virtual file systems in the same process
 	*/
@@ -359,12 +359,13 @@ namespace Utils{
 		Array<FileDescA> ISAACUTILS_API ListDirStats(String Path);
 		String ISAACUTILS_API GetcwdA();
 		bool ISAACUTILS_API Setcwd(String Path);
+		wString ISAACUTILS_API GetFullPath(wString Path);
 		enum SEEK_POS {
 			SEEK_SET = 0,
 			SEEK_CUR = 1,
 			SEEK_END = 2
 		};
-		class FileError {
+		class ISAACUTILS_API FileError {
 		public:
 			wString Msg;
 			wString Type;
@@ -399,6 +400,10 @@ namespace Utils{
 			virtual Array<String> ListDir(String Path) = 0;
 			virtual FileDesc Stat(wString Path) = 0;
 			virtual FileDescA Stat(String Path) = 0;
+			virtual Array<FileDesc> ListDirSt(wString Path) = 0;
+			virtual Array<FileDescA> ListDirSt(String Path) = 0;
+			virtual Array<wString> GetFileExt(wString Path, wString Ext) = 0;
+			virtual Array<String> GetFileExt(String Path, String Ext) = 0;
 		};
 		enum OpenMode {
 			F_IN = 1,
@@ -409,10 +414,10 @@ namespace Utils{
 			F_NOREPLACE = 32,
 			F_TRUNC = 64
 		};
-		extern wString LastError;
-		extern HashMap<wString, DriveBase *> DriveMap;
-		FileBase *GetFileObj(wString Path, unsigned long Mode = F_IN);
-		FileBase *GetFileObj(String Path, unsigned long Mode = F_IN);
+		extern wString ISAACUTILS_API LastError;
+		extern HashMap<wString, DriveBase *> ISAACUTILS_API DriveMap;
+		FileBase *ISAACUTILS_API GetFileObj(wString Path, unsigned long Mode = F_IN);
+		FileBase *ISAACUTILS_API GetFileObj(String Path, unsigned long Mode = F_IN);
 	}
 	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
 	BigLong ISAACUTILS_API GetNumStrTest(wString Str);
@@ -423,7 +428,7 @@ namespace Utils{
 	void OsInit();
 	SizeL ISAACUTILS_API wStrLen(wchar_t *wStr);
 	typedef Array<Byte> ISAACUTILS_API ByteArray;
-	void ShowError(wString Caption, wString Text);
+	void ISAACUTILS_API ShowError(wString Caption, wString Text);
 	extern const Utils::BigLong ISAACUTILS_API Two;
 	extern const Utils::BigLong ISAACUTILS_API Six;
 	extern const Utils::BigLong ISAACUTILS_API One;
