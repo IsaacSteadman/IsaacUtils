@@ -1016,6 +1016,9 @@ namespace Utils{
 	namespace fs {
 		wString LastError;
 		HashMap<wString, DriveBase *> DriveMap;
+		FileBase::~FileBase() {
+
+		}
 		FileBase *GetFileObj(String Path, unsigned long Mode) {
 			Path.Replace('\\', '/');
 			if (Path[0] == '/')

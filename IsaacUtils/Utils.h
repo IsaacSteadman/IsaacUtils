@@ -382,7 +382,7 @@ namespace Utils{
 			virtual void Close() = 0;
 			virtual wString GetName() = 0;
 			virtual unsigned long GetMode() = 0;
-			virtual ~FileBase() = 0;
+			virtual ~FileBase();
 		};
 		class ISAACUTILS_API DriveBase {
 		public:
@@ -416,8 +416,8 @@ namespace Utils{
 		};
 		extern wString ISAACUTILS_API LastError;
 		extern HashMap<wString, DriveBase *> ISAACUTILS_API DriveMap;
-		FileBase *ISAACUTILS_API GetFileObj(wString Path, unsigned long Mode = F_IN);
-		FileBase *ISAACUTILS_API GetFileObj(String Path, unsigned long Mode = F_IN);
+		FileBase ISAACUTILS_API *GetFileObj(wString Path, unsigned long Mode = F_IN);
+		FileBase ISAACUTILS_API *GetFileObj(String Path, unsigned long Mode = F_IN);
 	}
 	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
 	BigLong ISAACUTILS_API GetNumStrTest(wString Str);

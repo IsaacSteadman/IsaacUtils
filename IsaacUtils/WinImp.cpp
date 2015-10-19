@@ -253,14 +253,14 @@ namespace Utils{
 		*
 		*/
 		Array<String> GetFileExt(String Path, String Ext){
-			
+			return Array<String>();
 		}
 		//TODO:
 		FileDescA Stat(String Path){
-			
+			return FileDescA();
 		}
 		Array<FileDescA> ListDirStats(String Path){
-
+			return Array<FileDescA>();
 		}
 		String GetcwdA(){
 			unsigned long Len = GetCurrentDirectoryA(0, NULL);
