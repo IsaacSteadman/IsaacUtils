@@ -1015,44 +1015,111 @@ namespace Utils{
 	}
 	namespace fs {
 		wString LastError;
+		unsigned long ErrorFuncId = 0;
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {
 
 		}
-		FileBase *GetFileObj(String Path, unsigned long Mode) {
+		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
+			ErrorFuncId = FUNC_GETDRVPATH;
 			Path.Replace('\\', '/');
 			if (Path[0] == '/')
 			{
-				return DriveMap["/"]->OpenFile(Path, Mode);
+				Drv = DriveMap["/"];
+				return 0;
 			}
 			else
 			{
 				SizeL Pos = 0;
-				if (!Path.Find(Pos, ":/")) Path = GetFullPath(Path.wStr()).Str();
-				if (!Path.Find(Pos, ":/")) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
-				String DrvName = Path.SubStr(0, Pos);
-				String DrvPath = Path.SubStr(Pos + 1);
-				DriveBase **Drv = DriveMap.GetPtrVal(DrvPath.wStr());
-				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
-				return (*Drv)->OpenFile(Path, Mode);
+				String TmpPath;
+				if (!Path.Find(Pos, ":/")) TmpPath = GetFullPath(Path.wStr()).Str();
+				else TmpPath = Path;
+				if (TmpPath[0] == '/')
+				{
+					Path = TmpPath;
+					Drv = DriveMap["/"];
+					return 0;
+				}
+				if (!TmpPath.Find(Pos, ":/"))
+				{
+					LastError = "Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name";
+					return -2;
+				}
+				String DrvName = TmpPath.SubStr(0, Pos);
+				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName.wStr());
+				if (Tmp == 0)
+				{
+					LastError = "Drive Name specified was not valid or refered to a removed/non-existent drive";
+					return -1;
+				}
+				Path = TmpPath.SubStr(Pos + 1);
+				Drv = *Tmp;
+				return 0;
+			}
+		}
+		signed long GetDrvNPath(wString &Path, DriveBase *&Drv) {
+			ErrorFuncId = FUNC_GETDRVPATH;
+			Path.Replace('\\', '/');
+			if (Path[0] == '/')
+			{
+				Drv = DriveMap["/"];
+				return 0;
+			}
+			else
+			{
+				SizeL Pos = 0;
+				wString TmpPath;
+				if (!Path.Find(Pos, ":/")) TmpPath = GetFullPath(Path);
+				else TmpPath = Path;
+				if (TmpPath[0] == '/')
+				{
+					Path = TmpPath;
+					Drv = DriveMap["/"];
+					return 0;
+				}
+				if (!TmpPath.Find(Pos, ":/"))
+				{
+					LastError = "Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name";
+					return -2;
+				}
+				wString DrvName = TmpPath.SubStr(0, Pos);
+				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName);
+				if (Tmp == 0)
+				{
+					LastError = "Drive Name specified was not valid or refered to a removed/non-existent drive";
+					return -1;
+				}
+				Path = TmpPath.SubStr(Pos + 1);
+				Drv = *Tmp;
+				return 0;
+			}
+		}
+		FileBase *GetFileObj(String Path, unsigned long Mode) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return 0;
+			ErrorFuncId = FUNC_OPENFILE;
+			try {
+				FileBase *Tmp = Drv->OpenFile(Path, Mode);
+				if (Tmp == 0) throw Drv->Err;
+				else return Tmp;
+			}
+			catch (FileError Msg) {
+				LastError = Msg.Type + ": " + Msg.Msg;
+				return 0;
 			}
 		}
 		FileBase *GetFileObj(wString Path, unsigned long Mode) {
-			Path.Replace('\\', '/');
-			if (Path[0] == '/')
-			{
-				return DriveMap["/"]->OpenFile(Path, Mode);
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return 0;
+			ErrorFuncId = FUNC_OPENFILE;
+			try {
+				FileBase *Tmp = Drv->OpenFile(Path, Mode);
+				if (Tmp == 0) throw Drv->Err;
+				else return Tmp;
 			}
-			else
-			{
-				SizeL Pos = 0;
-				if (!Path.Find(Pos, ":/")) Path = GetFullPath(Path);
-				if (!Path.Find(Pos, ":/")) throw FileError("DriveNameNotFound", "Drive name not found in the path given, drive name needs to be separated from path with a '/'");
-				wString DrvName = Path.SubStr(0, Pos);
-				wString DrvPath = Path.SubStr(Pos + 1);
-				DriveBase **Drv = DriveMap.GetPtrVal(DrvName);
-				if (Drv == 0) throw FileError("DriveNotFound", "Drive, with the name given, not found. This drive may have been remove from the computer or simply never existed");
-				return (*Drv)->OpenFile(Path, Mode);
+			catch (FileError Msg) {
+				LastError = Msg.Type + ": " + Msg.Msg;
+				return 0;
 			}
 		}
 		FileError::FileError(wString Cap, wString Txt) {

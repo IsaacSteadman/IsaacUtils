@@ -386,6 +386,7 @@ namespace Utils{
 		};
 		class ISAACUTILS_API DriveBase {
 		public:
+			FileError Err;
 			virtual wString GetName() = 0;
 			virtual String GetNameA() = 0;
 			virtual FileBase *OpenFile(wString Path, unsigned long Mode) = 0;
@@ -414,10 +415,22 @@ namespace Utils{
 			F_NOREPLACE = 32,
 			F_TRUNC = 64
 		};
+		enum ERROR_ID {
+			FUNC_NONE = 0,
+			FUNC_GETDRVPATH = 1,
+			FUNC_OPENFILE = 2,
+			FUNC_FSTAT = 3,
+			FUNC_LS_FSTAT = 4,
+			FUNC_LSDIR = 5,
+			FUNC_GETF_EXT = 6
+		};
 		extern wString ISAACUTILS_API LastError;
+		extern unsigned long ErrorFuncId;
 		extern HashMap<wString, DriveBase *> ISAACUTILS_API DriveMap;
 		FileBase ISAACUTILS_API *GetFileObj(wString Path, unsigned long Mode = F_IN);
 		FileBase ISAACUTILS_API *GetFileObj(String Path, unsigned long Mode = F_IN);
+		signed long ISAACUTILS_API GetDrvNPath(String &Path, DriveBase *&Drv);
+		signed long ISAACUTILS_API GetDrvNPath(wString &Path, DriveBase *&Drv);
 	}
 	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
 	BigLong ISAACUTILS_API GetNumStrTest(wString Str);

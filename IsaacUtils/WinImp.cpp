@@ -245,12 +245,13 @@ namespace Utils{
 			return Rtn;
 		}
 		/**
-		* RETURNS: an array of wString filenames. to get the absolute path of each filename prepend the search path with a '/'
+		* RETURNS: an array of String filenames. to get the absolute path of each filename prepend the search path with a '/' between
+		*   the search path and the filename
 		*   This function will search through all the files in the path and in any sub-directories and produce the filenames
 		*    with the extension Ext
 		* EXAMPLE: To find all mp3 files in C:/Users/John.Doe/Music
-		*   Array<String> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
-		*
+		*   Windows: Array<String> Mp3Files = GetFileExt("/Users/John.Doe/Music", "mp3");
+		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("/home/John.Doe/Music", "mp3");
 		*/
 		Array<String> GetFileExt(String Path, String Ext){
 			return Array<String>();
