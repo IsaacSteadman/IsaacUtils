@@ -176,19 +176,20 @@ namespace Utils{
 	template<typename T>
 	void Array<T>::AddMissing(const Array<T> &Other, SizeL Until){
 		if (Until <= AllocNum) return;
-		T * NewData = new T[Other.AllocNum];
+		Until = (Until < Other.AllocNum) ? Until : Other.AllocNum;
+		T * NewData = new T[Until];
 		SizeL c = 0;
 		while (c < AllocNum){
 			NewData[c] = Data[c];
 			++c;
 		}
-		while (c < Until){
+		AllocNum = Until;
+		while (c < AllocNum){
 			NewData[c] = Other.Data[c];
 			++c;
 		}
 		delete[] Data;
 		Data = NewData;
-		AllocNum = Until;
 	}
 	template<typename T>
 	void Array<T>::RemBeg(SizeL NumRem){
