@@ -1013,13 +1013,29 @@ namespace Utils{
 		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
 		return x;
 	}
+	wString FuncNames[FUNC_LAST] = { "Not a Function", "GetDrvNPath", "OpenFile", "fs::Stat", "ListDirStats", "ListDir", "GetFileExt"};
+	wString UtilsGetError() {
+		return FuncNames[ErrorFuncId] + LastError;
+	}
+	bool UtilsGetIsErr() {
+		if (ErrIsRead) return false;
+		ErrIsRead = true;
+		return true;
+	}
+	void UtilsSetError(wString Err, unsigned long FuncErrId) {
+		ErrIsRead = false;
+		LastError = Err;
+		if (FuncErrId != 0) ErrorFuncId = FuncErrId;
+	}
+	wString LastError;
+	unsigned long ErrorFuncId = 0;
+	bool ErrIsRead = true;
 	namespace fs {
-		wString LastError;
-		unsigned long ErrorFuncId = 0;
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {
 
 		}
+
 		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;
 			Path.Replace('\\', '/');
@@ -1042,14 +1058,14 @@ namespace Utils{
 				}
 				if (!TmpPath.Find(Pos, ":/"))
 				{
-					LastError = "Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name";
+					UtilsSetError("Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name");
 					return -2;
 				}
 				String DrvName = TmpPath.SubStr(0, Pos);
 				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName.wStr());
 				if (Tmp == 0)
 				{
-					LastError = "Drive Name specified was not valid or refered to a removed/non-existent drive";
+					UtilsSetError("Drive Name specified was not valid or refered to a removed/non-existent drive");
 					return -1;
 				}
 				Path = TmpPath.SubStr(Pos + 1);
@@ -1079,20 +1095,168 @@ namespace Utils{
 				}
 				if (!TmpPath.Find(Pos, ":/"))
 				{
-					LastError = "Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name";
+					UtilsSetError("Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name");
 					return -2;
 				}
 				wString DrvName = TmpPath.SubStr(0, Pos);
 				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName);
 				if (Tmp == 0)
 				{
-					LastError = "Drive Name specified was not valid or refered to a removed/non-existent drive";
+					UtilsSetError("Drive Name specified was not valid or refered to a removed/non-existent drive");
 					return -1;
 				}
 				Path = TmpPath.SubStr(Pos + 1);
 				Drv = *Tmp;
 				return 0;
 			}
+		}
+		bool GetIsError(DriveBase *Drv) {
+			bool Rtn = Drv->ErrNotRead;
+			Drv->ErrNotRead = false;
+			return Rtn;
+		}
+		Array<String> GetFileExt(String Path, String Ext) {
+			Array<String> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_GETF_EXT;
+			try {
+				Rtn = Drv->GetFileExt(Path, Ext);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		//TODO:
+		FileDescA Stat(String Path) {
+			FileDescA Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_FSTAT;
+			try {
+				Rtn = Drv->Stat(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		Array<FileDescA> ListDirStats(String Path) {
+			Array<FileDescA> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_LS_FSTAT;
+			try {
+				Rtn = Drv->ListDirSt(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		Array<String> ListDir(String Path) {
+			Array<String> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_LSDIR;
+			try {
+				Rtn = Drv->ListDir(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		bool Exists(String Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->Exists(Path);
+		}
+		bool IsFile(String Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->IsFile(Path);
+		}
+		bool IsDir(String Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->IsDir(Path);
+		}
+		Array<wString> GetFileExt(wString Path, wString Ext) {
+			Array<wString> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_GETF_EXT;
+			try {
+				Rtn = Drv->GetFileExt(Path, Ext);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		FileDesc Stat(wString Path) {
+			FileDesc Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_FSTAT;
+			try {
+				Rtn = Drv->Stat(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		Array<FileDesc> ListDirStats(wString Path) {
+			Array<FileDesc> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_LS_FSTAT;
+			try {
+				Rtn = Drv->ListDirSt(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		Array<wString> ListDir(wString Path) {
+			Array<wString> Rtn;
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
+			ErrorFuncId = FUNC_LSDIR;
+			try {
+				Rtn = Drv->ListDir(Path);
+				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileError Msg) {
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
+			}
+			return Rtn;
+		}
+		bool Exists(wString Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->Exists(Path);
+		}
+		bool IsFile(wString Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->IsFile(Path);
+		}
+		bool IsDir(wString Path) {
+			DriveBase *Drv = 0;
+			if (GetDrvNPath(Path, Drv) != 0) return false;
+			return Drv->IsDir(Path);
 		}
 		FileBase *GetFileObj(String Path, unsigned long Mode) {
 			DriveBase *Drv = 0;
@@ -1104,7 +1268,7 @@ namespace Utils{
 				else return Tmp;
 			}
 			catch (FileError Msg) {
-				LastError = Msg.Type + ": " + Msg.Msg;
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 				return 0;
 			}
 		}
@@ -1118,7 +1282,7 @@ namespace Utils{
 				else return Tmp;
 			}
 			catch (FileError Msg) {
-				LastError = Msg.Type + ": " + Msg.Msg;
+				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 				return 0;
 			}
 		}

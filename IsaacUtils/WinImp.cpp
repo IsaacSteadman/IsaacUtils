@@ -59,48 +59,6 @@ namespace Utils{
 	namespace fs{
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
-		Array<wString> ListDir(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			Array<wString> Rtn;
-			WIN32_FIND_DATAW fdFile;
-			HANDLE hFind = NULL;
-			Path += "/*.*";
-			wchar_t *cPath = Path.GetCString();
-			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-			{
-				delete[] cPath;
-				Rtn += "<INVALID SEARCH PATH>";
-				return Rtn;
-			}
-			do{
-				if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-					Rtn += fdFile.cFileName;
-			} while (FindNextFileW(hFind, &fdFile));
-			FindClose(hFind);
-		}
-		bool Exists(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			wchar_t *cPath = Path.GetCString();
-			bool Rtn = GetFileAttributesW(cPath) == INVALID_FILE_ATTRIBUTES;
-			delete[] cPath;
-			return Rtn;
-		}
-		bool IsFile(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			wchar_t *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesW(cPath);
-			bool Rtn = Tmp == INVALID_FILE_ATTRIBUTES || (Tmp & FILE_ATTR_DIRECTORY) == 0;
-			delete[] cPath;
-			return Rtn;
-		}
-		bool IsDir(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			wchar_t *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesW(cPath);
-			bool Rtn = (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
-			delete[] cPath;
-			return Rtn;
-		}
 		/**
 		 * RETURNS: an array of wString filenames. to get the absolute path of each filename prepend the string with the [search path followed by a '/']
 		 *   This function will search through all the files in the path and in any sub-directories and produce the filenames
@@ -109,88 +67,6 @@ namespace Utils{
 		 *   Array<wString> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
 		 *   
 		*/
-		Array<wString> GetFileExt(wString Path, wString Ext){
-			Ext.ToLower();
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			Array<wString> Rtn;
-			Array<wString> CurrSearchDir("", 1);//blank so that all that happens is it becomes Path
-			Array<wString> NewSearchDir;
-			while (CurrSearchDir.Length() > 0){
-				for (wString CurPath : CurrSearchDir){
-					WIN32_FIND_DATAW fdFile;
-					HANDLE hFind = NULL;
-					wString Path1 = Path + CurPath + "/*." + Ext;
-					wchar_t *cPath = Path1.GetCString();
-					if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-					{
-						delete[] cPath;
-						Rtn += "<INVALID SEARCH PATH>";
-						return Rtn;
-					}
-					delete[] cPath;
-					do{
-						if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-						{
-							wString Tmp = fdFile.cFileName;
-							unsigned long Pos = 0;
-							if (fdFile.dwFileAttributes & FILE_ATTR_DIRECTORY) NewSearchDir += CurPath + "/" + fdFile.cFileName;
-							else Rtn += CurPath + "/" + fdFile.cFileName;
-						}
-					} while (FindNextFileW(hFind, &fdFile));
-					FindClose(hFind);
-				}
-			}
-			return Rtn;
-		}
-		FileDesc Stat(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			wchar_t *cPath = Path.GetCString();
-			FileDesc Rtn;
-			Rtn.CreateTime = 0;
-			Rtn.LastAccessTime = 0;
-			Rtn.LastWriteTime = 0;
-			Rtn.Attr = 0xFFFFFFFF;
-			WIN32_FILE_ATTRIBUTE_DATA Dat;
-			if (GetFileAttributesExW(cPath, GetFileExInfoStandard, &Dat))
-			{
-				Rtn.Attr = Dat.dwFileAttributes;
-				Rtn.fName = Path;
-				Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-				Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-				Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-				Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
-			}
-			delete[] cPath;
-			return Rtn;
-		}
-		Array<FileDesc> ListDirStats(wString Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			Array<FileDesc> Rtn;
-			WIN32_FIND_DATAW fdFile;
-			HANDLE hFind = NULL;
-			Path += "/*.*";
-			wchar_t *cPath = Path.GetCString();
-			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-			{
-				delete[] cPath;
-				Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
-				return Rtn;
-			}
-			do{
-				if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-				{
-					FileDesc Add;
-					Add.Attr = fdFile.dwFileAttributes;
-					Add.fName = fdFile.cFileName;
-					Add.CreateTime = fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32);
-					Add.LastAccessTime = fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32);
-					Add.LastWriteTime = fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32);
-					Add.Size = fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32);
-					Rtn += Add;
-				}
-			} while (FindNextFileW(hFind, &fdFile));
-			FindClose(hFind);
-		}
 		wString Getcwd(){
 			unsigned long Len = GetCurrentDirectoryW(0, NULL);
 			wString Rtn(wchar_t(0), Len);
@@ -201,67 +77,6 @@ namespace Utils{
 		bool Setcwd(wString Path){
 			Path.Insert(Path.Length(), 0);
 			return SetCurrentDirectoryW(Path.GetData());
-		}
-		Array<String> ListDir(String Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPathA);
-			Array<String> Rtn;
-			WIN32_FIND_DATAA fdFile;
-			HANDLE hFind = NULL;
-			Path += "/*.*";
-			char *cPath = Path.GetCString();
-			if ((hFind = FindFirstFileA(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-			{
-				delete[] cPath;
-				Rtn += "<INVALID SEARCH PATH>";
-				return Rtn;
-			}
-			do{
-				if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-					Rtn += fdFile.cFileName;
-			} while (FindNextFileA(hFind, &fdFile));
-			FindClose(hFind);
-		}
-		bool Exists(String Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPathA);
-			char *cPath = Path.GetCString();
-			bool Rtn = GetFileAttributesA(cPath) == INVALID_FILE_ATTRIBUTES;
-			delete[] cPath;
-			return Rtn;
-		}
-		bool IsFile(String Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPathA);
-			char *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesA(cPath);
-			bool Rtn = Tmp == INVALID_FILE_ATTRIBUTES || (Tmp & FILE_ATTR_DIRECTORY) == 0;
-			delete[] cPath;
-			return Rtn;
-		}
-		bool IsDir(String Path){
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPathA);
-			char *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesA(cPath);
-			bool Rtn = (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
-			delete[] cPath;
-			return Rtn;
-		}
-		/**
-		* RETURNS: an array of String filenames. to get the absolute path of each filename prepend the search path with a '/' between
-		*   the search path and the filename
-		*   This function will search through all the files in the path and in any sub-directories and produce the filenames
-		*    with the extension Ext
-		* EXAMPLE: To find all mp3 files in C:/Users/John.Doe/Music
-		*   Windows: Array<String> Mp3Files = GetFileExt("/Users/John.Doe/Music", "mp3");
-		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("/home/John.Doe/Music", "mp3");
-		*/
-		Array<String> GetFileExt(String Path, String Ext){
-			return Array<String>();
-		}
-		//TODO:
-		FileDescA Stat(String Path){
-			return FileDescA();
-		}
-		Array<FileDescA> ListDirStats(String Path){
-			return Array<FileDescA>();
 		}
 		String GetcwdA(){
 			unsigned long Len = GetCurrentDirectoryA(0, NULL);

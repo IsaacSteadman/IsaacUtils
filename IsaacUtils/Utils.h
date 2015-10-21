@@ -302,8 +302,24 @@ namespace Utils{
 	SizeL ISAACUTILS_API wStringHash(wString wStr, SizeL Range);
 	SizeL ISAACUTILS_API StringHash(const String &Str, SizeL Range);
 	SizeL ISAACUTILS_API wStringHash(const wString &wStr, SizeL Range);
+	enum ERROR_ID {
+		FUNC_NONE = 0,
+		FUNC_GETDRVPATH,
+		FUNC_OPENFILE,
+		FUNC_FSTAT,
+		FUNC_LS_FSTAT,
+		FUNC_LSDIR,
+		FUNC_GETF_EXT,
+		FUNC_LAST
+	};
+	extern wString ISAACUTILS_API LastError;
+	extern unsigned long ISAACUTILS_API ErrorFuncId;
+	extern bool ISAACUTILS_API ErrIsRead;
+	wString ISAACUTILS_API UtilsGetError();
+	bool ISAACUTILS_API UtilsGetIsErr();
+	void ISAACUTILS_API UtilsSetError(wString Err, unsigned long FuncErrId = 0);
 	/* File System namespace:
-	 *   Can be hooked to expose virtual file systems in the same process
+	*   Can be hooked to expose virtual file systems in the same process
 	*/
 	namespace fs{
 		struct ISAACUTILS_API FileDesc{
@@ -354,6 +370,15 @@ namespace Utils{
 		bool ISAACUTILS_API Exists(String Path);
 		bool ISAACUTILS_API IsFile(String Path);
 		bool ISAACUTILS_API IsDir(String Path);
+		/**
+		* RETURNS: an array of String filenames. to get the absolute path of each filename prepend the search path with a '/' between
+		*   the search path and the filename
+		*   This function will search through all the files in the path and in any sub-directories and produce the filenames
+		*    with the extension Ext
+		* EXAMPLE: To find all mp3 files in C:/Users/John.Doe/Music
+		*   Windows: Array<String> Mp3Files = GetFileExt("/Users/John.Doe/Music", "mp3");
+		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("/home/John.Doe/Music", "mp3");
+		*/
 		Array<String> ISAACUTILS_API GetFileExt(String Path, String Ext);
 		FileDescA ISAACUTILS_API Stat(String Path);
 		Array<FileDescA> ISAACUTILS_API ListDirStats(String Path);
@@ -387,6 +412,7 @@ namespace Utils{
 		class ISAACUTILS_API DriveBase {
 		public:
 			FileError Err;
+			bool ErrNotRead;
 			virtual wString GetName() = 0;
 			virtual String GetNameA() = 0;
 			virtual FileBase *OpenFile(wString Path, unsigned long Mode) = 0;
@@ -406,6 +432,7 @@ namespace Utils{
 			virtual Array<wString> GetFileExt(wString Path, wString Ext) = 0;
 			virtual Array<String> GetFileExt(String Path, String Ext) = 0;
 		};
+		bool ISAACUTILS_API GetIsError(DriveBase *Drv);
 		enum OpenMode {
 			F_IN = 1,
 			F_OUT = 2,
@@ -415,17 +442,6 @@ namespace Utils{
 			F_NOREPLACE = 32,
 			F_TRUNC = 64
 		};
-		enum ERROR_ID {
-			FUNC_NONE = 0,
-			FUNC_GETDRVPATH = 1,
-			FUNC_OPENFILE = 2,
-			FUNC_FSTAT = 3,
-			FUNC_LS_FSTAT = 4,
-			FUNC_LSDIR = 5,
-			FUNC_GETF_EXT = 6
-		};
-		extern wString ISAACUTILS_API LastError;
-		extern unsigned long ErrorFuncId;
 		extern HashMap<wString, DriveBase *> ISAACUTILS_API DriveMap;
 		FileBase ISAACUTILS_API *GetFileObj(wString Path, unsigned long Mode = F_IN);
 		FileBase ISAACUTILS_API *GetFileObj(String Path, unsigned long Mode = F_IN);
