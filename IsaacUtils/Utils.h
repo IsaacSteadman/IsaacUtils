@@ -392,6 +392,7 @@ namespace Utils{
 		};
 		class ISAACUTILS_API FileError {
 		public:
+			FileError();
 			wString Msg;
 			wString Type;
 			FileError(wString Cap, wString Txt);
@@ -399,6 +400,7 @@ namespace Utils{
 		//abstract file class representing a file from a drive
 		class ISAACUTILS_API FileBase {
 		public:
+			FileBase();
 			virtual Array<Byte> Read() = 0;
 			virtual Array<Byte> Read(unsigned long Num) = 0;
 			virtual bool Seek(long long Pos, int From = SEEK_SET) = 0;
@@ -411,6 +413,7 @@ namespace Utils{
 		};
 		class ISAACUTILS_API DriveBase {
 		public:
+			DriveBase();
 			FileError Err;
 			bool ErrNotRead;
 			virtual wString GetName() = 0;

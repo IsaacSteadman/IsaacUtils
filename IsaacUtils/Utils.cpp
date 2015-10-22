@@ -1031,10 +1031,11 @@ namespace Utils{
 	unsigned long ErrorFuncId = 0;
 	bool ErrIsRead = true;
 	namespace fs {
+		FileError::FileError() {}
+		DriveBase::DriveBase() {}
 		HashMap<wString, DriveBase *> DriveMap;
-		FileBase::~FileBase() {
-
-		}
+		FileBase::~FileBase() {}
+		FileBase::FileBase() {}
 
 		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;

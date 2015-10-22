@@ -114,8 +114,8 @@ namespace Utils{
 			void MkFullPath(String &Path);
 			void MkFullPath(wString &Path);
 		public:
-			// Inherited via DriveBase
 			WinDrive(wchar_t fLabel, wString Name);
+			// Inherited via DriveBase
 			virtual wString GetName();
 			virtual String GetNameA();
 			virtual FileBase * OpenFile(wString Path, unsigned long Mode);
