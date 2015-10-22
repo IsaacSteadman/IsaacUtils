@@ -513,6 +513,26 @@ namespace Utils{
 	T &IterArray<T>::operator*(){
 		return (*Str)[Pos];
 	}
+	template<typename T>
+	SizeL BinarySearch(T *List, SizeL Len, T &Val) {
+		SizeL CurLen = Len;
+		SizeL Pos = Len >> 1;
+		SizeL CurPos = Len >> 1;
+		while (CurLen > 0) {
+			if (Val == List[Pos]) return Pos;
+			else if (Val < List[Pos])//Less
+			{
+				CurLen >>= 1;
+				Pos -= (CurLen + 1) >> 1;
+			}
+			else//Greater
+			{
+				CurLen = (CurLen - 1) >> 1;
+				Pos += (CurLen >> 1) + 1;
+			}
+		}
+		return Len;
+	}
 	template<typename T1, typename T2>
 	class HashMap {
 	public:
