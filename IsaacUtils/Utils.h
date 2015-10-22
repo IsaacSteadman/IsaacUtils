@@ -386,9 +386,9 @@ namespace Utils{
 		bool ISAACUTILS_API Setcwd(String Path);
 		wString ISAACUTILS_API GetFullPath(wString Path);
 		enum SEEK_POS {
-			SEEK_SET = 0,
-			SEEK_CUR = 1,
-			SEEK_END = 2
+			SK_SET = 0,
+			SK_CUR = 1,
+			SK_END = 2
 		};
 		class ISAACUTILS_API FileError {
 		public:
@@ -403,7 +403,7 @@ namespace Utils{
 			FileBase();
 			virtual Array<Byte> Read() = 0;
 			virtual Array<Byte> Read(unsigned long Num) = 0;
-			virtual bool Seek(long long Pos, int From = SEEK_SET) = 0;
+			virtual bool Seek(long long Pos, int From = SK_SET) = 0;
 			virtual long long Tell() = 0;
 			virtual unsigned long Write(Array<Byte> Data) = 0;
 			virtual void Close() = 0;

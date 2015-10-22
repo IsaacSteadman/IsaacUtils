@@ -99,7 +99,7 @@ namespace Utils{
 			WinFile(String fName, unsigned long Mode);
 			virtual Array<Byte> Read();
 			virtual Array<Byte> Read(unsigned long Num);
-			virtual bool Seek(long long Pos, int From = SEEK_SET);
+			virtual bool Seek(long long Pos, int From = SK_SET);
 			virtual long long Tell();
 			virtual unsigned long Write(Array<Byte> Data);
 			virtual void Close();
