@@ -688,6 +688,7 @@ namespace Utils{
 		DataPair *GetPair = 0;
 		bool Tmp = GetWithKey(KeyVal, GetPair);
 		if (Tmp) GetPair = GetPair->Next;
+		else return 0;
 		return &GetPair->Val;
 	}
 	template<typename T1, typename T2>

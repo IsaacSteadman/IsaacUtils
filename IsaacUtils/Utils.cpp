@@ -988,30 +988,30 @@ namespace Utils{
 		return x;
 	}
 	SizeL wStringHash(const wString &wStr, SizeL Range) {
-		register unsigned long len = wStr.Length() * 2;
+		register SizeL len = wStr.Length() * 2;
 		register unsigned char *p;
-		register unsigned long x;
+		register SizeL x;
 
 		p = (unsigned char *)wStr.GetData();
 		x = *p << 7;
-		while (--len >= 0)
+		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= wStr.Length() * 2;
 		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
-		return x;
+		return x % Range;
 	}
 	SizeL StringHash(const String &Str, SizeL Range) {
-		register unsigned long len = Str.Length();
+		register SizeL len = Str.Length();
 		register unsigned char *p;
-		register unsigned long x;
+		register SizeL x;
 
 		p = (unsigned char *)Str.GetData();
 		x = *p << 7;
-		while (--len >= 0)
+		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= Str.Length();
 		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
-		return x;
+		return x % Range;
 	}
 	wString FuncNames[FUNC_LAST] = { "Not a Function", "GetDrvNPath", "OpenFile", "fs::Stat", "ListDirStats", "ListDir", "GetFileExt"};
 	wString UtilsGetError() {
