@@ -497,7 +497,7 @@ namespace Utils{
 			if (Start >= Stop) return "";
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
-			String Rtn(char(0), (Start - Stop - 1) / Step1 + 1);//Error in this line
+			String Rtn(char(0), (Stop - Start - 1) / Step1 + 1);//Error in this line
 			for (SizeL c = 0; c < Stop; c += Step1){
 				Rtn[c1] = Data[c];
 				++c1;
@@ -1102,7 +1102,7 @@ namespace Utils{
 			if (Start >= Stop) return "";
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
-			wString Rtn(wchar_t(0), (Start - Stop - 1) / Step1 + 1);//Error in this line
+			wString Rtn(wchar_t(0), (Stop - Start - 1) / Step1 + 1);//Error in this line
 			for (SizeL c = 0; c < Stop; c += Step1) {
 				Rtn[c1] = Data[c];
 				++c1;
