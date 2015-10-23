@@ -474,24 +474,30 @@ namespace Utils{
 		if (Step < 0)
 		{
 			bool StopMax = false;
-			if (Stop == 0xFFFFFFFF) StopMax = true;
-			else if (Start <= Stop) return "";
 			if (Start >= AllocNum) Start = AllocNum - 1;
-			String Rtn(char(0), ((Start - Stop) - (StopMax ? Step + 1 : Step)) / -Step);
+			if (Stop == 0xFFFFFFFF)
+			{
+				Stop = 0;
+				StopMax = true;
+			}
+			else if (Start <= Stop) return "";
+			SizeL Range = Start - Stop;
+			SizeL Step0 = -Step;
+			String Rtn(char(0), ((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
 			SizeL c = 0;
 			for (char &Ch : Rtn){
-				Ch = Data[Start + c * Step];
+				Ch = Data[Start - c * Step0];
 				++c;
 			}
 			return Rtn;
 		}
 		else
 		{
+			if (Stop > AllocNum) Stop = AllocNum;
 			if (Start >= Stop) return "";
-			if (Stop == 0xFFFFFFFF) Stop = AllocNum;
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
-			String Rtn(char(0), (Start - Stop - 1) / Step1 + 1);
+			String Rtn(char(0), (Start - Stop - 1) / Step1 + 1);//Error in this line
 			for (SizeL c = 0; c < Stop; c += Step1){
 				Rtn[c1] = Data[c];
 				++c1;
@@ -1073,25 +1079,31 @@ namespace Utils{
 		if (Step < 0)
 		{
 			bool StopMax = false;
-			if (Stop == 0xFFFFFFFF) StopMax = true;
-			else if (Start <= Stop) return "";
 			if (Start >= AllocNum) Start = AllocNum - 1;
-			wString Rtn(wchar_t(0), ((Start - Stop) - (StopMax ? Step + 1 : Step)) / -Step);
+			if (Stop == 0xFFFFFFFF)
+			{
+				Stop = 0;
+				StopMax = true;
+			}
+			else if (Start <= Stop) return "";
+			SizeL Range = Start - Stop;
+			SizeL Step0 = -Step;
+			wString Rtn(wchar_t(0), ((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
 			SizeL c = 0;
-			for (wchar_t &Ch : Rtn){
-				Ch = Data[Start + c * Step];
+			for (wchar_t &Ch : Rtn) {
+				Ch = Data[Start - c * Step0];
 				++c;
 			}
 			return Rtn;
 		}
 		else
 		{
+			if (Stop > AllocNum) Stop = AllocNum;
 			if (Start >= Stop) return "";
-			if (Stop == 0xFFFFFFFF) Stop = AllocNum;
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
-			wString Rtn(wchar_t(0), (Start - Stop - 1) / Step1 + 1);
-			for (SizeL c = 0; c < Stop; c += Step1){
+			wString Rtn(wchar_t(0), (Start - Stop - 1) / Step1 + 1);//Error in this line
+			for (SizeL c = 0; c < Stop; c += Step1) {
 				Rtn[c1] = Data[c];
 				++c1;
 			}
