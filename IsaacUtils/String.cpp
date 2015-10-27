@@ -69,12 +69,12 @@ namespace Utils{
 	}
 	String::String(const char ChFill, const SizeL Len){
 		AllocNum = Len;
-		SizeL c = 0;
 		if (AllocNum == 0)
 		{
 			Data = 0;
 			return;
 		}
+		SizeL c = 0;
 		Data = new char[AllocNum];
 		while (c < AllocNum){
 			Data[c] = ChFill;
@@ -467,15 +467,15 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	String String::SubStr(SizeL Start, SizeL Stop, SnzL Step) const{
+	const String String::SubStr(SizeL Start, SizeL Stop, SnzL Step) const{
 		if (AllocNum == 0) return "";
-		if ((Stop > AllocNum) && Stop != 0xFFFFFFFF) Stop = AllocNum;
+		if ((Stop > AllocNum) && Stop != MAX_INT) Stop = AllocNum;
 		if (Start > AllocNum) Start = AllocNum - 1;
 		if (Step < 0)
 		{
 			bool StopMax = false;
 			if (Start >= AllocNum) Start = AllocNum - 1;
-			if (Stop == 0xFFFFFFFF)
+			if (Stop == MAX_INT)
 			{
 				Stop = 0;
 				StopMax = true;
@@ -498,9 +498,8 @@ namespace Utils{
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
 			String Rtn(char(0), (Stop - Start - 1) / Step1 + 1);//Error in this line
-			for (SizeL c = 0; c < Stop; c += Step1){
+			for (SizeL c = Start; c < Stop; c += Step1, ++c1){
 				Rtn[c1] = Data[c];
-				++c1;
 			}
 			return Rtn;
 		}
@@ -1072,15 +1071,15 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	wString wString::SubStr(SizeL Start, SizeL Stop, SnzL Step) const{
+	const wString wString::SubStr(SizeL Start, SizeL Stop, SnzL Step) const{
 		if (AllocNum == 0) return "";
-		if ((Stop > AllocNum) && Stop != 0xFFFFFFFF) Stop = AllocNum;
+		if ((Stop > AllocNum) && Stop != MAX_INT) Stop = AllocNum;
 		if (Start > AllocNum) Start = AllocNum - 1;
 		if (Step < 0)
 		{
 			bool StopMax = false;
 			if (Start >= AllocNum) Start = AllocNum - 1;
-			if (Stop == 0xFFFFFFFF)
+			if (Stop == MAX_INT)
 			{
 				Stop = 0;
 				StopMax = true;
@@ -1103,9 +1102,8 @@ namespace Utils{
 			SizeL Step1 = Step + 1;
 			SizeL c1 = 0;
 			wString Rtn(wchar_t(0), (Stop - Start - 1) / Step1 + 1);//Error in this line
-			for (SizeL c = 0; c < Stop; c += Step1) {
+			for (SizeL c = 0; c < Stop; c += Step1, ++c1) {
 				Rtn[c1] = Data[c];
-				++c1;
 			}
 			return Rtn;
 		}

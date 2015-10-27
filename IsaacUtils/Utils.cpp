@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Utils.h"
 namespace Utils{
-	unsigned long BlMulTm = 0, BlDivTm = 0, RandTm = 0;
+	Clock *BlMulTm, *BlDivTm, *RandTm;
 
 	SizeL GetMost(SizeL a, SizeL b){
 		return (a > b) ? a : b;
@@ -207,10 +207,10 @@ namespace Utils{
 		}
 		return *this;
 	}
-	bool BigLong::FromwStr(wString &wStr, Byte Radix){
+	bool BigLong::FromwStr(const wString &wStr, Byte Radix) {
 		SizeL c = wStr.Length();
 		BigLong Power = (unsigned long)1;
-		while (c > 0){
+		while (c > 0) {
 			--c;
 			if ((c == 0) && (wStr[0] == '-'))
 			{
@@ -245,10 +245,10 @@ namespace Utils{
 		RemNulls();
 		return true;
 	}
-	bool BigLong::FromStr(String &Str, Byte Radix){
+	bool BigLong::FromStr(const String &Str, Byte Radix) {
 		SizeL c = Str.Length();
 		BigLong Power = (unsigned long)1;
-		while (c > 0){
+		while (c > 0) {
 			--c;
 			if ((c == 0) && (Str[0] == '-'))
 			{
@@ -820,43 +820,24 @@ namespace Utils{
 
 
 	
-	Array<Clock *> Clock::Clks;
-	Clock::Clock(SizeL ClkId){
+	Clock::Clock(){
 		CurClk = 0;
-		Id = ClkId;
 		NumTimes = 0;
 		TotTime = 0;
 	}
 	Clock::Clock(const Clock &Clk){
 		CurClk = 0;
-		Id = Clk.Id;
 		NumTimes = Clk.NumTimes;
 		TotTime = Clk.TotTime;
 	}
 	Clock &Clock::operator=(const Clock &Cpy){
-		Id = Cpy.Id;
 		NumTimes = Cpy.NumTimes;
 		TotTime = Cpy.TotTime;
 		return (*this);
 	}
-	Clock *Clock::GetNewClock(){
-		Clks += new Clock(Clks.Length());
-		return Clks.AtEnd();
-	}
-	Clock *Clock::GetClock(SizeL Id){
-		if (Id < Clks.Length()) return Clks[Id];
-		else return 0;
-	}
 	Clock::~Clock(){
-		Clks.Remove(Id);
-		for (SizeL c = Id; c < Clks.Length(); ++c){
-			Clks[c]->Id = c;
-		}
 	}
 
-	SizeL Clock::GetId(){
-		return Id;
-	}
 	unsigned long Clock::GetNumTimes(){
 		return NumTimes;
 	}
@@ -866,8 +847,8 @@ namespace Utils{
 	double Clock::GetTotalTime(){
 		return TotTime;
 	}
-	FuncTimer::FuncTimer(SizeL ClkId){
-		Clk = Clock::GetClock(ClkId);
+	FuncTimer::FuncTimer(Clock *CurClk){
+		Clk = CurClk;
 		Clk->StartTime();
 	}
 
@@ -962,42 +943,42 @@ namespace Utils{
 	Random::Random(){}
 	Random::~Random(){}
 	SizeL wStringHash(wString wStr, SizeL Range) {
-		register unsigned long len = wStr.Length() * 2;
-		register unsigned char *p;
-		register unsigned long x;
+		register SizeL len = wStr.Length();
+		register wchar_t *p;
+		register SizeL x;
 
-		p = (unsigned char *)wStr.GetData();
+		p = (wchar_t *)wStr.GetData();
 		x = *p << 7;
 		while (--len >= 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= wStr.Length() * 2;
-		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
-		return x;
+		if (x == MAX_INT) x = MAX_INT - 1;
+		return x % Range;
 	}
 	SizeL StringHash(String Str, SizeL Range) {
-		register unsigned long len = Str.Length();
+		register SizeL len = Str.Length();
 		register unsigned char *p;
-		register unsigned long x;
+		register SizeL x;
 
 		p = (unsigned char *)Str.GetData();
 		x = *p << 7;
 		while (--len >= 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= Str.Length();
-		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
-		return x;
+		if (x == MAX_INT) x = MAX_INT - 1;
+		return x % Range;
 	}
 	SizeL wStringHash(const wString &wStr, SizeL Range) {
-		register SizeL len = wStr.Length() * 2;
-		register unsigned char *p;
+		register SizeL len = wStr.Length();
+		register wchar_t *p;
 		register SizeL x;
 
-		p = (unsigned char *)wStr.GetData();
+		p = (wchar_t *)wStr.GetData();
 		x = *p << 7;
-		while (len-- > 0)
+		while (--len >= 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= wStr.Length() * 2;
-		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		if (x == MAX_INT) x = MAX_INT - 1;
 		return x % Range;
 	}
 	SizeL StringHash(const String &Str, SizeL Range) {
@@ -1010,7 +991,7 @@ namespace Utils{
 		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= Str.Length();
-		if (x == 0xFFFFFFFF) x = 0xFFFFFFFE;
+		if (x == MAX_INT) x = MAX_INT - 1;
 		return x % Range;
 	}
 	wString FuncNames[FUNC_LAST] = { "Not a Function", "GetDrvNPath", "OpenFile", "fs::Stat", "ListDirStats", "ListDir", "GetFileExt"};
@@ -1359,9 +1340,9 @@ namespace Utils{
 		IsBigEnd = Test.Bts[3] > 0;
 		fs::DriveMap.SetHashFunc(wStringHash, false);
 		OsInit();
-		BlMulTm = Clock::GetNewClock()->GetId();
-		BlDivTm = Clock::GetNewClock()->GetId();
-		RandTm = Clock::GetNewClock()->GetId();
+		BlMulTm = new Clock();
+		BlDivTm = new Clock();
+		RandTm = new Clock();
 	}
 	SizeL wStrLen(wchar_t *wStr){
 		SizeL c = 0;

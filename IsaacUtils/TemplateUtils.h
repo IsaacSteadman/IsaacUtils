@@ -2,10 +2,12 @@
 typedef unsigned long long SizeL;
 typedef signed long long SnzL; //signed version of SizeL
 #define MAX_INT 0xFFFFFFFFFFFFFFFF
+#define MAX_HEX_DIGIT 16
 #else
 typedef unsigned long SizeL;
 typedef signed long SnzL;
 #define MAX_INT 0xFFFFFFFF
+#define MAX_HEX_DIGIT 8
 #endif
 namespace Utils{
 	template<typename T>
@@ -533,6 +535,26 @@ namespace Utils{
 		}
 		return Len;
 	}
+	template<typename T>
+	SizeL BinaryApprox(T *List, SizeL Len, T &Val) {
+		SizeL CurLen = Len;
+		SizeL Pos = Len >> 1;
+		SizeL CurPos = Len >> 1;
+		while (CurLen > 0) {
+			if (Val <= List[Pos] && (Pos == 0 || Val >= List[Pos - 1])) return Pos;
+			else if (Val < List[Pos])//Less
+			{
+				CurLen >>= 1;
+				Pos -= (CurLen + 1) >> 1;
+			}
+			else//Greater
+			{
+				CurLen = (CurLen - 1) >> 1;
+				Pos += (CurLen >> 1) + 1;
+			}
+		}
+		return Len;
+	}
 	template<typename T1, typename T2>
 	class HashMap {
 	public:
@@ -543,7 +565,6 @@ namespace Utils{
 			DataPair *Next;
 			bool IsValid;
 			DataPair();
-			DataPair(T1 KeyVal, T2 Value, DataPair *next = 0);
 			DataPair(const T1 &KeyVal, const T2 &Value, DataPair *next = 0);
 		};
 	private:
@@ -562,6 +583,7 @@ namespace Utils{
 		void SetHashFunc(HashFunc hf, bool ReHash = true);
 		T2 &AtKey(const T1 &KeyVal);
 		const T2 Get(const T1 &KeyVal) const;
+		bool HasKey(const T1 &KeyVal) const;
 		T2 *GetPtrVal(T1 KeyVal);
 		void Put(const T1 &KeyVal, const T2 &Value);
 		bool Rem(const T1 &KeyVal);
@@ -580,13 +602,6 @@ namespace Utils{
 	}
 	template<typename T1, typename T2>
 	HashMap<T1, T2>::DataPair::DataPair(const T1 &KeyVal, const T2 &Value, DataPair *next = 0) {
-		Key = KeyVal;
-		Val = Value;
-		Next = next;
-		IsValid = true;
-	}
-	template<typename T1, typename T2>
-	HashMap<T1, T2>::DataPair::DataPair(T1 KeyVal, T2 Value, DataPair *next = 0) {
 		Key = KeyVal;
 		Val = Value;
 		Next = next;
@@ -651,6 +666,7 @@ namespace Utils{
 			NewPair->Val.operator=(Pair->Val);
 			NewPair->IsValid = true;
 		}
+		return *this;
 	}
 	template<typename T1, typename T2>
 	HashMap<T1, T2> &HashMap<T1, T2>::operator=(HashMap<T1, T2> &&Other) {
@@ -658,7 +674,8 @@ namespace Utils{
 		Datas = Other.Datas;
 		AllocNum = Other.AllocNum;
 		Other.Datas = 0;
-		Other.AllocNum = 0
+		Other.AllocNum = 0;
+		return *this;
 	}
 	template<typename T1, typename T2>
 	void HashMap<T1, T2>::CleanUp(Array<typename HashMap<T1, T2>::DataPair *> *Pairs) {
@@ -687,14 +704,20 @@ namespace Utils{
 	T2 *HashMap<T1, T2>::GetPtrVal(T1 KeyVal) {
 		DataPair *GetPair = 0;
 		bool Tmp = GetWithKey(KeyVal, GetPair);
+		if (GetPair == 0) return 0;
 		if (Tmp) GetPair = GetPair->Next;
-		else return 0;
 		return &GetPair->Val;
 	}
 	template<typename T1, typename T2>
 	T2 &HashMap<T1, T2>::AtKey(const T1 &KeyVal) {
 		DataPair *GetPair = 0;
 		bool Tmp = GetWithKey(KeyVal, GetPair);
+		if (GetPair == 0)
+		{
+			T2 TmpVal;
+			Put(KeyVal, TmpVal);
+			Tmp = GetWithKey(KeyVal, GetPair);
+		}
 		if (Tmp) GetPair = GetPair->Next;
 		return GetPair->Val;
 	}
@@ -704,6 +727,19 @@ namespace Utils{
 		bool Tmp = GetWithKey(KeyVal, GetPair);
 		if (Tmp) GetPair = GetPair->Next;
 		return GetPair->Val;
+	}
+	template<typename T1, typename T2>
+	bool HashMap<T1, T2>::HasKey(const T1 &KeyVal) const {
+		SizeL Pos = Hasher(KeyVal, AllocNum);
+		if (!Datas[Pos].IsValid) return false;
+		else
+		{
+			DataPair *GetPair = &Datas[Pos];
+			while ((GetPair = GetPair->Next) != 0) {
+				if (GetPair->Key == KeyVal) return true;
+			}
+			return false;
+		}
 	}
 	template<typename T1, typename T2>
 	void HashMap<T1, T2>::Put(const T1 &KeyVal, const T2 &Value) {
@@ -717,8 +753,8 @@ namespace Utils{
 		else
 		{
 			SizeL Pos = Hasher(KeyVal, AllocNum);
-			GetPair = Datas[Pos];
-			if (Datas[Pos].IsValid) GetPair = Datas[Pos]->Next;
+			GetPair = &Datas[Pos];
+			if (Datas[Pos].IsValid) GetPair = Datas[Pos].Next;
 			else
 			{
 				Datas[Pos].Key = KeyVal;
@@ -735,6 +771,7 @@ namespace Utils{
 	bool HashMap<T1, T2>::Rem(const T1 &KeyVal) {
 		DataPair *GetPair = 0;
 		bool Tmp = GetWithKey(KeyVal, GetPair);
+		if (GetPair == 0) return false;
 		if (Tmp)
 		{
 			DataPair * OrigNext = GetPair->Next;
@@ -760,6 +797,7 @@ namespace Utils{
 				delete OrigNext;
 			}
 		}
+		return true;
 	}
 	template<typename T1, typename T2>
 	const T2 HashMap<T1, T2>::operator[](const T1 KeyVal) const {

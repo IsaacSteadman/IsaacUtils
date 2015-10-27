@@ -68,7 +68,7 @@ namespace Utils{
 		SizeL Replace(const char FindStr, const String &Write);
 		SizeL Replace(const String &FindStr, const char Write);
 		SizeL Replace(const char FindStr, const char Write);
-		String SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		const String SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		char &AtEnd();
 		void ToLower();
 		void ToUpper();
@@ -140,7 +140,7 @@ namespace Utils{
 		SizeL Replace(const wchar_t FindStr, const wString &Write);
 		SizeL Replace(const wString &FindStr, const wchar_t Write);
 		SizeL Replace(const wchar_t FindStr, const wchar_t Write);
-		wString SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		const wString SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
 		wchar_t &AtEnd();
 		void ToLower();
 		void ToUpper();
@@ -187,9 +187,9 @@ namespace Utils{
 		BigLong &PreDec(unsigned long Num);
 		void Minus();
 		BigLong Negate() const;
-		bool FromStr(String &Str, Byte Radix = 10);
+		bool FromStr(const String &Str, Byte Radix = 10);
 		void ToStr(String &Str, Byte Radix = 10);
-		bool FromwStr(wString &wStr, Byte Radix = 10);
+		bool FromwStr(const wString &wStr, Byte Radix = 10);
 		void TowStr(wString &wStr, Byte Radix = 10);
 		bool IsPow2() const;
 		//returns an array of 2 BigLongs that must be deallocated with delete []
@@ -251,30 +251,26 @@ namespace Utils{
 	private:
 		unsigned long NumTimes;
 		double TotTime;
-		SizeL Id;
 		long long CurClk;
-		static Array<Clock *> Clks;
-		Clock(SizeL ClkId);
 		Clock(const Clock &Clk);
 		Clock &operator=(const Clock &Cpy);
 		static long long Tps;//ticks per seconds
 	public:
-		static Clock *GetNewClock();
-		static Clock *GetClock(SizeL Id);
+		Clock();
 		~Clock();
 		unsigned long GetNumTimes();
-		SizeL GetId();
 		double GetAvgTime();
 		double GetTotalTime();
 		void StartTime();
 		void EndTime();
 		friend void OsInit();
 	};
+	extern Clock *BlMulTm, *BlDivTm, *RandTm;
 	class ISAACUTILS_API FuncTimer{
 	private:
 		Clock *Clk;
 	public:
-		FuncTimer(SizeL ClkId);
+		FuncTimer(Clock *CurClk);
 		~FuncTimer();
 	};
 
