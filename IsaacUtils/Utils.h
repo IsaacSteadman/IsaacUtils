@@ -20,7 +20,7 @@ namespace Utils{
 		SizeL AllocNum;
 		char *Data;
 	public:
-		class Iterator{
+		class ISAACUTILS_API Iterator{
 		private:
 			String *Str;
 			unsigned long Pos;
@@ -91,7 +91,7 @@ namespace Utils{
 		SizeL AllocNum;
 		wchar_t *Data;
 	public:
-		class Iterator{
+		class ISAACUTILS_API Iterator{
 		private:
 			wString *Str;
 			SizeL Pos;

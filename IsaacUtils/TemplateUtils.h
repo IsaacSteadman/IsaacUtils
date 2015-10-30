@@ -631,7 +631,7 @@ namespace Utils{
 		Hasher = Other.Hasher;
 		AllocNum = Other.AllocNum;
 		Datas = new DataPair[AllocNum];
-		const Array<DataPair *> OrigPairs = Other.GetKeyPairs();
+		Array<DataPair *> OrigPairs = Other.GetKeyPairs();
 		for (const DataPair *Pair : OrigPairs) {
 			SizeL Pos = Hasher(Pair->Key, AllocNum);
 			DataPair *NewPair = &Datas[Pos];
@@ -641,8 +641,8 @@ namespace Utils{
 				NewPair->Next = new DataPair();
 				NewPair = NewPair->Next;
 			}
-			NewPair->Key.operator=(Pair->Key);
-			NewPair->Val.operator=(Pair->Val);
+			NewPair->Key = Pair->Key;
+			NewPair->Val = Pair->Val;
 			NewPair->IsValid = true;
 		}
 	}
@@ -652,7 +652,7 @@ namespace Utils{
 		Hasher = Other.Hasher;
 		AllocNum = Other.AllocNum;
 		Datas = new DataPair[AllocNum];
-		const Array<DataPair *> OrigPairs = Other.GetKeyPairs();
+		Array<DataPair *> OrigPairs = Other.GetKeyPairs();
 		for (const DataPair *Pair : OrigPairs) {
 			SizeL Pos = Hasher(Pair->Key, AllocNum);
 			DataPair *NewPair = &Datas[Pos];
@@ -662,8 +662,8 @@ namespace Utils{
 				NewPair->Next = new DataPair();
 				NewPair = NewPair->Next;
 			}
-			NewPair->Key.operator=(Pair->Key);
-			NewPair->Val.operator=(Pair->Val);
+			NewPair->Key = Pair->Key;
+			NewPair->Val = Pair->Val;
 			NewPair->IsValid = true;
 		}
 		return *this;
@@ -791,8 +791,8 @@ namespace Utils{
 				DataPair OrigNext = GetPair->Next;
 				GetPair->Next = OrigNext->Next;
 				//we are basically moving from OrigNext to GetPair so to be efficient we will use move assignment
-				GetPair->Key.operator=((T1 &&)OrigNext->Key);
-				GetPair->Val.operator=((T2 &&)OrigNext->Val);
+				GetPair->Key = (T1 &&)OrigNext->Key;
+				GetPair->Val = (T2 &&)OrigNext->Val;
 				//since we MOVED from OrigNext, deleting OrigNext shouldn't invalidate GetPair's copies of Key and Val
 				delete OrigNext;
 			}
