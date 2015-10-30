@@ -949,7 +949,7 @@ namespace Utils{
 
 		p = (wchar_t *)wStr.GetData();
 		x = *p << 7;
-		while (--len >= 0)
+		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= wStr.Length() * 2;
 		if (x == MAX_INT) x = MAX_INT - 1;
@@ -962,7 +962,7 @@ namespace Utils{
 
 		p = (unsigned char *)Str.GetData();
 		x = *p << 7;
-		while (--len >= 0)
+		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= Str.Length();
 		if (x == MAX_INT) x = MAX_INT - 1;
@@ -975,7 +975,7 @@ namespace Utils{
 
 		p = (wchar_t *)wStr.GetData();
 		x = *p << 7;
-		while (--len >= 0)
+		while (len-- > 0)
 			x = (1000003 * x) ^ *p++;
 		x ^= wStr.Length() * 2;
 		if (x == MAX_INT) x = MAX_INT - 1;
