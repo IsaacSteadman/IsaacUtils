@@ -735,6 +735,7 @@ namespace Utils{
 		else
 		{
 			DataPair *GetPair = &Datas[Pos];
+			if (GetPair->Key == KeyVal) return true;
 			while ((GetPair = GetPair->Next) != 0) {
 				if (GetPair->Key == KeyVal) return true;
 			}
@@ -754,8 +755,7 @@ namespace Utils{
 		{
 			SizeL Pos = Hasher(KeyVal, AllocNum);
 			GetPair = &Datas[Pos];
-			if (Datas[Pos].IsValid) GetPair = Datas[Pos].Next;
-			else
+			if (!Datas[Pos].IsValid)
 			{
 				Datas[Pos].Key = KeyVal;
 				Datas[Pos].Val = Value;
