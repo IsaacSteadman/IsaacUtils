@@ -1,3 +1,5 @@
+#define MAX_INT64 0xFFFFFFFFFFFFFFFF
+#define MAX_INT32 0xFFFFFFFF
 #if defined(_WIN64)
 typedef unsigned long long SizeL;
 typedef signed long long SnzL; //signed version of SizeL
@@ -31,6 +33,7 @@ namespace Utils{
 		void RemBeg(SizeL NumRem);
 		void AddBeg(SizeL NumAdd);
 		void AddBeg(SizeL NumAdd, T Val);
+		Array<T> SubArr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;
 		void SetLength(SizeL Len);
 		bool operator==(const Array<T> &Cmp) const;
 		bool operator!=(const Array<T> &Cmp) const;
@@ -240,6 +243,46 @@ namespace Utils{
 		}
 		AllocNum += NumAdd;
 		Data = NewData;
+	}
+	template<typename T>
+	Array<T> Array<T>::SubArr(SizeL Start, SizeL Stop, SnzL Step) const {
+		if (AllocNum == 0) return Array<T>();
+		if ((Stop > AllocNum) && Stop != MAX_INT) Stop = AllocNum;
+		if (Start > AllocNum) Start = AllocNum - 1;
+		if (Step < 0)
+		{
+			bool StopMax = false;
+			if (Start >= AllocNum) Start = AllocNum - 1;
+			if (Stop == MAX_INT)
+			{
+				Stop = 0;
+				StopMax = true;
+			}
+			else if (Start <= Stop) return Array<T>();
+			SizeL Range = Start - Stop;
+			SizeL Step0 = -Step;
+			Array<T> Rtn;
+			Rtn.SetLength(((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
+			SizeL c = 0;
+			for (T &Ch : Rtn) {
+				Ch = Data[Start - c * Step0];
+				++c;
+			}
+			return Rtn;
+		}
+		else
+		{
+			if (Stop > AllocNum) Stop = AllocNum;
+			if (Start >= Stop) return Array<T>();
+			SizeL Step1 = Step + 1;
+			SizeL c1 = 0;
+			Array<T> Rtn;
+			Rtn.SetLength((Stop - Start - 1) / Step1 + 1);
+			for (SizeL c = 0; c < Stop; c += Step1, ++c1) {
+				Rtn[c1] = Data[c];
+			}
+			return Rtn;
+		}
 	}
 
 	template<typename T>

@@ -107,24 +107,62 @@ Utils::BigLong GetHighestPrime(unsigned long BitLen, unsigned long NumPTest){
 	}
 }
 Utils::Array<void *> Objects;//wStrPos is at 0
+SizeL SockObjPos = 0;
+SizeL SockAddrPos = 0;
 SizeL BigLongPos = 0;
 SizeL ByteArrayPos = 0;
-void *AddObject(Utils::wString *Obj){
+void *AddObject(Utils::wString *Obj) {
 	Objects.Insert(0, Obj);
+	++SockObjPos;
+	++SockAddrPos;
 	++BigLongPos;
 	++ByteArrayPos;
 	return Obj;
 }
-void *AddObject(Utils::BigLong *Obj){
+void *AddObject(Utils::sock::Socket * Obj) {
+	Objects.Insert(SockObjPos, Obj);
+	++SockAddrPos;
+	++BigLongPos;
+	++ByteArrayPos;
+	return Obj;
+}
+void *AddObject(Utils::sock::SockAddr *Obj) {
+	Objects.Insert(SockAddrPos, Obj);
+	++BigLongPos;
+	++ByteArrayPos;
+	return Obj;
+}
+void *AddObject(Utils::BigLong *Obj) {
 	Objects.Insert(BigLongPos, Obj);
 	++ByteArrayPos;
 	return Obj;
 }
-void *AddObject(Utils::ByteArray *Obj){
+void *AddObject(Utils::ByteArray *Obj) {
 	Objects.Insert(ByteArrayPos, Obj);
 	return Obj;
 }
 void *RemoveNoDel(Utils::wString *Obj){
+	SizeL Pos = 0;
+	if (!Objects.Find(Pos, Obj)) return 0;
+	void *Rtn = Objects[Pos];
+	Objects.Remove(Pos);
+	--SockObjPos;
+	--SockAddrPos;
+	--BigLongPos;
+	--ByteArrayPos;
+	return Rtn;
+}
+void *RemoveNoDel(Utils::sock::Socket *Obj) {
+	SizeL Pos = 0;
+	if (!Objects.Find(Pos, Obj)) return 0;
+	void *Rtn = Objects[Pos];
+	Objects.Remove(Pos);
+	--SockAddrPos;
+	--BigLongPos;
+	--ByteArrayPos;
+	return Rtn;
+}
+void *RemoveNoDel(Utils::sock::SockAddr *Obj) {
 	SizeL Pos = 0;
 	if (!Objects.Find(Pos, Obj)) return 0;
 	void *Rtn = Objects[Pos];
@@ -149,12 +187,14 @@ void *RemoveNoDel(Utils::ByteArray *Obj){
 	return Rtn;
 }
 
+Utils::wString LastError;
+
 extern "C"{
 	void Init(){
 		if (SafeRnd == 0)
 		{
 			Utils::Init();
-			SafeRnd = new Utils::CryptRandom();
+			SafeRnd = Utils::GetCryptoRand();
 			HashPrimesLst1 = GenListnPrimes(18);
 		}
 	}
@@ -183,14 +223,17 @@ extern "C"{
 		DelObj(Str);
 	}*/
 	void *ByteArray_new(){
-		return AddObject(new Utils::Array<Utils::Byte>());
+		return AddObject(new Utils::ByteArray());
 	}
 	void *ByteArray_newA(char *Str){
 		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, strlen(Str)));
 	}
+	void *ByteArray_newALen(char *Str, SizeL Len) {
+		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, Len));
+	}
 	void *ByteArray_newW(wchar_t *Str, Utils::Byte ChOpt){
-		if (ChOpt == 0) return new Utils::Array<Utils::Byte>((unsigned char *)Str, 2 * Utils::wStrLen(Str));
-		Utils::ByteArray *Rtn = new Utils::Array<Utils::Byte>(Utils::Byte(0), Utils::wStrLen(Str));
+		if (ChOpt == 0) return new Utils::ByteArray((unsigned char *)Str, 2 * Utils::wStrLen(Str));
+		Utils::ByteArray *Rtn = new Utils::ByteArray(Utils::Byte(0), Utils::wStrLen(Str));
 		for (SizeL c = 0; c < Rtn->Length(); ++c){
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
 		}
@@ -198,7 +241,7 @@ extern "C"{
 	}
 	void *ByteArray_newWStr(void *wStr, Utils::Byte ChOpt){
 		Utils::wString &Str = *(Utils::wString *)wStr;
-		if (ChOpt == 0) return new Utils::Array<Utils::Byte>((unsigned char *)Str.GetData(), 2 * Str.Length());
+		if (ChOpt == 0) return new Utils::ByteArray((unsigned char *)Str.GetData(), 2 * Str.Length());
 		Utils::ByteArray *Rtn = new Utils::ByteArray(Utils::Byte(0), Str.Length());
 		for (SizeL c = 0; c < Rtn->Length(); ++c){
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
@@ -207,24 +250,14 @@ extern "C"{
 	}
 	void *ByteArray_newBigLong(void *BLong){
 		Utils::BigLong &Bl = *(Utils::BigLong*)BLong;
-		if (Utils::IsBigEnd) return new Utils::Array<Utils::Byte>((Utils::Byte)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4);
+		if (Utils::IsBigEnd) return new Utils::ByteArray((Utils::Byte *)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4);
 		Utils::Array<unsigned long> &Longs = Bl.GetLongs();
 		Utils::ByteArray &Rtn = *new Utils::ByteArray(Utils::Byte(0), Longs.Length() * 4);
 		for (SizeL c = 0; c < Longs.Length(); ++c){
-			if (Utils::IsBigEnd)
-			{
-				Rtn[c * 4] = Longs[c] & 0xFF;
-				Rtn[c * 4 + 1] = (Longs[c] >> 8) & 0xFF;
-				Rtn[c * 4 + 2] = (Longs[c] >> 16) & 0xFF;
-				Rtn[c * 4 + 3] = (Longs[c] >> 24) & 0xFF;
-			}
-			else
-			{
-				Rtn[c * 4 + 3] = Longs[c] & 0xFF;
-				Rtn[c * 4 + 2] = (Longs[c] >> 8) & 0xFF;
-				Rtn[c * 4 + 1] = (Longs[c] >> 16) & 0xFF;
-				Rtn[c * 4] = (Longs[c] >> 24) & 0xFF;
-			}
+			Rtn[c * 4 + 3] = Longs[c] & 0xFF;
+			Rtn[c * 4 + 2] = (Longs[c] >> 8) & 0xFF;
+			Rtn[c * 4 + 1] = (Longs[c] >> 16) & 0xFF;
+			Rtn[c * 4] = (Longs[c] >> 24) & 0xFF;
 		}
 		return AddObject(&Rtn);
 	}
@@ -249,6 +282,12 @@ extern "C"{
 		if (Sign) Rtn->Minus();
 		return AddObject(Rtn);
 	}
+	void *BigLong_DataPtr(void *Bl) {
+		return (void *)((Utils::BigLong *)Bl)->GetLongs().GetData();
+	}
+	SizeL BigLong_Len(void *Bl) {
+		return ((Utils::BigLong *)Bl)->GetLongs().Length() * 4;
+	}
 	void *BigLong_new(){
 		return AddObject(new Utils::BigLong());
 	}
@@ -258,6 +297,15 @@ extern "C"{
 		Rtn.GetLongs().SetLength((BArr.Length() + 3) / 4);
 		for (SizeL c = 0; c < BArr.Length(); ++c){
 			Rtn.GetByte(c) = BArr[c];
+		}
+		return AddObject(&Rtn);
+	}
+	void *BigLong_newALen(char *Str, SizeL Len) {
+		Utils::BigLong &Rtn = *new Utils::BigLong();
+		Utils::ByteArray Tmp((Utils::Byte *)Str, Len);
+		Rtn.GetLongs().SetLength((Tmp.Length() + 3) / 4);
+		for (SizeL c = 0; c < Tmp.Length(); ++c) {
+			Rtn.GetByte(c) = Tmp[c];
 		}
 		return AddObject(&Rtn);
 	}
@@ -356,13 +404,169 @@ extern "C"{
 	unsigned long long BigLong_BitLen(void *Bl){
 		return ((Utils::BigLong *)Bl)->BitLength();
 	}
-	/*
-	void BigLong_del(void * Bl){
-		DelObj(Bl);
-	}*/
 	void *BigLong_ModPow(void *Base, void *Exp, void *Mod){
 		return AddObject(new Utils::BigLong(Utils::Pow(*(Utils::BigLong *)Base, *(Utils::BigLong *)Exp, *(Utils::BigLong *)Mod)));
 	}
+	void *wStrLastError() {
+		return &LastError;
+	}
+	void *Socket_newAfTpProt(int af, int type, int prot) {
+		Utils::sock::Socket *Rtn = new Utils::sock::Socket();
+		try {
+			Rtn->Init(af, type, prot);
+			return AddObject(Rtn);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return 0;
+		}
+	}
+	bool Socket_bind(void *Sock, void *Addr) {
+		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		try {
+			((Utils::sock::Socket *)Sock)->bind(*TheAddr);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	bool Socket_connect(void *Sock, void *Addr) {
+		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		try {
+			((Utils::sock::Socket *)Sock)->connect(*TheAddr);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	bool Socket_setsockopt(void *Sock, int Lvl, int OptName, void *bArray) {
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		Utils::ByteArray *ThebArr = (Utils::ByteArray *)bArray;
+		try {
+			TheSock->setsockopt(Lvl, OptName, (void *)ThebArr->GetData(), ThebArr->Length());
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	bool Socket_accept(void *Sock, void *Conn) {
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		Utils::sock::Socket *TheConn = (Utils::sock::Socket *)Conn;
+		try {
+			TheSock->accept(*TheConn);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	bool Socket_listen(void *Sock, int Backlog) {
+		try {
+			((Utils::sock::Socket *)Sock)->listen(Backlog);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	bool Socket_close(void *Sock) {
+		try {
+			((Utils::sock::Socket *)Sock)->close();
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return false;
+		}
+		return true;
+	}
+	SizeL Socket_send(void *Sock, void *bArray, int Flags) {
+		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
+		try {
+			SizeL Rtn = ((Utils::sock::Socket *)Sock)->send(*bArr, Flags);
+			LastError = "";
+			return Rtn;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return 0;
+		}
+	}
+	SizeL Socket_sendto(void *Sock, void *Addr, void *bArray, int Flags) {
+		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
+		try {
+			SizeL Rtn = ((Utils::sock::Socket *)Sock)->sendto(*bArr, *TheAddr, Flags);
+			LastError = "";
+			return Rtn;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return 0;
+		}
+	}
+	void *Socket_recv(void *Sock, SizeL Num, int Flags) {
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		try {
+			return AddObject(new Utils::ByteArray(TheSock->recv(Num, Flags)));
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return 0;
+		}
+	}
+	void *Socket_recvfrom(void *Sock, void *Addr, SizeL Num, int Flags) {
+		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		try {
+			return AddObject(new Utils::ByteArray(TheSock->recvfrom(*TheAddr, Num, Flags)));
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			return 0;
+		}
+	}
+	void *Socket_getsockname(void *Sock) {
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		return AddObject(new Utils::sock::SockAddr(TheSock->getsockname()));
+	}
+	void *Socket_getpeername(void *Sock) {
+		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		return AddObject(new Utils::sock::SockAddr(TheSock->getpeername()));
+	}
+	void Socket_settimeout(void *Sock, double Time) {
+		try {
+			((Utils::sock::Socket *)Sock)->settimeout(Time);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+		}
+		LastError = "";
+	}
+	double Socket_gettimeout(void *Sock) {
+		return ((Utils::sock::Socket *)Sock)->gettimeout();
+	}
+	void *SockAddr_newA(char *Str, unsigned short Port, unsigned long FlowInf, unsigned long ScopeId){
+		Utils::String TheStr(Str);
+		Utils::sock::SockAddr *Rtn = new Utils::sock::SockAddr();
+		try {
+			Rtn->Init(TheStr, Port, FlowInf, ScopeId);
+			return AddObject(Rtn);
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			delete Rtn;
+			return 0;
+		}
+	}
+
 	void *RegMyHash_10(unsigned long BitLen){
 		for (BitLenNum &Elem : HashPrimes1){
 			if (Elem.BitLen == BitLen) return new Utils::BigLong(Elem.Num);
@@ -394,9 +598,24 @@ extern "C"{
 	bool DelObj(void *Obj){
 		SizeL Pos = 0;
 		if (!Objects.Find(Pos, Obj)) return false;
-		if (Pos < BigLongPos)
+		if (Pos < SockObjPos)
 		{
 			delete (Utils::wString *)Obj;
+			--SockObjPos;
+			--SockAddrPos;
+			--BigLongPos;
+			--ByteArrayPos;
+		}
+		else if (Pos < SockAddrPos)
+		{
+			delete (Utils::sock::Socket *)Obj;
+			--SockAddrPos;
+			--BigLongPos;
+			--ByteArrayPos;
+		}
+		else if (Pos < BigLongPos)
+		{
+			delete (Utils::sock::SockAddr *)Obj;
 			--BigLongPos;
 			--ByteArrayPos;
 		}
@@ -410,14 +629,21 @@ extern "C"{
 		return true;
 	}
 	void CleanHeap(){
-		for (SizeL c = 0; c < BigLongPos; ++c){
+		SizeL c = 0;
+		for (; c < SockObjPos; ++c){
 			delete (Utils::wString *)(Objects[c]);
 		}
-		for (SizeL c = BigLongPos; c < ByteArrayPos; ++c){
+		for (; c < SockAddrPos; ++c){
+			delete (Utils::sock::Socket *)(Objects[c]);
+		}
+		for (; c < BigLongPos; ++c) {
+			delete (Utils::sock::SockAddr *)(Objects[c]);
+		}
+		for (; c < ByteArrayPos; ++c) {
 			delete (Utils::BigLong *)(Objects[c]);
 		}
 		SizeL Len = Objects.Length();
-		for (SizeL c = ByteArrayPos; c < Len; ++c){
+		for (; c < Len; ++c){
 			delete (Utils::Array<Utils::Byte> *)(Objects[c]);
 		}
 		Objects.SetLength(0);
@@ -430,4 +656,8 @@ extern "C"{
 			CleanHeap();
 		}
 	}
+	/*
+	void BigLong_del(void * Bl){
+		DelObj(Bl);
+	}*/
 }

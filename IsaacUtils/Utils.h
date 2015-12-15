@@ -1,9 +1,4 @@
 #include "TemplateUtils.h"
-#if defined(_WIN64)
-typedef unsigned long long HCRYPTPROV;
-#else
-typedef unsigned long HCRYPTPROV;
-#endif
 
 #ifndef ISAACUTILS_API
 #ifdef ISAACUTILS_EXPORTS
@@ -14,6 +9,8 @@ typedef unsigned long HCRYPTPROV;
 #endif
 
 namespace Utils{
+	typedef unsigned char Byte;
+	typedef Array<Byte> ISAACUTILS_API ByteArray;
 	class wString;
 	class ISAACUTILS_API String{
 	private:
@@ -157,7 +154,6 @@ namespace Utils{
 		Iterator begin();
 		Iterator end();
 	};
-	typedef unsigned char Byte;
 	class ISAACUTILS_API BigLong {
 	private:
 		Array<unsigned long> Longs;
@@ -239,13 +235,15 @@ namespace Utils{
 		virtual void Seed(BigLong Val) = 0;
 		virtual ~Random();
 	};
+	ISAACUTILS_API Random *GetCryptoRand();
+	ISAACUTILS_API void DestroyRand(Random *Obj);
 	//TODO: big errors in cryptography and primes
-	BigLong ISAACUTILS_API RandNoMultiple(Random * Rnd, Array<BigLong> &Against, BigLong a, BigLong b, unsigned short NumQuit = 0);
+	ISAACUTILS_API BigLong RandNoMultiple(Random * Rnd, Array<BigLong> &Against, BigLong a, BigLong b, unsigned short NumQuit = 0);
 
-	bool ISAACUTILS_API FermatBaseTest(Random *, const BigLong &Num, unsigned long NumTest = 16);
+	ISAACUTILS_API bool FermatBaseTest(Random *, const BigLong &Num, unsigned long NumTest = 16);
 
-	BigLong ISAACUTILS_API GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes);
-	BigLong ISAACUTILS_API GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen);
+	ISAACUTILS_API BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes);
+	ISAACUTILS_API BigLong GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen);
 
 	class ISAACUTILS_API Clock{
 	private:
@@ -254,8 +252,8 @@ namespace Utils{
 		long long CurClk;
 		Clock(const Clock &Clk);
 		Clock &operator=(const Clock &Cpy);
-		static long long Tps;//ticks per seconds
 	public:
+		static long long Tps;//ticks per seconds
 		Clock();
 		~Clock();
 		unsigned long GetNumTimes();
@@ -263,9 +261,8 @@ namespace Utils{
 		double GetTotalTime();
 		void StartTime();
 		void EndTime();
-		friend void OsInit();
 	};
-	extern Clock *BlMulTm, *BlDivTm, *RandTm;
+	extern ISAACUTILS_API Clock *BlMulTm, *BlDivTm, *RandTm;
 	class ISAACUTILS_API FuncTimer{
 	private:
 		Clock *Clk;
@@ -274,30 +271,116 @@ namespace Utils{
 		~FuncTimer();
 	};
 
-	//==========================================================begin windows specific===============================================================
-
-	class ISAACUTILS_API CryptRandom : public Random{
-	protected:
-		bool IsValid;
-		HCRYPTPROV Data;
+	class ISAACUTILS_API UtilsThread {
+	private:
+		void *hThread;
+		unsigned long ThreadId;
+		struct ThreadParams {
+			void *hThread;
+			unsigned long ThreadId;
+			unsigned long(*Function)(void *, unsigned long, void *);
+			void *FunctParams;
+		};
+		static unsigned long __stdcall ThreadProc(void *Params);
 	public:
-		CryptRandom();
-		//NoLessBitLen if true means that no numbers of lesser bit length are produced
-		BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false);
-		BigLong GetRand(SizeL ByteLen);
-		BigLong GetRand(BigLong a, BigLong b);
-		double GetRand();
-		void Seed(BigLong Val);
-		~CryptRandom();
+		UtilsThread();
+		UtilsThread(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams);
+		UtilsThread(unsigned long ThreadId);
+		UtilsThread &operator=(UtilsThread &&Copy);
+		UtilsThread &operator=(const UtilsThread &Copy);
+		void SetThread(unsigned long Id);
+		void SetThisToCurr();
+		bool Suspend();
+		bool Resume();
+		bool Join();
+		bool ExitCurrentThread(unsigned long ExitCode = 0);
+		bool Terminate(unsigned long ExitCode = 0);
+		bool IsCallingThread(); // Is the thread that the object represents the same as the thread that called this function
+		~UtilsThread();
 	};
+	extern Byte CipherNums[256];
+	ISAACUTILS_API void Cipheros(ByteArray &Data, SizeL &Pos, ByteArray &Key, bool IsEnc = true);
 
-	//===========================================================end windows specific================================================================
+	class ISAACUTILS_API Mutex {
+	public:
+		enum Access {
+			ACCESS_READ = 0,
+			ACCESS_WRITE = 1,
+			ACCESS_QUICK = 2
+		};
+		//Access true for write
+		virtual bool TryAcquire(bool Access = false) = 0;
+		//Access true for write
+		virtual void Acquire(bool Access = false) = 0;
+		//Access true for write
+		virtual void Release(bool Access = false) = 0;
+		virtual SizeL GetType() = 0;
+		virtual ~Mutex();
+	};
+	class ISAACUTILS_API CondVar {
+	public:
+		bool IsLockRef;
+		bool PreWtNtfy;//Allow notifies to affect waits later on NOTE: only works on single notifies
+		virtual void notify() = 0;
+		virtual void notifyAll() = 0;
+		virtual void wait(unsigned long Timeout = MAX_INT32, bool Access = false) = 0;
+		virtual Mutex *GetInternLock() = 0;
+		virtual ~CondVar();
+	};
+	ISAACUTILS_API CondVar *GetCondVar(Mutex *TheLock = 0);
+	ISAACUTILS_API Mutex *GetSingleMutex();
+	ISAACUTILS_API Mutex *GetRWMutex();
+	ISAACUTILS_API void DestroyMutex(Mutex *Obj);
+	ISAACUTILS_API void DestroyCond(CondVar *Obj);
+	class ISAACUTILS_API Lock {
+	private:
+		bool Attr;
+		Mutex *LockObj;
+	public:
+		Lock(Mutex *Obj, bool Access = false);
+		~Lock();
+	};
+	//Concurrent Queue: allows one to insert stuff at the end while simultaneously retreiving from the beginning
+	class ISAACUTILS_API ConQueue {
+	public:
+		struct QBlk {
+			QBlk *Next;
+			ByteArray Data;
+		};
+	private:
+		Mutex *LastLock;
+		CondVar *LastCond;
+		QBlk *Last;
+		QBlk *First;
+		SizeL TotBytes;
+		void ChgBytes(SizeL Amt, bool IsAdd = true);
+	public:
+		ConQueue();
+		ByteArray GetBytes(SizeL NumBytes);
+		ByteArray PeekBytes(SizeL NumBytes);
+		ByteArray TryGetBytes(SizeL NumBytes);
+		void PutBytes(const ByteArray &Bytes);
+		void PutBytes(ByteArray &&Bytes);
+		~ConQueue();
+	};/*
+	class ISAACUTILS_API AsyncTask {
+	public:
+		bool Done;
+		CondVar *TheCond;
+		virtual bool TryRun() = 0;
+		virtual void WaitOnce() = 0;
+		virtual ~AsyncTask();
+	};
+	extern AsyncTask *OpThrdTasks;
+	extern UtilsThread AsyncOpThrd;*/
 
-	wString ISAACUTILS_API FromNumber(unsigned long Num, unsigned char Radix = 10);
-	SizeL ISAACUTILS_API StringHash(String Str, SizeL Range);
-	SizeL ISAACUTILS_API wStringHash(wString wStr, SizeL Range);
-	SizeL ISAACUTILS_API StringHash(const String &Str, SizeL Range);
-	SizeL ISAACUTILS_API wStringHash(const wString &wStr, SizeL Range);
+	ISAACUTILS_API wString FromNumber(unsigned long Num, unsigned char Radix = 10);
+	ISAACUTILS_API SizeL StringHash(String Str, SizeL Range);
+	ISAACUTILS_API SizeL wStringHash(wString wStr, SizeL Range);
+	ISAACUTILS_API SizeL StringHash(const String &Str, SizeL Range);
+	ISAACUTILS_API SizeL wStringHash(const wString &wStr, SizeL Range);
+	ISAACUTILS_API SizeL CmpxNumHash(const SizeL &In, SizeL Range);
+	ISAACUTILS_API SizeL NumHash(const SizeL &In, SizeL Range);
 	enum ERROR_ID {
 		FUNC_NONE = 0,
 		FUNC_GETDRVPATH,
@@ -308,12 +391,12 @@ namespace Utils{
 		FUNC_GETF_EXT,
 		FUNC_LAST
 	};
-	extern wString ISAACUTILS_API LastError;
-	extern unsigned long ISAACUTILS_API ErrorFuncId;
-	extern bool ISAACUTILS_API ErrIsRead;
-	wString ISAACUTILS_API UtilsGetError();
-	bool ISAACUTILS_API UtilsGetIsErr();
-	void ISAACUTILS_API UtilsSetError(wString Err, unsigned long FuncErrId = 0);
+	extern ISAACUTILS_API wString LastError;
+	extern ISAACUTILS_API unsigned long ErrorFuncId;
+	extern ISAACUTILS_API bool ErrIsRead;
+	ISAACUTILS_API wString UtilsGetError();
+	ISAACUTILS_API bool UtilsGetIsErr();
+	ISAACUTILS_API void UtilsSetError(wString Err, unsigned long FuncErrId = 0);
 	/* File System namespace:
 	*   Can be hooked to expose virtual file systems in the same process
 	*/
@@ -353,27 +436,35 @@ namespace Utils{
 			FILE_ATTR_VIRTUAL = 0x10000,
 			FILE_ATTR_NO_SCRUB_DATA = 0x20000
 		};
-		Array<wString> ISAACUTILS_API ListDir(wString Path);
-		bool ISAACUTILS_API Exists(wString Path);
-		bool ISAACUTILS_API IsFile(wString Path);
-		bool ISAACUTILS_API IsDir(wString Path);
-		Array<wString> ISAACUTILS_API GetFileExt(wString Path, wString Ext);
-		FileDesc ISAACUTILS_API Stat(wString Path);
-		Array<FileDesc> ISAACUTILS_API ListDirStats(wString Path);
-		wString ISAACUTILS_API Getcwd();
-		bool ISAACUTILS_API Setcwd(wString Path);
-		Array<String> ISAACUTILS_API ListDir(String Path);
-		bool ISAACUTILS_API Exists(String Path);
-		bool ISAACUTILS_API IsFile(String Path);
-		bool ISAACUTILS_API IsDir(String Path);
+		ISAACUTILS_API Array<wString> ListDir(wString Path);
+		ISAACUTILS_API bool Exists(wString Path);
+		ISAACUTILS_API bool IsFile(wString Path);
+		ISAACUTILS_API bool IsDir(wString Path);
+		/**
+		* RETURNS: an array of wString filenames. to get the absolute path of each filename prepend the string with the [search path followed by a '/']
+		*   This function will search through all the files in the path and in any sub-directories and produce the filenames
+		*    with the extension Ext
+		* EXAMPLE: To find all mp3 files in the user's Music directory
+		*   Array<wString> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
+		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("C:/home/John.Doe/Music", "mp3");
+		*/
+		ISAACUTILS_API Array<wString> GetFileExt(wString Path, wString Ext);
+		ISAACUTILS_API FileDesc Stat(wString Path);
+		ISAACUTILS_API Array<FileDesc> ListDirStats(wString Path);
+		ISAACUTILS_API wString Getcwd();
+		ISAACUTILS_API bool Setcwd(wString Path);
+		ISAACUTILS_API Array<String> ListDir(String Path);
+		ISAACUTILS_API bool Exists(String Path);
+		ISAACUTILS_API bool IsFile(String Path);
+		ISAACUTILS_API bool IsDir(String Path);
 		/**
 		* RETURNS: an array of String filenames. to get the absolute path of each filename prepend the search path with a '/' between
 		*   the search path and the filename
 		*   This function will search through all the files in the path and in any sub-directories and produce the filenames
 		*    with the extension Ext
-		* EXAMPLE: To find all mp3 files in C:/Users/John.Doe/Music
-		*   Windows: Array<String> Mp3Files = GetFileExt("/Users/John.Doe/Music", "mp3");
-		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("/home/John.Doe/Music", "mp3");
+		* EXAMPLE: To find all mp3 files in the user's Music directory
+		*   Windows: Array<String> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
+		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("C:/home/John.Doe/Music", "mp3");
 		*/
 		Array<String> ISAACUTILS_API GetFileExt(String Path, String Ext);
 		FileDescA ISAACUTILS_API Stat(String Path);
@@ -397,11 +488,11 @@ namespace Utils{
 		class ISAACUTILS_API FileBase {
 		public:
 			FileBase();
-			virtual Array<Byte> Read() = 0;
-			virtual Array<Byte> Read(unsigned long Num) = 0;
+			virtual ByteArray Read() = 0;
+			virtual ByteArray Read(unsigned long Num) = 0;
 			virtual bool Seek(long long Pos, int From = SK_SET) = 0;
 			virtual long long Tell() = 0;
-			virtual unsigned long Write(Array<Byte> Data) = 0;
+			virtual unsigned long Write(ByteArray Data) = 0;
 			virtual void Close() = 0;
 			virtual wString GetName() = 0;
 			virtual unsigned long GetMode() = 0;
@@ -441,24 +532,118 @@ namespace Utils{
 			F_NOREPLACE = 32,
 			F_TRUNC = 64
 		};
-		extern HashMap<wString, DriveBase *> ISAACUTILS_API DriveMap;
-		FileBase ISAACUTILS_API *GetFileObj(wString Path, unsigned long Mode = F_IN);
-		FileBase ISAACUTILS_API *GetFileObj(String Path, unsigned long Mode = F_IN);
-		signed long ISAACUTILS_API GetDrvNPath(String &Path, DriveBase *&Drv);
-		signed long ISAACUTILS_API GetDrvNPath(wString &Path, DriveBase *&Drv);
+		extern ISAACUTILS_API HashMap<wString, DriveBase *> DriveMap;
+		ISAACUTILS_API FileBase *GetFileObj(wString Path, unsigned long Mode = F_IN);
+		ISAACUTILS_API FileBase *GetFileObj(String Path, unsigned long Mode = F_IN);
+		ISAACUTILS_API signed long GetDrvNPath(String &Path, DriveBase *&Drv);
+		ISAACUTILS_API signed long GetDrvNPath(wString &Path, DriveBase *&Drv);
+		ISAACUTILS_API unsigned long ParseModeStr(const String &ModeStr);
 	}
-	wString ISAACUTILS_API GetStrNumTest(BigLong Bl);
-	BigLong ISAACUTILS_API GetNumStrTest(wString Str);
-	BigLong ISAACUTILS_API GetNumStrTestB(Array<Byte> Str);
-	Array<Byte> ISAACUTILS_API GetStrNumTestB(BigLong Bl);
-	extern bool ISAACUTILS_API IsBigEnd;
-	void ISAACUTILS_API Init();
-	void OsInit();
-	SizeL ISAACUTILS_API wStrLen(wchar_t *wStr);
-	typedef Array<Byte> ISAACUTILS_API ByteArray;
-	void ISAACUTILS_API ShowError(wString Caption, wString Text);
-	extern const Utils::BigLong ISAACUTILS_API Two;
-	extern const Utils::BigLong ISAACUTILS_API Six;
-	extern const Utils::BigLong ISAACUTILS_API One;
-	extern const Utils::BigLong ISAACUTILS_API Zero;
+	namespace sock {
+		enum AddrFam {
+			UNSPEC = 0,
+			INET = 2,
+			IPX = 6,
+			APPLETALK = 16,
+			NETBIOS = 17,
+			INET6 = 23,
+			IRDA = 26,
+			BTH = 32
+		};
+		enum Types {
+			STREAM = 1,
+			DGRAM = 2,
+			RAW = 3,
+			RDM = 4,
+			SEQPACKET = 5
+		};
+		enum Protos {
+			IP = 0,
+			ICMP = 1,
+			IGMP = 2,
+			//Bluetooth
+			RFCOMM = 3,
+			TCP = 6,
+			UDP = 17,
+			ICMPV6 = 58,
+			RM = 113
+		};
+		extern ISAACUTILS_API bool Usable;
+		extern ISAACUTILS_API HashMap<SizeL, String> ErrCodes;
+		class ISAACUTILS_API SockAddr {
+		private:
+			void *Data;
+		public:
+			void DeInitData();
+			SockAddr();
+			SockAddr(const SockAddr &Cpy);
+			SockAddr(SockAddr &&Cpy);
+			void Init(const wString &AddrStr, unsigned short Port, unsigned long FlowInf = 0, unsigned long ScopeId = 0);
+			void Init(const String &AddrStr, unsigned short Port, unsigned long FlowInf = 0, unsigned long ScopeId = 0);
+			SockAddr &operator=(const SockAddr &Cpy);
+			SockAddr &operator=(SockAddr &&Cpy);
+			SockAddr(const String &Addr, unsigned short Port);
+			SockAddr(void *Bytes);
+			void Init(void *Bytes);
+			int GetSize() const;
+			void *GetData() const;
+			~SockAddr();
+			String GetAddrStr();
+			unsigned short GetPort();
+		};
+		class ISAACUTILS_API Socket {
+		private:
+			union DatType {
+				int Fd;
+				SizeL Ptr;
+			} Data;
+			SockAddr SockName;
+			SockAddr PeerName;
+			SizeL NumAccess;
+			unsigned long TmOuts[2];
+		public:
+			Socket();
+			void Init(int af = UNSPEC, int Type = STREAM, int Prot = 0);
+			void bind(const SockAddr &Addr);
+			void connect(const SockAddr &Addr);
+			void setsockopt(int Lvl, int OptName, void *Data, unsigned long DataLen);
+			void accept(Socket &Sock);
+			void listen(int AllowBuff);
+			void close();
+			SizeL send(const ByteArray &Bytes, int Flags = 0);
+			SizeL send(const String &Bytes, int Flags = 0);
+			SizeL sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags = 0);
+			SizeL sendto(const String &Bytes, const SockAddr &Addr, int Flags = 0);
+			ByteArray recv(SizeL Num, int Flags = 0);
+			String recvS(SizeL Num, int Flags = 0);
+			ByteArray recvfrom(SockAddr &Addr, SizeL Num, int Flags = 0);
+			String recvfromS(SockAddr &Addr, SizeL Num, int Flags = 0);
+			void settimeout(double Sec);
+			void setblocking(bool IsBlk);
+			double gettimeout();
+			SockAddr getsockname();
+			SockAddr getpeername();
+		};
+		class ISAACUTILS_API SockErr {
+		public:
+			wString Msg;
+			SizeL ErrCode;
+			SockErr();
+			SockErr(int SockErrCode);
+		};
+
+	}
+	ISAACUTILS_API wString GetStrNumTest(BigLong Bl);
+	ISAACUTILS_API BigLong GetNumStrTest(wString Str);
+	ISAACUTILS_API BigLong GetNumStrTestB(ByteArray Str);
+	ISAACUTILS_API ByteArray GetStrNumTestB(BigLong Bl);
+	extern ISAACUTILS_API bool IsBigEnd;
+	ISAACUTILS_API void Init();
+	ISAACUTILS_API void OsInit();
+	ISAACUTILS_API SizeL wStrLen(wchar_t *wStr);
+	ISAACUTILS_API void ShowError(wString Caption, wString Text);
+	extern ISAACUTILS_API const Utils::BigLong Two;
+	extern ISAACUTILS_API const Utils::BigLong Six;
+	extern ISAACUTILS_API const Utils::BigLong One;
+	extern ISAACUTILS_API const Utils::BigLong Zero;
 }

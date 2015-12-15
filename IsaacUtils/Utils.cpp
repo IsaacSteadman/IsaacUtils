@@ -91,17 +91,17 @@ namespace Utils{
 	}
 	Byte &BigLong::GetByte(SizeL Pos){
 		if (IsBigEnd) return ((Byte*)Longs.GetData())[Pos];
-		return ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
+		return ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 	}
 	bool BigLong::GetBit(unsigned long long Pos){
 		SizeL BytePos = Pos / 8;
-		Byte Mask = 1 << (Pos % 8), RtnMid = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
+		Byte Mask = 1 << (Pos % 8), RtnMid = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 		return (RtnMid & Mask) > 0;
 	}
 	void BigLong::SetBit(unsigned long long Pos, bool Set){
 		SizeL BytePos = Pos / 8;
 		Byte Mask = 1 << (Pos % 8);
-		Byte &ByteMod = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[4 - (Pos % 4)];
+		Byte &ByteMod = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 		if (Set) ByteMod |= Mask;
 		else
 		{
@@ -939,6 +939,219 @@ namespace Utils{
 			}
 		}
 	}
+	Byte CipherNums[256];
+	void Cipheros(ByteArray &Data, SizeL &Pos, ByteArray &Key, bool IsEnc) {
+		if (IsEnc)
+		{
+			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
+				unsigned long Num = Data[Pos];
+				Num += 1;
+				unsigned long NumK = Key[c];
+				NumK += 1;
+				Num *= NumK;
+				Num %= 257;
+				Data[Pos] = Num - 1;
+			}
+		}
+		else
+		{
+			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
+				unsigned long Num = Data[Pos];
+				Num += 1;
+				unsigned long NumK = CipherNums[Key[c]];
+				NumK += 1;
+				Num *= NumK;
+				Num %= 257;
+				Data[Pos] = Num - 1;
+			}
+		}
+	}
+	ConQueue::ConQueue() {
+		LastLock = GetSingleMutex();
+		LastCond = GetCondVar(LastLock);
+		First = 0;
+		Last = 0;
+	}
+	ByteArray ConQueue::GetBytes(SizeL NumBytes) {
+		ByteArray Rtn;
+		QBlk *MyLast = 0;
+		while (true){
+			LastLock->Acquire();
+			if (MyLast != Last) MyLast = Last;
+			else break;//break while the lock is held to preserve the current synchronized state
+			LastLock->Release();
+			while (First != MyLast)
+			{
+				QBlk *Next = First->Next;
+				if (First->Data.Length() <= NumBytes)
+				{
+					ByteArray Tmp((ByteArray &&)First->Data);
+					Rtn += Tmp;
+					NumBytes -= Tmp.Length();
+					delete First;
+					First = Next;
+				}
+				else
+				{
+					Rtn += First->Data.SubArr(0, NumBytes);
+					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					NumBytes = 0;
+				}
+				if (NumBytes == 0)
+				{
+					ChgBytes(Rtn.Length(), false);
+					return Rtn;
+				}
+			}
+		}
+		while (NumBytes > 0) {
+			if (First->Data.Length() <= NumBytes)
+			{
+				ByteArray Tmp((ByteArray &&)First->Data);
+				Rtn += Tmp;
+				NumBytes -= Tmp.Length();
+				delete First;
+				First = 0;
+				Last = 0;
+			}
+			else
+			{
+				Rtn += First->Data.SubArr(0, NumBytes);
+				First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+				NumBytes = 0;
+			}
+			if (NumBytes == 0) break;
+			LastCond->wait();
+		}
+		ChgBytes(Rtn.Length(), false);
+		LastLock->Release();
+		return Rtn;
+	}
+	ByteArray ConQueue::PeekBytes(SizeL NumBytes) {
+		ByteArray Rtn;
+		QBlk *MyLast = 0;
+		QBlk *PeekFirst = First;
+		while (true) {
+			LastLock->Acquire();
+			if (MyLast != Last) MyLast = Last;
+			else break;//break while the lock is held to preserve the current synchronized state
+			LastLock->Release();
+			while (PeekFirst != MyLast)
+			{
+				QBlk *Next = PeekFirst->Next;
+				if (PeekFirst->Data.Length() <= NumBytes)
+				{
+					Rtn += PeekFirst->Data;
+					NumBytes -= PeekFirst->Data.Length();
+					PeekFirst = Next;
+				}
+				else
+				{
+					Rtn += PeekFirst->Data.SubArr(0, NumBytes);
+					NumBytes = 0;
+				}
+				if (NumBytes == 0) return Rtn;
+			}
+		}
+		while (NumBytes > 0) {
+			if (PeekFirst->Data.Length() <= NumBytes)
+			{
+				Rtn += PeekFirst->Data;
+				NumBytes -= PeekFirst->Data.Length();
+			}
+			else
+			{
+				Rtn += First->Data.SubArr(0, NumBytes);
+				NumBytes = 0;
+			}
+			if (NumBytes == 0) break;
+			LastCond->wait();
+		}
+		LastLock->Release();
+		return Rtn;
+	}
+	ByteArray ConQueue::TryGetBytes(SizeL NumBytes) {
+		ByteArray Rtn;
+		QBlk *MyLast = 0;
+		while (MyLast != Last) {
+			LastLock->Acquire();
+			if (MyLast != Last) MyLast = Last;
+			else break;//break while the lock is held to preserve the current synchronized state
+			LastLock->Release();
+			while (First != MyLast)
+			{
+				QBlk *Next = First->Next;
+				if (First->Data.Length() <= NumBytes)
+				{
+					ByteArray Tmp((ByteArray &&)First->Data);
+					Rtn += Tmp;
+					NumBytes -= Tmp.Length();
+					delete First;
+					First = Next;
+				}
+				else
+				{
+					Rtn += First->Data.SubArr(0, NumBytes);
+					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					NumBytes = 0;
+				}
+				if (NumBytes == 0)
+				{
+					ChgBytes(Rtn.Length(), false);
+					return Rtn;
+				}
+			}
+		}
+		LastLock->Release();
+		ChgBytes(Rtn.Length(), false);
+		return Rtn;
+	}
+	void ConQueue::PutBytes(const ByteArray &Bytes) {
+		QBlk &Add = *new QBlk();
+		Add.Data = Bytes;
+		Add.Next = 0;
+		LastLock->Acquire();
+		if (Last != 0)
+		{
+			Last->Next = &Add;
+			Last = Last->Next;
+		}
+		else
+		{
+			Last = &Add;
+			First = Last;
+		}
+		LastCond->notify();
+		LastLock->Release();
+	}
+	void ConQueue::PutBytes(ByteArray &&Bytes) {
+		QBlk &Add = *new QBlk();
+		Add.Data = Bytes;
+		Add.Next = 0;
+		LastLock->Acquire();
+		if (Last != 0)
+		{
+			Last->Next = &Add;
+			Last = Last->Next;
+		}
+		else
+		{
+			Last = &Add;
+			First = Last;
+		}
+		LastCond->notify();
+		LastLock->Release();
+	}
+	ConQueue::~ConQueue() {
+		LastCond->IsLockRef = false;
+		DestroyCond(LastCond);
+		QBlk *Cur = First;
+		while (First) {
+			Cur = First->Next;
+			delete First;
+			First = Cur;
+		}
+	}
 
 	Random::Random(){}
 	Random::~Random(){}
@@ -994,9 +1207,26 @@ namespace Utils{
 		if (x == MAX_INT) x = MAX_INT - 1;
 		return x % Range;
 	}
-	wString FuncNames[FUNC_LAST] = { "Not a Function", "GetDrvNPath", "OpenFile", "fs::Stat", "ListDirStats", "ListDir", "GetFileExt"};
+	SizeL CmpxNumHash(const SizeL &In, SizeL Range) {
+		register SizeL x;
+		register SizeL len = 0;
+		register SizeL TmpIn = In;
+		x = In & 0xFF;
+		while (TmpIn > 0) {
+			x = (1000003 * x) ^ (TmpIn & 0xFF);
+			TmpIn >>= 8;
+			++len;
+		}
+		x ^= len;
+		if (x == MAX_INT) x = MAX_INT - 1;
+		return x % Range;
+	}
+	SizeL NumHash(const SizeL &In, SizeL Range) {
+		return In % Range;
+	}
+	wString FuncNames[FUNC_LAST] = { "Not a Function", "GetDrvNPath", "OpenFile", "Stat", "ListDirStats", "ListDir", "GetFileExt"};
 	wString UtilsGetError() {
-		return FuncNames[ErrorFuncId] + LastError;
+		return wString("In function: ") + FuncNames[ErrorFuncId] + " Error: " + LastError;
 	}
 	bool UtilsGetIsErr() {
 		if (ErrIsRead) return false;
@@ -1011,268 +1241,6 @@ namespace Utils{
 	wString LastError;
 	unsigned long ErrorFuncId = 0;
 	bool ErrIsRead = true;
-	namespace fs {
-		FileError::FileError() {}
-		DriveBase::DriveBase() {}
-		HashMap<wString, DriveBase *> DriveMap;
-		FileBase::~FileBase() {}
-		FileBase::FileBase() {}
-
-		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
-			ErrorFuncId = FUNC_GETDRVPATH;
-			Path.Replace('\\', '/');
-			if (Path[0] == '/')
-			{
-				Drv = DriveMap["/"];
-				return 0;
-			}
-			else
-			{
-				SizeL Pos = 0;
-				String TmpPath;
-				if (!Path.Find(Pos, ":/")) TmpPath = GetFullPath(Path.wStr()).Str();
-				else TmpPath = Path;
-				if (TmpPath[0] == '/')
-				{
-					Path = TmpPath;
-					Drv = DriveMap["/"];
-					return 0;
-				}
-				if (!TmpPath.Find(Pos, ":/"))
-				{
-					UtilsSetError("Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name");
-					return -2;
-				}
-				String DrvName = TmpPath.SubStr(0, Pos);
-				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName.wStr());
-				if (Tmp == 0)
-				{
-					UtilsSetError("Drive Name specified was not valid or refered to a removed/non-existent drive");
-					return -1;
-				}
-				Path = TmpPath.SubStr(Pos + 1);
-				Drv = *Tmp;
-				return 0;
-			}
-		}
-		signed long GetDrvNPath(wString &Path, DriveBase *&Drv) {
-			ErrorFuncId = FUNC_GETDRVPATH;
-			Path.Replace('\\', '/');
-			if (Path[0] == '/')
-			{
-				Drv = DriveMap["/"];
-				return 0;
-			}
-			else
-			{
-				SizeL Pos = 0;
-				wString TmpPath;
-				if (!Path.Find(Pos, ":/")) TmpPath = GetFullPath(Path);
-				else TmpPath = Path;
-				if (TmpPath[0] == '/')
-				{
-					Path = TmpPath;
-					Drv = DriveMap["/"];
-					return 0;
-				}
-				if (!TmpPath.Find(Pos, ":/"))
-				{
-					UtilsSetError("Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name");
-					return -2;
-				}
-				wString DrvName = TmpPath.SubStr(0, Pos);
-				DriveBase **Tmp = DriveMap.GetPtrVal(DrvName);
-				if (Tmp == 0)
-				{
-					UtilsSetError("Drive Name specified was not valid or refered to a removed/non-existent drive");
-					return -1;
-				}
-				Path = TmpPath.SubStr(Pos + 1);
-				Drv = *Tmp;
-				return 0;
-			}
-		}
-		bool GetIsError(DriveBase *Drv) {
-			bool Rtn = Drv->ErrNotRead;
-			Drv->ErrNotRead = false;
-			return Rtn;
-		}
-		Array<String> GetFileExt(String Path, String Ext) {
-			Array<String> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_GETF_EXT;
-			try {
-				Rtn = Drv->GetFileExt(Path, Ext);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		//TODO:
-		FileDescA Stat(String Path) {
-			FileDescA Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_FSTAT;
-			try {
-				Rtn = Drv->Stat(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		Array<FileDescA> ListDirStats(String Path) {
-			Array<FileDescA> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_LS_FSTAT;
-			try {
-				Rtn = Drv->ListDirSt(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		Array<String> ListDir(String Path) {
-			Array<String> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_LSDIR;
-			try {
-				Rtn = Drv->ListDir(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		bool Exists(String Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->Exists(Path);
-		}
-		bool IsFile(String Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->IsFile(Path);
-		}
-		bool IsDir(String Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->IsDir(Path);
-		}
-		Array<wString> GetFileExt(wString Path, wString Ext) {
-			Array<wString> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_GETF_EXT;
-			try {
-				Rtn = Drv->GetFileExt(Path, Ext);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		FileDesc Stat(wString Path) {
-			FileDesc Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_FSTAT;
-			try {
-				Rtn = Drv->Stat(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		Array<FileDesc> ListDirStats(wString Path) {
-			Array<FileDesc> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_LS_FSTAT;
-			try {
-				Rtn = Drv->ListDirSt(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		Array<wString> ListDir(wString Path) {
-			Array<wString> Rtn;
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
-			ErrorFuncId = FUNC_LSDIR;
-			try {
-				Rtn = Drv->ListDir(Path);
-				if (GetIsError(Drv)) throw Drv->Err;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-			}
-			return Rtn;
-		}
-		bool Exists(wString Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->Exists(Path);
-		}
-		bool IsFile(wString Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->IsFile(Path);
-		}
-		bool IsDir(wString Path) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return false;
-			return Drv->IsDir(Path);
-		}
-		FileBase *GetFileObj(String Path, unsigned long Mode) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return 0;
-			ErrorFuncId = FUNC_OPENFILE;
-			try {
-				FileBase *Tmp = Drv->OpenFile(Path, Mode);
-				if (Tmp == 0) throw Drv->Err;
-				else return Tmp;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-				return 0;
-			}
-		}
-		FileBase *GetFileObj(wString Path, unsigned long Mode) {
-			DriveBase *Drv = 0;
-			if (GetDrvNPath(Path, Drv) != 0) return 0;
-			ErrorFuncId = FUNC_OPENFILE;
-			try {
-				FileBase *Tmp = Drv->OpenFile(Path, Mode);
-				if (Tmp == 0) throw Drv->Err;
-				else return Tmp;
-			}
-			catch (FileError Msg) {
-				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-				return 0;
-			}
-		}
-		FileError::FileError(wString Cap, wString Txt) {
-			Msg = Txt;
-			Type = Cap;
-		}
-	}
 	wString FromNumber(unsigned long Num, unsigned char Radix){
 		char *Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$_";
 		if ((Radix > 64) || (Radix == 0)) return "/ERROR: invalid radix";
@@ -1306,7 +1274,7 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	BigLong GetNumStrTestB(Array<Byte> Str){
+	BigLong GetNumStrTestB(ByteArray Str){
 		BigLong Rtn;
 		BigLong Power((unsigned long)1);
 		for (wchar_t Ch : Str){
@@ -1315,7 +1283,7 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	Array<Byte> GetStrNumTestB(BigLong Bl){
+	ByteArray GetStrNumTestB(BigLong Bl){
 		if (Bl.Zero() == 1) return Array<Byte>();
 		else if (Bl.Zero() == 0) Bl.Minus();
 		Array<Byte> Rtn;
@@ -1339,15 +1307,26 @@ namespace Utils{
 		Test.uLong = 0xFF000000;
 		IsBigEnd = Test.Bts[3] > 0;
 		fs::DriveMap.SetHashFunc(wStringHash, false);
+		sock::ErrCodes.SetHashFunc(NumHash, false);
 		OsInit();
 		BlMulTm = new Clock();
 		BlDivTm = new Clock();
 		RandTm = new Clock();
+		for (SizeL c = 1; c < 257; ++c) {
+			for (SizeL Test = 1; Test < 257; ++Test) {
+				if ((257 * Test + 1) % c == 0)
+				{
+					CipherNums[c - 1] = Test - 1;
+					break;
+				}
+			}
+		}
 	}
 	SizeL wStrLen(wchar_t *wStr){
 		SizeL c = 0;
 		while (wStr[c] != 0)++c;
 		return c;
 	}
+	Mutex::~Mutex() {}
 	const Utils::BigLong Two((unsigned long)2), Six((unsigned long)6), One((unsigned long)1), Zero((unsigned long)0);
 }
