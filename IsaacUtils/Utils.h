@@ -640,6 +640,8 @@ namespace Utils{
 	extern ISAACUTILS_API bool IsBigEnd;
 	ISAACUTILS_API void Init();
 	ISAACUTILS_API void OsInit();
+	ISAACUTILS_API void OsDeInit();
+	ISAACUTILS_API void DeInit();
 	ISAACUTILS_API SizeL wStrLen(wchar_t *wStr);
 	ISAACUTILS_API void ShowError(wString Caption, wString Text);
 	extern ISAACUTILS_API const Utils::BigLong Two;

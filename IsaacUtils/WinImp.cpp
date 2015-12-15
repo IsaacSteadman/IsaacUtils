@@ -647,6 +647,8 @@ namespace Utils {
 	long long Clock::Tps = 0;
 	WSADATA WinSockData;
 	void OsInit() {
+		sock::ErrCodes.SetHashFunc(NumHash);
+		sock::ErrCodes.Put(21, "Invalid address format.");
 		sock::ErrCodes.Put(10004, "The operation was interrupted.");
 		sock::ErrCodes.Put(10009, "A bad file handle was passed.");
 		sock::ErrCodes.Put(10013, "Permission denied.");
@@ -672,6 +674,9 @@ namespace Utils {
 		}
 		WORD VerReq = MAKEWORD(2, 2);
 		sock::Usable = WSAStartup(VerReq, &WinSockData) == 0 && WinSockData.wVersion == VerReq;
+	}
+	void OsDeInit() {
+		if (sock::Usable) WSACleanup();
 	}
 	void Clock::StartTime() {
 		++NumTimes;
@@ -1025,8 +1030,23 @@ namespace Utils {
 		}
 		void Socket::connect(const SockAddr &Addr) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			if (::connect(Data.Ptr, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
+			SOCKADDR_STORAGE Mine;
+			int MineLen = sizeof(Mine);
+			if (::getsockname(Data.Ptr, (sockaddr *)&Mine, &MineLen) == 0) SockName.Init(&Mine);
 			PeerName = Addr;
 		}
 		void Socket::setsockopt(int Lvl, int OptName, void *OptData, unsigned long DataLen) {
@@ -1036,6 +1056,18 @@ namespace Utils {
 		}
 		void Socket::accept(Socket &Sock) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			SOCKADDR_STORAGE Tmp;
 			int AddrLen = sizeof(Tmp);
 			if ((Sock.Data.Ptr = ::accept(Data.Ptr, (sockaddr *)&Tmp, &AddrLen)) == INVALID_SOCKET)
@@ -1055,6 +1087,18 @@ namespace Utils {
 		}
 		SizeL Socket::send(const ByteArray &Bytes, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			SizeL Rtn = 0;
 			if ((Rtn = ::send(Data.Ptr, (char *)Bytes.GetData(), Bytes.Length(), Flags)) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
@@ -1062,6 +1106,18 @@ namespace Utils {
 		}
 		SizeL Socket::send(const String &Bytes, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			SizeL Rtn = 0;
 			if ((Rtn = ::send(Data.Ptr, Bytes.GetData(), Bytes.Length(), Flags)) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
@@ -1069,6 +1125,18 @@ namespace Utils {
 		}
 		SizeL Socket::sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			SizeL Rtn = 0;
 			if ((Rtn = ::sendto(Data.Ptr, (char *)Bytes.GetData(), Bytes.Length(), Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
@@ -1076,6 +1144,18 @@ namespace Utils {
 		}
 		SizeL Socket::sendto(const String &Bytes, const SockAddr &Addr, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			SizeL Rtn = 0;
 			if ((Rtn = ::sendto(Data.Ptr, Bytes.GetData(), Bytes.Length(), Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
@@ -1083,6 +1163,18 @@ namespace Utils {
 		}
 		ByteArray Socket::recv(SizeL Num, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			ByteArray Rtn(Byte(0), Num);
 			int LenRecv = ::recv(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags);
 			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
@@ -1091,6 +1183,18 @@ namespace Utils {
 		}
 		String Socket::recvS(SizeL Num, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			String Rtn(char(0), Num);
 			int LenRecv = ::recv(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags);
 			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
@@ -1098,6 +1202,18 @@ namespace Utils {
 		}
 		ByteArray Socket::recvfrom(SockAddr &Addr, SizeL Num, int Flags) {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (TmOuts[0] != MAX_INT32)
+			{
+				fd_set Tmp;
+				FD_ZERO(&Tmp);
+				FD_SET(Data.Ptr, &Tmp);
+				timeval TimeOut;
+				TimeOut.tv_sec = TmOuts[0];
+				TimeOut.tv_usec = TmOuts[1];
+				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+				if (Rtn == 0) throw SockErr(10060);
+				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
 			ByteArray Rtn(Byte(0), Num);
 			SOCKADDR_STORAGE Tmp;
 			int TmpLen = sizeof(Tmp);
@@ -1293,7 +1409,7 @@ namespace Utils {
 				if (Rtn == -1) throw SockErr(WSAGetLastError());
 				Data = Tmp;
 				Tmp->sin_family = AF_INET;
-				Tmp->sin_port = Port;
+				Tmp->sin_port = htons(Port);
 				Tmp->sin_zero[0] = 0;
 				Tmp->sin_zero[1] = 0;
 				Tmp->sin_zero[2] = 0;
@@ -1315,7 +1431,7 @@ namespace Utils {
 				if (Rtn == -1) throw SockErr(WSAGetLastError());
 				Data = Tmp;
 				Tmp->sin6_family = AF_INET6;
-				Tmp->sin6_port = Port;
+				Tmp->sin6_port = htons(Port);
 				Tmp->sin6_flowinfo = FlowInf;
 				Tmp->sin6_scope_id = ScopeId;
 			}
@@ -1330,11 +1446,11 @@ namespace Utils {
 				delete TheStr;
 				if (Rtn != 1)
 					delete Tmp;
-				if (Rtn == 0) throw SockErr(10014);
+				if (Rtn == 0) throw SockErr(21);
 				if (Rtn == -1) throw SockErr(WSAGetLastError());
 				Data = Tmp;
 				Tmp->sin_family = AF_INET;
-				Tmp->sin_port = Port;
+				Tmp->sin_port = htons(Port);
 				Tmp->sin_zero[0] = 0;
 				Tmp->sin_zero[1] = 0;
 				Tmp->sin_zero[2] = 0;
@@ -1352,11 +1468,11 @@ namespace Utils {
 				delete TheStr;
 				if (Rtn != 1)
 					delete Tmp;
-				if (Rtn == 0) throw SockErr(10014);
+				if (Rtn == 0) throw SockErr(21);
 				if (Rtn == -1) throw SockErr(WSAGetLastError());
 				Data = Tmp;
 				Tmp->sin6_family = AF_INET6;
-				Tmp->sin6_port = Port;
+				Tmp->sin6_port = htons(Port);
 				Tmp->sin6_flowinfo = FlowInf;
 				Tmp->sin6_scope_id = ScopeId;
 			}

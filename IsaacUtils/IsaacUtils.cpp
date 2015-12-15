@@ -633,18 +633,22 @@ extern "C"{
 		for (; c < SockObjPos; ++c){
 			delete (Utils::wString *)(Objects[c]);
 		}
+		SockObjPos = 0;
 		for (; c < SockAddrPos; ++c){
 			delete (Utils::sock::Socket *)(Objects[c]);
 		}
+		SockAddrPos = 0;
 		for (; c < BigLongPos; ++c) {
 			delete (Utils::sock::SockAddr *)(Objects[c]);
 		}
+		BigLongPos = 0;
 		for (; c < ByteArrayPos; ++c) {
 			delete (Utils::BigLong *)(Objects[c]);
 		}
+		ByteArrayPos = 0;
 		SizeL Len = Objects.Length();
 		for (; c < Len; ++c){
-			delete (Utils::Array<Utils::Byte> *)(Objects[c]);
+			delete (Utils::ByteArray *)(Objects[c]);
 		}
 		Objects.SetLength(0);
 	}
@@ -654,6 +658,7 @@ extern "C"{
 			delete SafeRnd;
 			SafeRnd = 0;
 			CleanHeap();
+			Utils::DeInit();
 		}
 	}
 	/*

@@ -1322,6 +1322,9 @@ namespace Utils{
 			}
 		}
 	}
+	void DeInit() {
+		OsDeInit();
+	}
 	SizeL wStrLen(wchar_t *wStr){
 		SizeL c = 0;
 		while (wStr[c] != 0)++c;
