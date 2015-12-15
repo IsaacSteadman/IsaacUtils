@@ -188,6 +188,7 @@ void *RemoveNoDel(Utils::ByteArray *Obj){
 }
 
 Utils::wString LastError;
+unsigned long LastErrCode = 0;
 
 extern "C"{
 	void Init(){
@@ -218,10 +219,7 @@ extern "C"{
 	}
 	void *wStr_DataPtr(void *wStr){
 		return (void *)((Utils::wString *)wStr)->GetData();
-	}/*
-	void wStr_del(void *Str){
-		DelObj(Str);
-	}*/
+	}
 	void *ByteArray_new(){
 		return AddObject(new Utils::ByteArray());
 	}
@@ -410,35 +408,44 @@ extern "C"{
 	void *wStrLastError() {
 		return &LastError;
 	}
+	unsigned long UlLastError() {
+		return LastErrCode;
+	}
 	void *Socket_newAfTpProt(int af, int type, int prot) {
 		Utils::sock::Socket *Rtn = new Utils::sock::Socket();
+		LastErrCode = 0;
 		try {
 			Rtn->Init(af, type, prot);
 			return AddObject(Rtn);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
 	}
 	bool Socket_bind(void *Sock, void *Addr) {
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->bind(*TheAddr);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
 	}
 	bool Socket_connect(void *Sock, void *Addr) {
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
+		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->connect(*TheAddr);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
@@ -446,11 +453,13 @@ extern "C"{
 	bool Socket_setsockopt(void *Sock, int Lvl, int OptName, void *bArray) {
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		Utils::ByteArray *ThebArr = (Utils::ByteArray *)bArray;
+		LastErrCode = 0;
 		try {
 			TheSock->setsockopt(Lvl, OptName, (void *)ThebArr->GetData(), ThebArr->Length());
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
@@ -458,97 +467,112 @@ extern "C"{
 	bool Socket_accept(void *Sock, void *Conn) {
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		Utils::sock::Socket *TheConn = (Utils::sock::Socket *)Conn;
+		LastErrCode = 0;
 		try {
 			TheSock->accept(*TheConn);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
 	}
 	bool Socket_listen(void *Sock, int Backlog) {
+		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->listen(Backlog);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
 	}
 	bool Socket_close(void *Sock) {
+		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->close();
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return false;
 		}
 		return true;
 	}
 	SizeL Socket_send(void *Sock, void *bArray, int Flags) {
 		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
+		LastErrCode = 0;
 		try {
 			SizeL Rtn = ((Utils::sock::Socket *)Sock)->send(*bArr, Flags);
-			LastError = "";
 			return Rtn;
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
 	}
 	SizeL Socket_sendto(void *Sock, void *Addr, void *bArray, int Flags) {
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
 		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
+		LastErrCode = 0;
 		try {
 			SizeL Rtn = ((Utils::sock::Socket *)Sock)->sendto(*bArr, *TheAddr, Flags);
-			LastError = "";
 			return Rtn;
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
 	}
 	void *Socket_recv(void *Sock, SizeL Num, int Flags) {
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		LastErrCode = 0;
 		try {
 			return AddObject(new Utils::ByteArray(TheSock->recv(Num, Flags)));
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
 	}
 	void *Socket_recvfrom(void *Sock, void *Addr, SizeL Num, int Flags) {
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
+		LastErrCode = 0;
 		try {
 			return AddObject(new Utils::ByteArray(TheSock->recvfrom(*TheAddr, Num, Flags)));
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
 	}
 	void *Socket_getsockname(void *Sock) {
+		LastErrCode = 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		return AddObject(new Utils::sock::SockAddr(TheSock->getsockname()));
 	}
 	void *Socket_getpeername(void *Sock) {
+		LastErrCode = 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		return AddObject(new Utils::sock::SockAddr(TheSock->getpeername()));
 	}
 	void Socket_settimeout(void *Sock, double Time) {
+		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->settimeout(Time);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 		}
-		LastError = "";
 	}
 	double Socket_gettimeout(void *Sock) {
 		return ((Utils::sock::Socket *)Sock)->gettimeout();
@@ -556,12 +580,14 @@ extern "C"{
 	void *SockAddr_newA(char *Str, unsigned short Port, unsigned long FlowInf, unsigned long ScopeId){
 		Utils::String TheStr(Str);
 		Utils::sock::SockAddr *Rtn = new Utils::sock::SockAddr();
+		LastErrCode = 0;
 		try {
 			Rtn->Init(TheStr, Port, FlowInf, ScopeId);
 			return AddObject(Rtn);
 		}
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
 			delete Rtn;
 			return 0;
 		}
@@ -661,8 +687,4 @@ extern "C"{
 			Utils::DeInit();
 		}
 	}
-	/*
-	void BigLong_del(void * Bl){
-		DelObj(Bl);
-	}*/
 }

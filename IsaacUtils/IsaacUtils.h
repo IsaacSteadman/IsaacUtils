@@ -130,6 +130,8 @@ extern "C"{
 	ISAACUTILS_API void *BigLong_ModPow(void *Base, void *Exp, void *Mod);
 	// Gets the last error
 	ISAACUTILS_API void *wStrLastError();
+	// Gets the last error code, or 0 if there was no error
+	ISAACUTILS_API unsigned long UlLastError();
 	// Constructs a new Socket with the address family, type and protocol specified
 	ISAACUTILS_API void *Socket_newAfTpProt(int af, int type, int prot);
 	// Binds [Sock] to the address [Addr], returns true if successful
