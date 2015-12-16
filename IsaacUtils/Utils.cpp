@@ -981,33 +981,6 @@ namespace Utils{
 			}
 		}
 	}
-	Byte CipherNums[256];
-	void Cipheros(ByteArray &Data, SizeL &Pos, ByteArray &Key, bool IsEnc) {
-		if (IsEnc)
-		{
-			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
-				unsigned long Num = Data[Pos];
-				Num += 1;
-				unsigned long NumK = Key[c];
-				NumK += 1;
-				Num *= NumK;
-				Num %= 257;
-				Data[Pos] = Num - 1;
-			}
-		}
-		else
-		{
-			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
-				unsigned long Num = Data[Pos];
-				Num += 1;
-				unsigned long NumK = CipherNums[Key[c]];
-				NumK += 1;
-				Num *= NumK;
-				Num %= 257;
-				Data[Pos] = Num - 1;
-			}
-		}
-	}
 	ConQueue::ConQueue() {
 		LastLock = GetSingleMutex();
 		LastCond = GetCondVar(LastLock);

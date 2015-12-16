@@ -270,6 +270,7 @@ namespace Utils{
 		CryptFunc Decrypt;
 	};
 	extern ISAACUTILS_API BlkCiph BlkCipheron;
+	extern ISAACUTILS_API BlkCiph BlkCipheros;
 	class ISAACUTILS_API Clock{
 	private:
 		unsigned long NumTimes;

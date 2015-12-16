@@ -14,6 +14,55 @@ namespace Utils {
 			((SizeL *)Modify)[c] ^= ((SizeL *)Param)[c];
 		}
 	}
+	Byte CipherNums[256];
+	void Cipheros(ByteArray &Data, SizeL &Pos, ByteArray &Key, bool IsEnc) {
+		if (IsEnc)
+		{
+			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
+				unsigned long Num = Data[Pos];
+				Num += 1;
+				unsigned long NumK = Key[c];
+				NumK += 1;
+				Num *= NumK;
+				Num %= 257;
+				Data[Pos] = Num - 1;
+			}
+		}
+		else
+		{
+			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
+				unsigned long Num = Data[Pos];
+				Num += 1;
+				unsigned long NumK = CipherNums[Key[c]];
+				NumK += 1;
+				Num *= NumK;
+				Num %= 257;
+				Data[Pos] = Num - 1;
+			}
+		}
+	}
+	void CipherosEnc(MidEncSt *EncSt, Byte *Data) {
+		for (SizeL c = 0; c < EncSt->Key.Length(); ++c) {
+			unsigned long Num = Data[c];
+			Num += 1;
+			unsigned long NumK = EncSt->Key[c];
+			NumK += 1;
+			Num *= NumK;
+			Num %= 257;
+			Data[c] = Num - 1;
+		}
+	}
+	void CipherosDec(MidEncSt *EncSt, Byte *Data) {
+		for (SizeL c = 0; c < EncSt->Key.Length(); ++c) {
+			unsigned long Num = Data[c];
+			Num += 1;
+			unsigned long NumK = CipherNums[EncSt->Key[c]];
+			NumK += 1;
+			Num *= NumK;
+			Num %= 257;
+			Data[c] = Num - 1;
+		}
+	}
 	BigLong *ExtEuclidAlg(const BigLong &a, const BigLong &b) {
 		BigLong *Rtn = new BigLong[3];
 		if (b.Zero() == 1)
@@ -68,6 +117,7 @@ namespace Utils {
 		EncSt->InstBls[1] = ModInvEuclid(EncSt->InstBls[0], EncSt->InstBls[2]);
 	}
 	BlkCiph BlkCipheron = { CipheronInit, CipheronEnc, CipheronDec };
+	BlkCiph BlkCipheros = { 0, CipherosEnc, CipherosDec };
 	MidEncSt::~MidEncSt() {}
 	void MidEncSt::Init(ByteArray KeyIn, BlkCiph *Cipher, CiphMode Func, ByteArray InitVec) {
 		Key = KeyIn;
@@ -75,6 +125,7 @@ namespace Utils {
 		ModeFunc = Func;
 		CurVec[0] = InitVec;
 		CurVec[1] = InitVec;
+		if (BlkFunc->InitEncSt) BlkFunc->InitEncSt(this);
 	}
 	void MidEncSt::Encrypt(ByteArray &Data) {
 		ModeFunc(Data, this, true);
