@@ -20,7 +20,7 @@ namespace Utils{
 		class ISAACUTILS_API Iterator{
 		private:
 			String *Str;
-			unsigned long Pos;
+			SizeL Pos;
 		public:
 			Iterator(String *Iter, SizeL CharPos);
 			Iterator &operator++();
@@ -168,8 +168,11 @@ namespace Utils{
 		BigLong(BigLong &&Cpy);
 		BigLong(const BigLong &Cpy);
 		BigLong(const BigLong &Cpy, SizeL BtCopy);
+		BigLong(const Byte *Data, SizeL LenData);
 		void IMulPow(SizeL Num);
 		BigLong MulPow(SizeL Num);
+		//LimNum is the maximum number of bytes to provide
+		BigLong &IMulLim(const BigLong &MulBy, SizeL LimNum);
 		SizeL RemNulls();
 		Array<unsigned long> &GetLongs();
 		Byte &GetByte(SizeL Pos);
@@ -244,7 +247,29 @@ namespace Utils{
 
 	ISAACUTILS_API BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes);
 	ISAACUTILS_API BigLong GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen);
-
+	ISAACUTILS_API void XorBytes(Byte *Obj, const Byte *Param, SizeL Len);
+	struct BlkCiph;
+	class ISAACUTILS_API MidEncSt {
+	public:
+		typedef void(*CiphMode)(ByteArray &, MidEncSt *, bool);
+		Array<BigLong> InstBls;
+		ByteArray CurVec[2];
+		BlkCiph *BlkFunc;
+		CiphMode ModeFunc;
+		ByteArray Key;
+		void Init(ByteArray KeyIn, BlkCiph *Cipher, CiphMode Func, ByteArray InitVec);
+		void Encrypt(ByteArray &Data);
+		void Decrypt(ByteArray &Data);
+		~MidEncSt();
+	};
+	ISAACUTILS_API void CmpxCBCCrypt(ByteArray &Data, MidEncSt *EncSt, bool IsEnc);
+	typedef void(*CryptFunc)(MidEncSt *EncSt, Byte *Data);
+	struct ISAACUTILS_API BlkCiph {
+		void(*InitEncSt)(MidEncSt *EncSt);
+		CryptFunc Encrypt;
+		CryptFunc Decrypt;
+	};
+	extern ISAACUTILS_API BlkCiph BlkCipheron;
 	class ISAACUTILS_API Clock{
 	private:
 		unsigned long NumTimes;

@@ -337,49 +337,52 @@ extern "C"{
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator*(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IMul(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator*=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator*=(*(Utils::BigLong *)BlThat);
+	}
+	void *BigLong_IMulLim(void *BlThis, void *BlThat, SizeL LimNum) {
+		return &((Utils::BigLong *)BlThis)->IMulLim(*(Utils::BigLong *)BlThat, LimNum);
 	}
 	void *BigLong_Div(void *BlThis, void *BlThat){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator/(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IDiv(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator/=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator/=(*(Utils::BigLong *)BlThat);
 	}
 	void *BigLong_Mod(void *BlThis, void *BlThat){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator%(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IMod(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator%=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator%=(*(Utils::BigLong *)BlThat);
 	}
 	void *BigLong_LShift(void *BlThis, unsigned long That){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator<<(That)));
 	}
 	void *BigLong_ILShift(void *BlThis, unsigned long That){
-		return &(((Utils::BigLong *)BlThis)->operator<<=(That));
+		return &((Utils::BigLong *)BlThis)->operator<<=(That);
 	}
 	void *BigLong_RShift(void *BlThis, unsigned long That){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator>>(That)));
 	}
 	void *BigLong_IRShift(void *BlThis, unsigned long That){
-		return &(((Utils::BigLong *)BlThis)->operator>>=(That));
+		return &((Utils::BigLong *)BlThis)->operator>>=(That);
 	}
 	void *BigLong_And(void *BlThis, void *BlThat){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator&(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IAnd(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator&=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator&=(*(Utils::BigLong *)BlThat);
 	}
 	void *BigLong_Or(void *BlThis, void *BlThat){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator|(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IOr(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator|=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator|=(*(Utils::BigLong *)BlThat);
 	}
 	void *BigLong_Xor(void *BlThis, void *BlThat){
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator^(*(Utils::BigLong *)BlThat)));
 	}
 	void *BigLong_IXor(void *BlThis, void *BlThat){
-		return &(((Utils::BigLong *)BlThis)->operator^=(*(Utils::BigLong *)BlThat));
+		return &((Utils::BigLong *)BlThis)->operator^=(*(Utils::BigLong *)BlThat);
 	}
 	bool BigLong_IsEq(void *BlThis, void *BlThat){
 		return ((Utils::BigLong *)BlThis)->operator==(*(Utils::BigLong *)BlThat);

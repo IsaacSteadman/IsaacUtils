@@ -54,14 +54,14 @@ extern "C"{
 	ISAACUTILS_API SizeL ByteArray_Len(void *bArray);
 	// Retreives the underlying array pointer for ByteArray [bArray]
 	ISAACUTILS_API void *ByteArray_DataPtr(void *bArray);
-	// Constructs a new BigLong initialized to long [L]
-	ISAACUTILS_API void *BigLong_newLong(long L);
 	// Retreives the underlying array pointer of native endian 32 bit unsigned integers of BigLong [Bl]
 	ISAACUTILS_API void *BigLong_DataPtr(void *Bl);
 	// Retreives the length of the unsigned long array for [Bl] in Bytes
 	ISAACUTILS_API SizeL BigLong_Len(void *Bl);
 	// Constructs a new BigLong set to 0
 	ISAACUTILS_API void *BigLong_new();
+	// Constructs a new BigLong initialized to long [L]
+	ISAACUTILS_API void *BigLong_newLong(long L);
 	// Constructs a new BigLong from a Big Endian ByteArray [bArray]
 	ISAACUTILS_API void *BigLong_newByteArray(void *BArray);
 	// Constructs a new BigLong from a Big Endian string [Str] of length [Len]
@@ -84,6 +84,8 @@ extern "C"{
 	ISAACUTILS_API void *BigLong_Mul(void *BlThis, void *BlThat);
 	// Multiplies [BlThat] by [BlThis] and returns [BlThis]
 	ISAACUTILS_API void *BigLong_IMul(void *BlThis, void *BlThat);
+	// Multiplies [BlThat] by [BlThis] and returns [BlThis] max of (LimNum + 3) / 4 bytes
+	ISAACUTILS_API void *BigLong_IMulLim(void *BlThis, void *BlThat, SizeL LimNum);
 	// Divides [BlThat] by [BlThis] and returns new BigLong pointer result
 	ISAACUTILS_API void *BigLong_Div(void *BlThis, void *BlThat);
 	// Divides [BlThat] by [BlThis] and returns [BlThis]

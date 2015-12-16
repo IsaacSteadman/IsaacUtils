@@ -68,6 +68,30 @@ namespace Utils{
 			Longs += Cpy.Longs[NumLongCpy] & MaskEnd;
 		Sign = Cpy.Sign;
 	}
+	BigLong::BigLong(const Byte *Data, SizeL LenData) {
+		Longs.SetLength((LenData + 3) / 4);
+		if (LenData % 4 > 0) Longs.AtEnd() = 0;
+		if (IsBigEnd)
+		{
+			for (SizeL c = 0; c < LenData / 4; ++c) {
+				Longs[c] = ((unsigned long *)Data)[c];
+			}
+			for (SizeL c = LenData - LenData % 4; c < LenData; ++c) {
+				((Byte*)Longs.GetData())[c] = Data[c];
+			}
+		}
+		else
+		{
+			for (SizeL c = 0, c0 = 0; c < LenData / 4; ++c, c0 += 4) {
+				Longs[c] = ((unsigned long)Data[c0] << 24) |
+					((unsigned long)Data[c0 + 1] << 16) |
+					((unsigned long)Data[c0 + 2] << 8) | Data[c0 + 3];
+			}
+			for (SizeL c = LenData - LenData % 4, c0 = 3; c < LenData; ++c, --c0) {
+				Longs[c] |= (unsigned long)Data[c] << (8 * c0);
+			}
+		}
+	}
 	void BigLong::IMulPow(SizeL Num){
 		Longs.AddBeg(Num, 0);
 	}
@@ -521,6 +545,24 @@ namespace Utils{
 		(*this) = this->operator*(Num);
 		RemNulls();
 		return (*this);
+	}
+	BigLong &BigLong::IMulLim(const BigLong &MulBy, SizeL LimNum) {
+		LimNum = (LimNum + 3) / 4;
+		Array<unsigned long> NewLongs((unsigned long)0, LimNum);
+		for (SizeL c = 0; c < LimNum; ++c) {
+			unsigned long Carry = 0;
+			for (SizeL c1 = 0, c0 = c; c1 < LimNum; ++c1, ++c0) {
+				unsigned long long Num = Longs[c];
+				Num *= MulBy.Longs[c1];
+				Num += NewLongs[c0];
+				Num += Carry;
+				NewLongs[c0] = Num & MAX_INT32;
+				Carry = Num >> 32;
+			}
+		}
+		Sign = Sign == MulBy.Sign;
+		Longs = (Array<unsigned long> &&)NewLongs;
+		return *this;
 	}
 
 	BigLong BigLong::operator+(const BigLong Add) const{

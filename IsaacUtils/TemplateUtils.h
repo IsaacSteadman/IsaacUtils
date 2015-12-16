@@ -167,7 +167,7 @@ namespace Utils{
 		T * NewData = new T[Other.AllocNum];
 		SizeL c = 0;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		while (c < Other.AllocNum){
@@ -185,7 +185,7 @@ namespace Utils{
 		T * NewData = new T[Until];
 		SizeL c = 0;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		AllocNum = Until;
@@ -200,9 +200,10 @@ namespace Utils{
 	void Array<T>::RemBeg(SizeL NumRem){
 		SizeL c = 0, Until = AllocNum - NumRem;
 		T * NewData = new T[Until];
-		Data += Until;
+		Data += NumRem;
 		while (c < Until){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
+			++c;
 		}
 		Data -= Until;
 		delete[] Data;
@@ -216,7 +217,7 @@ namespace Utils{
 		SizeL c = 0;
 		NewData += NumAdd;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		delete[] Data;
@@ -231,7 +232,7 @@ namespace Utils{
 		SizeL c = 0;
 		NewData += NumAdd;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		delete[] Data;
@@ -372,7 +373,7 @@ namespace Utils{
 		T *NewData = new T[AllocNum + Add.AllocNum];
 		SizeL c = 0;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		if (AllocNum > 0) delete[] Data;
@@ -391,7 +392,7 @@ namespace Utils{
 		T *NewData = new T[AllocNum + 1];
 		SizeL c = 0;
 		while (c < AllocNum){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		if (AllocNum > 0) delete[] Data;
@@ -414,13 +415,13 @@ namespace Utils{
 		++AllocNum;
 		SizeL c = 0;
 		while (c < Pos){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		NewData[c] = Val;
 		++c;
 		while (c < AllocNum){
-			NewData[c] = Data[c - 1];
+			NewData[c] = (T &&)Data[c - 1];
 			++c;
 		}
 		delete[] Data;
@@ -435,11 +436,11 @@ namespace Utils{
 		--AllocNum;
 		SizeL c = 0;
 		while (c < Pos){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 			++c;
 		}
 		while (c < AllocNum){
-			NewData[c] = Data[c + 1];
+			NewData[c] = (T &&)Data[c + 1];
 			++c;
 		}
 		delete[] Data;
