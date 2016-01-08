@@ -13,7 +13,7 @@
 #include "Utils.h"
 
 extern "C"{
-	//Warning: This CRT interface is not completely thread safe (making new variables and deallocating existing ones)
+	//Warning: This CRT interface is not completely thread safe (Actually now it is)  (making new variables and deallocating existing ones)
 	//  The Concurrent Queue can be used safely by a writing thread that does not make use of this interface but instead uses the C++ interface
 	//    and a reading thread that can use this CRT interface
 	// Initializes IsaacUtils and the IsaacUtils C Runtime
@@ -63,7 +63,7 @@ extern "C"{
 	// Constructs a new BigLong initialized to long [L]
 	ISAACUTILS_API void *BigLong_newLong(long L);
 	// Constructs a new BigLong from a Big Endian ByteArray [bArray]
-	ISAACUTILS_API void *BigLong_newByteArray(void *BArray);
+	ISAACUTILS_API void *BigLong_newByteArray(void *bArray);
 	// Constructs a new BigLong from a Big Endian string [Str] of length [Len]
 	ISAACUTILS_API void *BigLong_newALen(char *Str, SizeL Len);
 	// Makes the BigLong [Bl] represent the human readable wString [wStr] number in base [base]
@@ -130,8 +130,10 @@ extern "C"{
 	ISAACUTILS_API unsigned long long BigLong_BitLen(void *Bl);
 	// Modular Exponentiation: [Base] ** [Exp] % [Mod]
 	ISAACUTILS_API void *BigLong_ModPow(void *Base, void *Exp, void *Mod);
-	// Gets the last error
-	ISAACUTILS_API void *wStrLastError();
+	// Gets the last error pointer to a cstring of wchar_t
+	ISAACUTILS_API void *LastErrorDataPtrW();
+	// Gets the Length of the last error
+	ISAACUTILS_API SizeL LastErrorLenW();
 	// Gets the last error code, or 0 if there was no error
 	ISAACUTILS_API unsigned long UlLastError();
 	// Constructs a new Socket with the address family, type and protocol specified
@@ -161,9 +163,47 @@ extern "C"{
 	// Retreives the address of the peer of [Sock]
 	ISAACUTILS_API void *Socket_getpeername(void *Sock);
 	// Sets the timeout [Time] in seconds for [Sock]
-	ISAACUTILS_API void Socket_settimeout(void *Sock, double Time);
+	ISAACUTILS_API bool Socket_settimeout(void *Sock, double Time);
 	// Retreives the timeout in seconds for [Sock]
 	ISAACUTILS_API double Socket_gettimeout(void *Sock);
+	// Initializes the socket for managed mode
+	ISAACUTILS_API bool Socket_InitMngd(void *Sock, unsigned long MidTmOut);
+	// Constructs a new EncProt from the parameters, If [Key] == nullptr then you can initialize later
+	ISAACUTILS_API void *EncProt_newS(void *Sock, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum);
+	// Initialize the Enc part of EncProt [Prot]
+	ISAACUTILS_API bool EncProt_Init(void *Prot, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum);
+	// Sends Data using [Prot] with [NoEncDat] not encrypted and [EncDat] encrypted
+	ISAACUTILS_API bool EncProt_Send(void *Prot, void *NoEncDat, void *EncDat);
+	// Receives Data using [Prot] with [NoEncDat] to hold non-encrypted and [EncDat] to hold encrypted
+	ISAACUTILS_API bool EncProt_Recv(void *Prot, void *NoEncDat, void *EncDat);
+	// Constructs a new File given a filename [Str] and a mode [Mode] and a file system lock [FsLock]
+	ISAACUTILS_API void *RfsFile_newA(void *Prot, char *Str, char *Mode, void *FsLock);
+	// Constructs a new File that acts as a read buffer for [Fl]
+	ISAACUTILS_API void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen = 8192);
+	// Constructs a host file system File object
+	//ISAACUTILS_API void *File_newA(char *fName, char *Mode);//TODO add
+	// Constructs a host file system File object
+	//ISAACUTILS_API void *File_newW(wchar_t *fName, wchar_t *Mode);//TODO add
+	// Seeks a file [FlObj] to position [Pos] from [From]
+	ISAACUTILS_API bool File_seek(void *FlObj, long long Pos, int From);
+	// Tells the position the file [FlObj] is writing at or reading from
+	ISAACUTILS_API long long File_tell(void *FlObj);
+	// Reads a max of [Num] Bytes from File [FlObj] and returns it in a bytearray
+	ISAACUTILS_API void *File_read(void *FlObj, unsigned long Num);
+	// Writes the ByteArray [bArray] to File [FlObj] and returns the number of bytes written
+	ISAACUTILS_API unsigned long File_write(void *FlObj, void *bArray);
+	// Closes the File [FlObj]
+	ISAACUTILS_API bool File_close(void *FlObj);
+	// Constructs a new SingleMutex
+	ISAACUTILS_API void *SingleMutex_new();
+	// Constructs a new RWMutex
+	ISAACUTILS_API void *RWMutex_new();
+	// Trys to Acquire the Lock [Lk] without blocking and returns if the lock was acquired
+	ISAACUTILS_API bool Lock_TryAcquire(void *Lk, bool Access = false);
+	// Acquires the Lock [Lk] or blocks untils it is acquired
+	ISAACUTILS_API bool Lock_Acquire(void *Lk, bool Access = false);
+	// Releases the Lock [Lk]
+	ISAACUTILS_API bool Lock_Release(void *Lk, bool Access = false);
 	// Constructs a new empty Concurrent Queue
 	//ISAACUTILS_API void *ConQueue_new();//NextTime
 	// Constructs a new SockAddr from a human readable address [Str], a port [Port] and, for Ipv6 [FlowInf] and [ScopeId]
