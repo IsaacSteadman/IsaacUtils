@@ -87,6 +87,7 @@ namespace Utils {
 	namespace fs {
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
+		String SrchPath = "/*.*";
 		wString Getcwd() {
 			unsigned long Len = GetCurrentDirectoryW(0, NULL);
 			wString Rtn(wchar_t(0), Len);
@@ -115,13 +116,13 @@ namespace Utils {
 			wString fName;
 			unsigned long Md;
 		public:
-			WinFile(wString fName, unsigned long Mode);
-			WinFile(String fName, unsigned long Mode);
+			WinFile(wchar_t *fName, unsigned long Mode);
+			WinFile(char *fName, unsigned long Mode);
 			virtual ByteArray Read();
 			virtual ByteArray Read(unsigned long Num);
 			virtual bool Seek(long long Pos, int From = SK_SET);
 			virtual long long Tell();
-			virtual unsigned long Write(ByteArray Data);
+			virtual unsigned long Write(const ByteArray &Data);
 			virtual void Close();
 			virtual wString GetName();
 			virtual unsigned long GetMode();
@@ -131,37 +132,92 @@ namespace Utils {
 			wString Name;
 			wString PathPart;
 			String PathPartA;
-			void MkFullPath(String &Path);
-			void MkFullPath(wString &Path);
+			void AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len);
+			void AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len);
+			bool AllocPath(const String &Path, char *&Ptr, SizeL &Len);
 		public:
 			WinDrive(wchar_t fLabel, wString Name);
+
 			// Inherited via DriveBase
 			virtual wString GetName();
 			virtual String GetNameA();
-			virtual FileBase * OpenFile(wString Path, unsigned long Mode);
-			virtual FileBase * OpenFile(String Path, unsigned long Mode);
-			virtual bool IsFile(wString Path);
-			virtual bool IsFile(String Path);
-			virtual bool Exists(wString Path);
-			virtual bool Exists(String Path);
-			virtual bool IsDir(wString Path);
-			virtual bool IsDir(String Path);
-			virtual Array<wString> ListDir(wString Path);
-			virtual Array<String> ListDir(String Path);
-			virtual FileDesc Stat(wString Path);
-			virtual FileDescA Stat(String Path);
-			virtual Array<FileDesc> ListDirSt(wString Path);
-			virtual Array<FileDescA> ListDirSt(String Path);
-			virtual Array<wString> GetFileExt(wString Path, wString Ext);
-			virtual Array<String> GetFileExt(String Path, String Ext);
+			virtual FileBase * OpenFile(const wString &Path, unsigned long Mode);
+			virtual FileBase * OpenFile(const String &Path, unsigned long Mode);
+			virtual bool IsFile(const wString &Path);
+			virtual bool IsFile(const String &Path);
+			virtual bool Exists(const wString &Path);
+			virtual bool Exists(const String &Path);
+			virtual bool IsDir(const wString &Path);
+			virtual bool IsDir(const String &Path);
+			virtual Array<wString> ListDir(const wString &Path);
+			virtual Array<String> ListDir(const String &Path);
+			virtual FileDesc Stat(const wString &Path);
+			virtual FileDescA Stat(const String &Path);
+			virtual Array<FileDesc> ListDirSt(const wString &Path);
+			virtual Array<FileDescA> ListDirSt(const String &Path);
+			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert = false, bool RtnBegDots = false);
+			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Exts, bool Invert = false, bool RtnBegDots = false);
 		};
-		void WinDrive::MkFullPath(String &Path) {
-			Path.Insert(0, PathPartA);
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPathA);
+
+		void WinDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
+			Len += Path.Length();
+			if (Len + 2 > MAX_PATH)
+			{
+				Ptr = new wchar_t[Len + ExtPath.Length() + 3];
+				ExtPath.CopyTo(Ptr, ExtPath.Length());
+				Ptr += ExtPath.Length();
+			}
+			else Ptr = new wchar_t[Len + 3];
+			PathPart.CopyTo(Ptr, 2);
+			Ptr += 2;
+			Path.CopyTo(Ptr, Path.Length());
+			Ptr[Len] = 0;
+			if (Len + 2 > MAX_PATH)
+			{
+				Ptr -= 2 + ExtPath.Length();
+				Len += 2 + ExtPath.Length();
+			}
+			else
+			{
+				Ptr -= 2;
+				Len += 2;
+			}
 		}
-		void WinDrive::MkFullPath(wString &Path) {
-			Path.Insert(0, PathPart);
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
+		void WinDrive::AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len) {
+			Len += Path.Length();
+			if (Len + 2 > MAX_PATH)
+			{
+				Ptr = new wchar_t[Len + ExtPath.Length() + 3];
+				ExtPath.CopyTo(Ptr, ExtPath.Length());
+				Ptr += ExtPath.Length();
+			}
+			else Ptr = new wchar_t[Len + 3];
+			PathPart.CopyTo(Ptr, 2);
+			Ptr += 2;
+			Path.CopyTo(Ptr, Path.Length());
+			Ptr[Len] = 0;
+			if (Len + 2 > MAX_PATH)
+			{
+				Ptr -= 2 + ExtPath.Length();
+				Len += 2 + ExtPath.Length();
+			}
+			else
+			{
+				Ptr -= 2;
+				Len += 2;
+			}
+		}
+		bool WinDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
+			if (Path.Length() + 2 > MAX_PATH) return false;
+			Len += Path.Length();
+			Ptr = new char[Len + 3];
+			PathPartA.CopyTo(Ptr, 2);
+			Ptr += 2;
+			Path.CopyTo(Ptr, Path.Length());
+			Ptr[Len] = 0;
+			Ptr -= 2;
+			Len += 2;
+			return true;
 		}
 		WinDrive::WinDrive(wchar_t fLabel, wString FullName) {
 			PathPart = wString(fLabel, (SizeL)2);
@@ -173,68 +229,120 @@ namespace Utils {
 			return Name;
 		}
 		String WinDrive::GetNameA() {
-			return String(Name.GetData(), Name.Length());
+			return Name.Str();
 		}
-		FileBase *WinDrive::OpenFile(wString Path, unsigned long Mode) {
-			MkFullPath(Path);
-			return new WinFile(Path, Mode);
+		FileBase *WinDrive::OpenFile(const wString &Path, unsigned long Mode) {
+			SizeL Len = 0;
+			wchar_t *Str = 0;
+			AllocPath(Path, Str, Len);
+			FileBase *Rtn = new WinFile(Str, Mode);
+			delete[] Str;
+			return Rtn;
 		}
-		FileBase *WinDrive::OpenFile(String Path, unsigned long Mode) {
-			MkFullPath(Path);
-			return new WinFile(Path, Mode);
+		FileBase *WinDrive::OpenFile(const String &Path, unsigned long Mode) {
+			SizeL Len = 0;
+			FileBase *Rtn = 0;
+			char *StrA = 0;
+			if (AllocPath(Path, StrA, Len))
+			{
+				Rtn = new WinFile(StrA, Mode);
+				delete[] StrA;
+			}
+			else
+			{
+				wchar_t *StrW = 0;
+				AllocPath(Path, StrW, Len);
+				Rtn = new WinFile(StrW, Mode);
+				delete[] StrW;
+			}
+			return Rtn;
 		}
-		bool WinDrive::IsFile(wString Path) {
-			MkFullPath(Path);
-			wchar_t *cPath = Path.GetCString();
+		bool WinDrive::IsFile(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = 0;
+			AllocPath(Path, cPath, Len);
 			unsigned long Tmp = GetFileAttributesW(cPath);
 			delete[] cPath;
 			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
 		}
-		bool WinDrive::IsFile(String Path) {
-			if (Path.Length() + 2 > MAX_PATH) return IsFile(wString(Path.GetData(), Path.Length()));
-			MkFullPath(Path);
-			char *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesA(cPath);
-			delete[] cPath;
+		bool WinDrive::IsFile(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = 0;
+			unsigned long Tmp = 0;
+			if (AllocPath(Path, cPathA, Len))
+			{
+				Tmp = GetFileAttributesA(cPathA);
+				delete[] cPathA;
+			}
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				Tmp = GetFileAttributesW(cPathW);
+				delete[] cPathW;
+			}
 			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
 		}
-		bool WinDrive::Exists(wString Path) {
-			MkFullPath(Path);
-			wchar_t *cPath = Path.GetCString();
+		bool WinDrive::Exists(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = 0;
+			AllocPath(Path, cPath, Len);
 			bool Rtn = GetFileAttributesW(cPath) != INVALID_FILE_ATTRIBUTES;
 			delete[] cPath;
 			return Rtn;
 		}
-		bool WinDrive::Exists(String Path) {
-			if (Path.Length() + 2 > MAX_PATH) return Exists(wString(Path.GetData(), Path.Length()));
-			MkFullPath(Path);
-			char *cPath = Path.GetCString();
-			bool Rtn = GetFileAttributesA(cPath) != INVALID_FILE_ATTRIBUTES;
-			delete[] cPath;
+		bool WinDrive::Exists(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = 0;
+			bool Rtn = false;
+			if (AllocPath(Path, cPathA, Len))
+			{
+				Rtn = GetFileAttributesA(cPathA) != INVALID_FILE_ATTRIBUTES;
+				delete[] cPathA;
+			}
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				Rtn = GetFileAttributesW(cPathW) != INVALID_FILE_ATTRIBUTES;
+				delete[] cPathW;
+			}
 			return Rtn;
 		}
-		bool WinDrive::IsDir(wString Path) {
-			MkFullPath(Path);
-			wchar_t *cPath = Path.GetCString();
+		bool WinDrive::IsDir(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = 0;
+			AllocPath(Path, cPath, Len);
 			unsigned long Tmp = GetFileAttributesW(cPath);
 			delete[] cPath;
 			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
 		}
-		bool WinDrive::IsDir(String Path) {
-			if (Path.Length() + 2 > MAX_PATH) return IsDir(wString(Path.GetData(), Path.Length()));
-			MkFullPath(Path);
-			char *cPath = Path.GetCString();
-			unsigned long Tmp = GetFileAttributesA(cPath);
-			delete[] cPath;
+		bool WinDrive::IsDir(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = 0;
+			unsigned long Tmp = 0;
+			if (AllocPath(Path, cPathA, Len))
+			{
+				Tmp = GetFileAttributesA(cPathA);
+				delete[] cPathA;
+			}
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				Tmp = GetFileAttributesW(cPathW);
+				delete[] cPathW;
+			}
 			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
 		}
-		Array<wString> WinDrive::ListDir(wString Path) {
-			MkFullPath(Path);
+		Array<wString> WinDrive::ListDir(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = SrchPath.Length();
+			AllocPath(Path, cPath, Len);
+			SrchPath.CopyTo(cPath + Len - SrchPath.Length(), SrchPath.Length());
 			Array<wString> Rtn;
 			WIN32_FIND_DATAW fdFile;
 			HANDLE hFind = NULL;
-			Path += "/*.*";
-			wchar_t *cPath = Path.GetCString();
 			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
 			{
 				delete[] cPath;
@@ -246,41 +354,55 @@ namespace Utils {
 					Rtn += fdFile.cFileName;
 			} while (FindNextFileW(hFind, &fdFile));
 			FindClose(hFind);
+			delete[] cPath;
 			return Rtn;
 		}
-		Array<String> WinDrive::ListDir(String Path) {
-			if (Path.Length() + 2 > MAX_PATH)
-			{
-				Array<wString> RtnTmp = ListDir(Path.wStr());
-				Array<String> Rtn;
-				Rtn.SetLength(RtnTmp.Length());
-				for (unsigned long c = 0; c < Rtn.Length(); ++c) {
-					Rtn[c] = RtnTmp[c].Str();
-				}
-				return Rtn;
-			}
-			MkFullPath(Path);
+		Array<String> WinDrive::ListDir(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = SrchPath.Length();
 			Array<String> Rtn;
-			WIN32_FIND_DATAA fdFile;
 			HANDLE hFind = NULL;
-			Path += "/*.*";
-			char *cPath = Path.GetCString();
-			if ((hFind = FindFirstFileA(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
+			if (AllocPath(Path, cPathA, Len))
 			{
-				delete[] cPath;
-				Rtn += "<INVALID SEARCH PATH>";
-				return Rtn;
+				SrchPath.CopyTo(cPathA + Len - SrchPath.Length(), SrchPath.Length());
+				WIN32_FIND_DATAA fdFile;
+				if ((hFind = FindFirstFileA(cPathA, &fdFile)) == INVALID_HANDLE_VALUE)
+				{
+					delete[] cPathA;
+					Rtn += "<INVALID SEARCH PATH>";
+					return Rtn;
+				}
+				do {
+					if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
+						Rtn += fdFile.cFileName;
+				} while (FindNextFileA(hFind, &fdFile));
+				delete[] cPathA;
 			}
-			do {
-				if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-					Rtn += fdFile.cFileName;
-			} while (FindNextFileA(hFind, &fdFile));
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				SrchPath.CopyTo(cPathW + Len - SrchPath.Length(), SrchPath.Length());
+				WIN32_FIND_DATAW fdFile;
+				if ((hFind = FindFirstFileW(cPathW, &fdFile)) == INVALID_HANDLE_VALUE)
+				{
+					delete[] cPathA;
+					Rtn += "<INVALID SEARCH PATH>";
+					return Rtn;
+				}
+				do {
+					if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
+						Rtn += fdFile.cFileName;
+				} while (FindNextFileW(hFind, &fdFile));
+				delete[] cPathW;
+			}
 			FindClose(hFind);
 			return Rtn;
 		}
-		FileDesc WinDrive::Stat(wString Path) {
-			MkFullPath(Path);
-			wchar_t *cPath = Path.GetCString();
+		FileDesc WinDrive::Stat(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = 0;
+			AllocPath(Path, cPath, Len);
 			FileDesc Rtn;
 			Rtn.CreateTime = 0;
 			Rtn.LastAccessTime = 0;
@@ -290,7 +412,9 @@ namespace Utils {
 			if (GetFileAttributesExW(cPath, GetFileExInfoStandard, &Dat))
 			{
 				Rtn.Attr = Dat.dwFileAttributes;
-				Rtn.fName = Path;
+				SizeL Pos = 0;
+				if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
+				else Rtn.fName = Path;
 				Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
 				Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
 				Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
@@ -299,46 +423,51 @@ namespace Utils {
 			delete[] cPath;
 			return Rtn;
 		}
-		FileDescA WinDrive::Stat(String Path) {
-			if (Path.Length() + 2 > MAX_PATH)
-			{
-				FileDesc RtnTmp = Stat(Path.wStr());
-				FileDescA Rtn;
-				Rtn.Attr = RtnTmp.Attr;
-				Rtn.CreateTime = RtnTmp.CreateTime;
-				Rtn.LastAccessTime = RtnTmp.LastAccessTime;
-				Rtn.LastWriteTime = RtnTmp.LastWriteTime;
-				Rtn.Size = RtnTmp.Size;
-				Rtn.fName = RtnTmp.fName.Str();
-				return Rtn;
-			}
-			MkFullPath(Path);
-			char *cPath = Path.GetCString();
+		FileDescA WinDrive::Stat(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = 0;
 			FileDescA Rtn;
 			Rtn.CreateTime = 0;
 			Rtn.LastAccessTime = 0;
 			Rtn.LastWriteTime = 0;
 			Rtn.Attr = 0xFFFFFFFF;
 			WIN32_FILE_ATTRIBUTE_DATA Dat;
-			if (GetFileAttributesExA(cPath, GetFileExInfoStandard, &Dat))
+			if (AllocPath(Path, cPathA, Len))
 			{
-				Rtn.Attr = Dat.dwFileAttributes;
-				Rtn.fName = Path;
-				Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-				Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-				Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-				Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
+				if (GetFileAttributesExA(cPathA, GetFileExInfoStandard, &Dat) == 0)
+				{
+					delete[] cPathA;
+					return Rtn;
+				}
 			}
-			delete[] cPath;
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				if (GetFileAttributesExW(cPathW, GetFileExInfoStandard, &Dat) == 0)
+				{
+					delete[] cPathW;
+					return Rtn;
+				}
+			}
+			Rtn.Attr = Dat.dwFileAttributes;
+			SizeL Pos = 0;
+			if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
+			else Rtn.fName = Path;
+			Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
+			Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
+			Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
+			Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
 			return Rtn;
 		}
-		Array<FileDesc> WinDrive::ListDirSt(wString Path) {
-			MkFullPath(Path);
+		Array<FileDesc> WinDrive::ListDirSt(const wString &Path) {
+			wchar_t *cPath = 0;
+			SizeL Len = SrchPath.Length();
+			AllocPath(Path, cPath, Len);
+			SrchPath.CopyTo(cPath + Len - SrchPath.Length(), SrchPath.Length());
 			Array<FileDesc> Rtn;
 			WIN32_FIND_DATAW fdFile;
 			HANDLE hFind = NULL;
-			Path += "/*.*";
-			wchar_t *cPath = Path.GetCString();
 			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
 			{
 				delete[] cPath;
@@ -361,53 +490,67 @@ namespace Utils {
 			FindClose(hFind);
 			return Rtn;
 		}
-		Array<FileDescA> WinDrive::ListDirSt(String Path) {
-			if (Path.Length() + 2 > MAX_PATH)
-			{
-				Array<FileDesc> RtnTmp = ListDirSt(Path.wStr());
-				Array<FileDescA> Rtn;
-				Rtn.SetLength(RtnTmp.Length());
-				for (unsigned long c = 0; c < Rtn.Length(); ++c) {
-					Rtn[c].Attr = RtnTmp[c].Attr;
-					Rtn[c].CreateTime = RtnTmp[c].CreateTime;
-					Rtn[c].LastAccessTime = RtnTmp[c].LastAccessTime;
-					Rtn[c].LastWriteTime = RtnTmp[c].LastWriteTime;
-					Rtn[c].Size = RtnTmp[c].Size;
-					Rtn[c].fName = RtnTmp[c].fName.Str();
-				}
-				return Rtn;
-			}
-			MkFullPath(Path);
-			Array<FileDescA> Rtn;
-			WIN32_FIND_DATAA fdFile;
+		Array<FileDescA> WinDrive::ListDirSt(const String &Path) {
+			char *cPathA = 0;
+			SizeL Len = SrchPath.Length();
 			HANDLE hFind = NULL;
-			Path += "/*.*";
-			char *cPath = Path.GetCString();
-			if ((hFind = FindFirstFileA(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
+			Array<FileDescA> Rtn;
+			if (AllocPath(Path, cPathA, Len))
 			{
-				delete[] cPath;
-				Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
-				return Rtn;
-			}
-			do {
-				if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
+				SrchPath.CopyTo(cPathA + Len - SrchPath.Length(), SrchPath.Length());
+				WIN32_FIND_DATAA fdFile;
+				if ((hFind = FindFirstFileA(cPathA, &fdFile)) == INVALID_HANDLE_VALUE)
 				{
-					FileDescA Add;
-					Add.Attr = fdFile.dwFileAttributes;
-					Add.fName = fdFile.cFileName;
-					Add.CreateTime = fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32);
-					Add.LastAccessTime = fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32);
-					Add.LastWriteTime = fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32);
-					Add.Size = fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32);
-					Rtn += Add;
+					delete[] cPathA;
+					Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
+					return Rtn;
 				}
-			} while (FindNextFileA(hFind, &fdFile));
+				do {
+					if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
+						Rtn += {
+							fdFile.cFileName,
+							fdFile.dwFileAttributes,
+							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
+							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
+							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
+							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
+						};
+				} while (FindNextFileA(hFind, &fdFile));
+				delete[] cPathA;
+			}
+			else
+			{
+				wchar_t *cPathW = 0;
+				AllocPath(Path, cPathW, Len);
+				SrchPath.CopyTo(cPathW + Len - SrchPath.Length(), SrchPath.Length());
+				WIN32_FIND_DATAW fdFile;
+				if ((hFind = FindFirstFileW(cPathW, &fdFile)) == INVALID_HANDLE_VALUE)
+				{
+					delete[] cPathA;
+					Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
+					return Rtn;
+				}
+				do {
+					if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
+						Rtn += {
+							fdFile.cFileName,
+							fdFile.dwFileAttributes,
+							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
+							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
+							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
+							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
+						};
+				} while (FindNextFileW(hFind, &fdFile));
+				delete[] cPathW;
+			}
 			FindClose(hFind);
 			return Rtn;
 		}
-		Array<wString> WinDrive::GetFileExt(wString Path, wString Ext) {
-			MkFullPath(Path);
-			Ext.ToLower();
+		Array<wString> WinDrive::GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert, bool RtnBegDots) {
+			Array<wString> LowExts(Exts);
+			for (wString &Ext : LowExts) {
+				Ext.ToLower();
+			}
 			Array<wString> Rtn;
 			Array<wString> CurrSearchDir("", 1);//blank so that all that happens is it becomes Path
 			Array<wString> NewSearchDir;
@@ -415,8 +558,14 @@ namespace Utils {
 				for (wString CurPath : CurrSearchDir) {
 					WIN32_FIND_DATAW fdFile;
 					HANDLE hFind = NULL;
-					wString Path1 = Path + CurPath + "/*." + Ext;
-					wchar_t *cPath = Path1.GetCString();
+					wchar_t *cPath = 0;
+					SizeL Len = CurPath.Length() + SrchPath.Length();
+					AllocPath(Path, cPath, Len);
+					cPath += Len - (CurPath.Length() + SrchPath.Length());
+					CurPath.CopyTo(cPath, CurPath.Length());
+					cPath += CurPath.Length();
+					SrchPath.CopyTo(cPath, SrchPath.Length());
+					cPath -= Len;
 					if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
 					{
 						delete[] cPath;
@@ -438,54 +587,21 @@ namespace Utils {
 			}
 			return Rtn;
 		}
-		Array<String> WinDrive::GetFileExt(String Path, String Ext) {
-			if (Path.Length() + 2 > MAX_PATH)
-			{
-				Array<wString> RtnTmp = GetFileExt(wString(Path.GetData(), Path.Length()), wString(Ext.GetData(), Ext.Length()));
-				Array<String> Rtn;
-				Rtn.SetLength(RtnTmp.Length());
-				for (unsigned long c = 0; c < Rtn.Length(); ++c) {
-					Rtn[c] = String(RtnTmp[c].GetData(), RtnTmp[c].Length());
-				}
-				return Rtn;
-			}
-			MkFullPath(Path);
-			Ext.ToLower();
+		Array<String> WinDrive::GetFileExt(const String &Path, const Array<String> &Exts, bool Invert, bool RtnBegDots) {
+			Array<wString> TmpExts;
+			TmpExts.SetLength(Exts.Length());
+			for (SizeL c = 0; c < Exts.Length(); ++c) TmpExts[c] = Exts[c].wStr();
+			Array<wString> wStrRtn = GetFileExt(Path.wStr(), TmpExts);
 			Array<String> Rtn;
-			Array<String> CurrSearchDir("", 1);//blank so that all that happens is it becomes Path
-			Array<String> NewSearchDir;
-			while (CurrSearchDir.Length() > 0) {
-				for (String CurPath : CurrSearchDir) {
-					WIN32_FIND_DATAA fdFile;
-					HANDLE hFind = NULL;
-					String Path1 = Path + CurPath + "/*." + Ext;
-					char *cPath = Path1.GetCString();
-					if ((hFind = FindFirstFileA(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-					{
-						delete[] cPath;
-						Rtn += "<INVALID SEARCH PATH>";
-						return Rtn;
-					}
-					delete[] cPath;
-					do {
-						if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-						{
-							wString Tmp = fdFile.cFileName;
-							unsigned long Pos = 0;
-							if (fdFile.dwFileAttributes & FILE_ATTR_DIRECTORY) NewSearchDir += CurPath + "/" + fdFile.cFileName;
-							else Rtn += CurPath + "/" + fdFile.cFileName;
-						}
-					} while (FindNextFileA(hFind, &fdFile));
-					FindClose(hFind);
-				}
-			}
+			Rtn.SetLength(wStrRtn.Length());
+			for (SizeL c = 0; c < wStrRtn.Length(); ++c) Rtn[c] = wStrRtn[c].Str();
 			return Rtn;
 		}
-		WinFile::WinFile(wString Path, unsigned long Mode) {
+		WinFile::WinFile(wchar_t *Path, unsigned long Mode) {
 			if (Mode & F_APP > 0 && Mode & F_TRUNC > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
-			fName = Path;
-			wchar_t * wStr = fName.GetCString();
+			if (ExtPath != wString(Path, ExtPath.Length())) fName = Path;
+			else fName = wString(Path + ExtPath.Length());
 			unsigned long Generic = 0;
 			if (Mode & F_IN > 0) Generic |= GENERIC_READ;
 			if (Mode & F_OUT > 0) Generic |= GENERIC_WRITE;
@@ -512,8 +628,7 @@ namespace Utils {
 				}
 			}
 			else Create |= OPEN_EXISTING;
-			hFile = (HFILE)CreateFileW(wStr, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
-			delete[] wStr;
+			hFile = (HFILE)CreateFileW(Path, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile == NULL)
 			{
 				wchar_t *BuffErr = 0;
@@ -524,11 +639,10 @@ namespace Utils {
 			}
 			Md = Mode;
 		}
-		WinFile::WinFile(String Path, unsigned long Mode) {
+		WinFile::WinFile(char *Path, unsigned long Mode) {
 			if (Mode & F_APP > 0 && Mode & F_TRUNC > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
-			fName = Path.wStr();
-			wchar_t * wStr = fName.GetCString();
+			fName = Path;
 			unsigned long Generic = 0;
 			if (Mode & F_IN > 0) Generic |= GENERIC_READ;
 			if (Mode & F_OUT > 0) Generic |= GENERIC_WRITE;
@@ -555,8 +669,7 @@ namespace Utils {
 				}
 			}
 			else Create |= OPEN_EXISTING;
-			hFile = (HFILE)CreateFileW(wStr, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
-			delete[] wStr;
+			hFile = (HFILE)CreateFileA(Path, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile == NULL)
 			{
 				wchar_t *BuffErr = 0;
@@ -604,7 +717,7 @@ namespace Utils {
 			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Rtn, FILE_CURRENT);
 			return Rtn;
 		}
-		unsigned long WinFile::Write(ByteArray Data) {
+		unsigned long WinFile::Write(const ByteArray &Data) {
 			unsigned long Rtn = 0;
 			LARGE_INTEGER Off;
 			Off.QuadPart = 0;
@@ -652,7 +765,7 @@ namespace Utils {
 		sock::ErrCodes.Put(10004, "The operation was interrupted.");
 		sock::ErrCodes.Put(10009, "A bad file handle was passed.");
 		sock::ErrCodes.Put(10013, "Permission denied.");
-		sock::ErrCodes.Put(10014, "A fault occurred on the network??");
+		sock::ErrCodes.Put(10014, "A fault occurred on the network?? or in memory");
 		sock::ErrCodes.Put(10022, "An invalid operation was attempted.");
 		sock::ErrCodes.Put(10035, "The socket operation would block");
 		sock::ErrCodes.Put(10036, "A blocking operation is already in progress.");
@@ -665,6 +778,7 @@ namespace Utils {
 		sock::ErrCodes.Put(10063, "The name is too long.");
 		sock::ErrCodes.Put(10064, "The host is down.");
 		sock::ErrCodes.Put(10065, "The host is unreachable.");
+		sock::ErrCodes.Put(11001, "Encryption state not provided for encrypted data.");
 		QueryPerformanceFrequency((LARGE_INTEGER *)&Clock::Tps);
 		Array<bool> DrvAvail(false, (SizeL)26);
 		unsigned long Drvs = GetLogicalDrives();
@@ -765,6 +879,21 @@ namespace Utils {
 			&(HANDLE)hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
 		return *this;
 	}
+	void UtilsThread::Init(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams) {
+		ThreadParams &Params = *(new ThreadParams);
+		Params.Function = ThreadFunc;
+		Params.FunctParams = FunctParams;
+		{
+			SECURITY_ATTRIBUTES SecurityAttrib;
+			SecurityAttrib.bInheritHandle = TRUE;
+			SecurityAttrib.lpSecurityDescriptor = NULL;
+			SecurityAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
+			hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &ThreadId);
+			Params.hThread = hThread;
+			Params.ThreadId = ThreadId;
+			ResumeThread(HANDLE(hThread));
+		}
+	}
 	UtilsThread::~UtilsThread() {
 		if (hThread != 0) CloseHandle((HANDLE)hThread);
 	}
@@ -838,14 +967,6 @@ namespace Utils {
 		return 2;
 	}
 	RWMutex::~RWMutex() {}
-	Lock::Lock(Mutex *Obj, bool Access) {
-		LockObj = Obj;
-		Attr = Access;
-		LockObj->Acquire(Attr);
-	}
-	Lock::~Lock() {
-		LockObj->Release(Attr);
-	}
 	Mutex *GetSingleMutex() {
 		return new SingleMutex();
 	}
@@ -971,32 +1092,7 @@ namespace Utils {
 		default:
 			return 0;
 		}
-	}/*
-	AsyncTask::~AsyncTask() {}
-	class AsyncAddLock : public AsyncTask {
-	private:
-		Mutex *VarLock;
-	public:
-		AsyncAddLock(Mutex *TheLock);
-		bool TryRun();
-		void WaitOnce();
-		~AsyncAddLock();
-	};
-	AsyncAddLock::AsyncAddLock(Mutex *TheLock) {
-		VarLock = TheLock;
-		TheCond = new CSCondVar(new SingleMutex());
-		TheCond->IsLockRef = false;
-		Done = false;
 	}
-	bool AsyncAddLock::TryRun() {
-
-	}
-	void AsyncAddLock::WaitOnce() {
-
-	}
-	AsyncAddLock::~AsyncAddLock() {
-
-	}*/
 	void ConQueue::ChgBytes(SizeL Amt, bool IsAdd) {
 		if (!IsAdd)
 		{
@@ -1017,19 +1113,27 @@ namespace Utils {
 			Data.Ptr = INVALID_SOCKET;
 			TmOuts[0] = MAX_INT32;
 			TmOuts[1] = 0xFFFFFFFF;
+			SockLock = 0;
+			MngdTmOut[0] = 0;
+			MngdTmOut[1] = 0;
+		}
+		Socket::~Socket() {
+			if (Data.Ptr != INVALID_SOCKET) close();
+			if (SockLock) DestroyMutex(SockLock);
+			SockLock = 0;
 		}
 		void Socket::Init(int af, int Type, int Prot) {
 			if ((Data.Ptr = socket(af, Type, Prot)) == INVALID_SOCKET)
 				throw SockErr(WSAGetLastError());
 		}
 		void Socket::bind(const SockAddr &Addr) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (::bind(Data.Ptr, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
 			SockName = Addr;
 		}
 		void Socket::connect(const SockAddr &Addr) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1050,12 +1154,12 @@ namespace Utils {
 			PeerName = Addr;
 		}
 		void Socket::setsockopt(int Lvl, int OptName, void *OptData, unsigned long DataLen) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (::setsockopt(Data.Ptr, Lvl, OptName, (char*)OptData, DataLen) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
 		}
 		void Socket::accept(Socket &Sock) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1076,17 +1180,79 @@ namespace Utils {
 			Sock.PeerName.Init(&Tmp);
 		}
 		void Socket::listen(int AllowBuff) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (::listen(Data.Ptr, AllowBuff) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
 		}
 		void Socket::close() {
 			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock)
+			{
+				if (SockLock->TryAcquire()) MngdTmOut[1] |= 0x40000000;
+				else
+				{
+					MngdTmOut[1] |= 0x80000000;
+					SockLock->Acquire();
+				}
+				SockLock->Release();
+			}
 			if (::closesocket(Data.Ptr) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
+			Data.Ptr = INVALID_SOCKET;
 		}
-		SizeL Socket::send(const ByteArray &Bytes, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+		void Socket::InitMngd(unsigned long MidTmOut) {
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock == 0)
+			{
+				unsigned long IsNoBlk = 1;
+				SockLock = GetSingleMutex();
+				int Rtn = ioctlsocket(Data.Ptr, FIONBIO, &IsNoBlk);
+				if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			}
+			MngdTmOut[0] = MidTmOut;
+		}
+		SizeL Socket::sendBase(const char *SendDat, SizeL LenDat, int Flags) {
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock)
+			{
+				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
+				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
+				timeval TimeOut;
+				TimeOut.tv_sec = MngdTmOut[0] >> 24;
+				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
+				signed long long OrigTmOut = TmOuts[0];
+				OrigTmOut *= 1000000;
+				OrigTmOut += TmOuts[1];
+				signed long long MyTmOut = TimeOut.tv_sec;
+				MyTmOut *= 1000000;
+				MyTmOut += TimeOut.tv_usec;
+				signed long long TmLeft = OrigTmOut;
+				SizeL Pos = 0;
+				while (TmLeft > 0) {
+					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
+					fd_set Tmp;
+					FD_ZERO(&Tmp);
+					FD_SET(Data.Ptr, &Tmp);
+					int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
+					if (Rtn == 0) continue;
+					else if (Rtn == SOCKET_ERROR)
+						throw SockErr(WSAGetLastError());
+					else
+					{
+						SizeL TmpRtn = 0;
+						if ((Rtn = ::send(Data.Ptr, &SendDat[Pos], LenDat - Pos, Flags)) == SOCKET_ERROR)
+							throw SockErr(WSAGetLastError());
+						if (Rtn != 0)
+						{
+							TmLeft = OrigTmOut;
+							Pos += Rtn;
+							if (Pos >= LenDat) return LenDat;
+						}
+					}
+				}
+				throw SockErr(10060);
+			}
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1100,12 +1266,52 @@ namespace Utils {
 				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
 			}
 			SizeL Rtn = 0;
-			if ((Rtn = ::send(Data.Ptr, (char *)Bytes.GetData(), Bytes.Length(), Flags)) == SOCKET_ERROR)
+			if ((Rtn = ::send(Data.Ptr, SendDat, LenDat, Flags)) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
 			return Rtn;
 		}
-		SizeL Socket::send(const String &Bytes, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+		SizeL Socket::sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, int Flags) {
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock)
+			{
+				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
+				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
+				timeval TimeOut;
+				TimeOut.tv_sec = MngdTmOut[0] >> 24;
+				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
+				signed long long OrigTmOut = TmOuts[0];
+				OrigTmOut *= 1000000;
+				OrigTmOut += TmOuts[1];
+				signed long long MyTmOut = TimeOut.tv_sec;
+				MyTmOut *= 1000000;
+				MyTmOut += TimeOut.tv_usec;
+				signed long long TmLeft = OrigTmOut;
+				SizeL Pos = 0;
+				while (TmLeft > 0) {
+					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
+					fd_set Tmp;
+					FD_ZERO(&Tmp);
+					FD_SET(Data.Ptr, &Tmp);
+					int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
+					if (Rtn == 0) continue;
+					else if (Rtn == SOCKET_ERROR)
+						throw SockErr(WSAGetLastError());
+					else
+					{
+						SizeL TmpRtn = 0;
+						if ((Rtn = ::sendto(Data.Ptr, &SendDat[Pos], LenDat - Pos, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
+							throw SockErr(WSAGetLastError());
+						if (Rtn != 0)
+						{
+							TmLeft = OrigTmOut;
+							Pos += Rtn;
+							if (Pos >= LenDat) return LenDat;
+						}
+					}
+				}
+				throw SockErr(10060);
+			}
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1119,50 +1325,56 @@ namespace Utils {
 				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
 			}
 			SizeL Rtn = 0;
-			if ((Rtn = ::send(Data.Ptr, Bytes.GetData(), Bytes.Length(), Flags)) == SOCKET_ERROR)
+			if ((Rtn = ::sendto(Data.Ptr, SendDat, LenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 				throw SockErr(WSAGetLastError());
 			return Rtn;
 		}
-		SizeL Socket::sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (TmOuts[0] != MAX_INT32)
+		SizeL Socket::recvBase(char *RecvDat, SizeL LenDat, int Flags) {
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock)
 			{
-				fd_set Tmp;
-				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
+				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
 				timeval TimeOut;
-				TimeOut.tv_sec = TmOuts[0];
-				TimeOut.tv_usec = TmOuts[1];
-				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
-				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				TimeOut.tv_sec = MngdTmOut[0] >> 24;
+				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
+				signed long long OrigTmOut = TmOuts[0];
+				OrigTmOut *= 1000000;
+				OrigTmOut += TmOuts[1];
+				signed long long MyTmOut = TimeOut.tv_sec;
+				MyTmOut *= 1000000;
+				MyTmOut += TimeOut.tv_usec;
+				signed long long TmLeft = OrigTmOut;
+				SizeL Pos = 0;
+				SizeL NumZeroLeft = 16;
+				while (TmLeft > 0) {
+					if (!NumZeroLeft) throw SockErr(10054);
+					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
+					fd_set Tmp;
+					FD_ZERO(&Tmp);
+					FD_SET(Data.Ptr, &Tmp);
+					int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
+					if (Rtn == 0) continue;
+					else if (Rtn == SOCKET_ERROR)
+						throw SockErr(WSAGetLastError());
+					else
+					{
+						SizeL TmpRtn = 0;
+						if ((Rtn = ::recv(Data.Ptr, &RecvDat[Pos], LenDat - Pos, Flags)) == SOCKET_ERROR)
+							throw SockErr(WSAGetLastError());
+						if (Rtn != 0)
+						{
+							NumZeroLeft = 16;
+							TmLeft = OrigTmOut;
+							Pos += Rtn;
+							if (Pos >= LenDat) return LenDat;
+						}
+						else --NumZeroLeft;
+					}
+				}
+				throw SockErr(10060);
 			}
-			SizeL Rtn = 0;
-			if ((Rtn = ::sendto(Data.Ptr, (char *)Bytes.GetData(), Bytes.Length(), Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
-			return Rtn;
-		}
-		SizeL Socket::sendto(const String &Bytes, const SockAddr &Addr, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (TmOuts[0] != MAX_INT32)
-			{
-				fd_set Tmp;
-				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
-				timeval TimeOut;
-				TimeOut.tv_sec = TmOuts[0];
-				TimeOut.tv_usec = TmOuts[1];
-				int Rtn = select(0, 0, &Tmp, 0, &TimeOut);
-				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			}
-			SizeL Rtn = 0;
-			if ((Rtn = ::sendto(Data.Ptr, Bytes.GetData(), Bytes.Length(), Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
-			return Rtn;
-		}
-		ByteArray Socket::recv(SizeL Num, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1175,14 +1387,60 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
 			}
-			ByteArray Rtn(Byte(0), Num);
-			int LenRecv = ::recv(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags);
-			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			Rtn.SetLength(LenRecv);
+			SizeL Rtn = 0;
+			if ((Rtn = ::recv(Data.Ptr, RecvDat, LenDat, Flags)) == SOCKET_ERROR)
+				throw SockErr(WSAGetLastError());
 			return Rtn;
 		}
-		String Socket::recvS(SizeL Num, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+		SizeL Socket::recvfromBase(SockAddr &Addr, char *RecvDat, SizeL LenDat, int Flags) {
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (SockLock)
+			{
+				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
+				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
+				timeval TimeOut;
+				TimeOut.tv_sec = MngdTmOut[0] >> 24;
+				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
+				signed long long OrigTmOut = TmOuts[0];
+				OrigTmOut *= 1000000;
+				OrigTmOut += TmOuts[1];
+				signed long long MyTmOut = TimeOut.tv_sec;
+				MyTmOut *= 1000000;
+				MyTmOut += TimeOut.tv_usec;
+				signed long long TmLeft = OrigTmOut;
+				SizeL Pos = 0;
+				SizeL NumZeroLeft = 16;
+				while (TmLeft > 0) {
+					if (!NumZeroLeft) throw SockErr(10054);
+					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
+					fd_set Tmp;
+					FD_ZERO(&Tmp);
+					FD_SET(Data.Ptr, &Tmp);
+					int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
+					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
+					if (Rtn == 0) continue;
+					else if (Rtn == SOCKET_ERROR)
+						throw SockErr(WSAGetLastError());
+					else
+					{
+						SOCKADDR_STORAGE Tmp;
+						int TmpLen = sizeof(Tmp);
+						SizeL TmpRtn = 0;
+						if ((Rtn = ::recvfrom(Data.Ptr, &RecvDat[Pos], LenDat - Pos, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+							throw SockErr(WSAGetLastError());
+						if (Rtn != 0)
+						{
+							NumZeroLeft = 16;
+							TmLeft = OrigTmOut;
+							Pos += Rtn;
+							Addr.Init(&Tmp);
+							return Pos;
+						}
+						else --NumZeroLeft;
+					}
+				}
+				throw SockErr(10060);
+			}
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
@@ -1195,80 +1453,31 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
 			}
-			String Rtn(char(0), Num);
-			int LenRecv = ::recv(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags);
-			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			return Rtn.SubStr(0, LenRecv);
-		}
-		ByteArray Socket::recvfrom(SockAddr &Addr, SizeL Num, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (TmOuts[0] != MAX_INT32)
-			{
-				fd_set Tmp;
-				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
-				timeval TimeOut;
-				TimeOut.tv_sec = TmOuts[0];
-				TimeOut.tv_usec = TmOuts[1];
-				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
-				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			}
-			ByteArray Rtn(Byte(0), Num);
+			SizeL Rtn = 0;
 			SOCKADDR_STORAGE Tmp;
 			int TmpLen = sizeof(Tmp);
-			int LenRecv = ::recvfrom(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags, (sockaddr *)&Tmp, &TmpLen);
-			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			Rtn.SetLength(LenRecv);
-			Addr.Init(&Tmp);
+			if ((Rtn = ::recvfrom(Data.Ptr, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+				throw SockErr(WSAGetLastError());
 			return Rtn;
-		}
-		String Socket::recvfromS(SockAddr &Addr, SizeL Num, int Flags) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (TmOuts[0] != MAX_INT32)
-			{
-				fd_set Tmp;
-				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
-				timeval TimeOut;
-				TimeOut.tv_sec = TmOuts[0];
-				TimeOut.tv_usec = TmOuts[1];
-				int Rtn = select(0, &Tmp, 0, 0, &TimeOut);
-				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			}
-			String Rtn(char(0), Num);
-			SOCKADDR_STORAGE Tmp;
-			int TmpLen = sizeof(Tmp);
-			int LenRecv = ::recvfrom(Data.Ptr, (char *)Rtn.GetData(), Rtn.Length(), Flags, (sockaddr *)&Tmp, &TmpLen);
-			if (LenRecv == SOCKET_ERROR) throw SockErr(WSAGetLastError());
-			Addr.Init(&Tmp);
-			return Rtn.SubStr(0, LenRecv);
-		}
-		SockAddr Socket::getsockname() {
-			return SockName;
-		}
-		SockAddr Socket::getpeername() {
-			return PeerName;
 		}
 		void Socket::settimeout(double Sec) {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			int Rtn = 0;
+			unsigned long IsNoBlk = 0;
 			if (Sec == -1)
 			{
-				TmOuts[0] = 0;
-				Rtn = ioctlsocket(Data.Ptr, FIONBIO, &TmOuts[0]);
+				if (SockLock) IsNoBlk = 1;
 				TmOuts[0] = MAX_INT32;
 				TmOuts[1] = 0;
 			}
 			else
 			{
+				IsNoBlk = 1;
 				TmOuts[0] = Sec;
 				TmOuts[1] = Sec * 100000;
 				TmOuts[1] %= 1000000;
-				unsigned long Tmp = 1;
-				Rtn = ioctlsocket(Data.Ptr, FIONBIO, &Tmp);
 			}
+			Rtn = ioctlsocket(Data.Ptr, FIONBIO, &IsNoBlk);
 			if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
 		}
 		SockAddr::SockAddr(void *Bytes) {
@@ -1361,9 +1570,6 @@ namespace Utils {
 			}
 			delete[] TmpStr;
 			delete TmpDat1;
-		}
-		SockAddr::SockAddr() {
-			Data = 0;
 		}
 		SockAddr::SockAddr(const SockAddr &Cpy) {
 			Data = 0;
@@ -1508,10 +1714,6 @@ namespace Utils {
 			}
 			return 0;
 		}
-		SockAddr::SockAddr(SockAddr &&Cpy) {
-			Data = Cpy.Data;
-			Cpy.Data = 0;
-		}
 		SockAddr &SockAddr::operator=(const SockAddr &Cpy) {
 			DeInitData();
 			if (Cpy.Data != 0)
@@ -1530,12 +1732,6 @@ namespace Utils {
 			}
 			return *this;
 		}
-		SockAddr &SockAddr::operator=(SockAddr &&Cpy) {
-			void *Tmp = Data;
-			Data = Cpy.Data;
-			Cpy.Data = Tmp;
-			return *this;
-		}
 		int SockAddr::GetSize() const{
 			if (Data == 0) return 0;
 			switch (((sockaddr_in *)Data)->sin_family) {
@@ -1547,12 +1743,6 @@ namespace Utils {
 				return 0;
 			}
 			return 0;
-		}
-		void *SockAddr::GetData() const{
-			return Data;
-		}
-		SockAddr::~SockAddr() {
-			DeInitData();
 		}
 	}
 	//=======================================================END SOCK==============================================================
