@@ -3,10 +3,10 @@
 namespace Utils {
 	namespace fs {
 		FileError::FileError() {}
-		DriveBase::DriveBase() {}
+//		DriveBase::DriveBase() {}
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {}
-		FileBase::FileBase() {}
+//		FileBase::FileBase() {}
 
 		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;
@@ -87,13 +87,13 @@ namespace Utils {
 			Drv->ErrNotRead = false;
 			return Rtn;
 		}
-		Array<String> GetFileExt(String Path, String Ext) {
+		Array<String> GetFileExt(String Path, const Array<String> &Exts) {
 			Array<String> Rtn;
 			DriveBase *Drv = 0;
 			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
 			ErrorFuncId = FUNC_GETF_EXT;
 			try {
-				Rtn = Drv->GetFileExt(Path, Ext);
+				Rtn = Drv->GetFileExt(Path, Exts);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
 			catch (FileError Msg) {
@@ -158,13 +158,13 @@ namespace Utils {
 			if (GetDrvNPath(Path, Drv) != 0) return false;
 			return Drv->IsDir(Path);
 		}
-		Array<wString> GetFileExt(wString Path, wString Ext) {
+		Array<wString> GetFileExt(wString Path, const Array<wString> &Exts) {
 			Array<wString> Rtn;
 			DriveBase *Drv = 0;
 			if (GetDrvNPath(Path, Drv) != 0) return Rtn;
 			ErrorFuncId = FUNC_GETF_EXT;
 			try {
-				Rtn = Drv->GetFileExt(Path, Ext);
+				Rtn = Drv->GetFileExt(Path, Exts);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
 			catch (FileError Msg) {
@@ -297,5 +297,117 @@ namespace Utils {
 			}
 			return Rtn;
 		}
+		String ParseModeLong(unsigned long Md) {
+			String Rtn;
+			if (Md & F_IN && Md && F_OUT)
+			{
+				if (Md & F_TRUNC) Rtn = "w+";
+				else if (Md & F_NOREPLACE) Rtn = "r+";
+				else if (Md & F_APP) Rtn = "a+";
+			}
+			else if (Md & F_IN) Rtn = "r";
+			else if (Md & F_OUT && Md & F_APP) Rtn = "a";
+			else if (Md & F_OUT) Rtn = "w";
+			if (Md & F_BIN) Rtn += 'b';
+			return Rtn;
+		}
+	}
+	unsigned long fRdBuff::BuffWorker(void *hThread, unsigned long Id, void *Params) {
+		UtilsThread CurThrd(Id);
+		fRdBuff *ThisObj = (fRdBuff *)Params;
+		CondVar *TheCond = ThisObj->TheCond;
+		TheCond->GetInternLock()->Acquire();
+		while (ThisObj->BlkLen > 0) {
+			ThisObj->Buff.PutBytes(ThisObj->FlObj->Read(ThisObj->BlkLen));
+			if (ThisObj->Buff.Length() >= ThisObj->MinMax[1] ||
+				(ThisObj->BlkLen & 0x80000000 > 0) ||
+				ThisObj->Buff.Length() + ThisObj->Pos >= ThisObj->FlLen)
+				TheCond->wait();
+		}
+		TheCond->IsLockRef = false;
+		DestroyCond(TheCond);
+		ThisObj->TheCond = 0;
+		ThisObj->FlObj->Close();
+		ThisObj->FlObj = 0;
+		ThisObj->TheCond = 0;
+		TheCond->GetInternLock()->Release();
+		return 0;
+	}
+	void fRdBuff::BuffGetFunc(void *Obj, SizeL NumBytes) {
+		((fRdBuff *)Obj)->Pos += NumBytes;
+	}
+	fRdBuff::fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long InBlkLen) {
+		Pos = Fl->Tell();
+		Fl->Seek(0, fs::SK_END);
+		FlLen = Fl->Tell();
+		Fl->Seek(Pos);
+		Buff.GetFunc = BuffGetFunc;
+		Buff.CbObj = this;
+		BlkLen = InBlkLen;
+		MinMax[0] = Min;
+		MinMax[1] = Max;
+		TheCond = GetCondVar(GetSingleMutex());
+		Thrd.Init(BuffWorker, this);
+	}
+	bool fRdBuff::Seek(long long SkPos, int From) {
+		BlkLen |= 0x80000000;
+		TheCond->GetInternLock()->Acquire();
+		FlObj->Seek(SkPos, From);
+		if (From == fs::SK_SET) SkPos -= Pos;
+		else if (From == fs::SK_END) SkPos = FlLen - Pos;
+		else if (From != fs::SK_CUR) SkPos = FlObj->Tell() - Pos;
+		Buff.Clear(SkPos);
+		TheCond->notify();
+		BlkLen &= 0x7FFFFFFF;
+		TheCond->GetInternLock()->Release();
+		return true;
+	}
+	long long fRdBuff::Tell() {
+		return Pos;
+	}
+	unsigned long fRdBuff::Write(const ByteArray &Data) {
+		throw fs::FileError("NI", "NotImplemented: Write method is not defined for read only buffer");
+	}
+	void fRdBuff::Close() {
+		TheCond->GetInternLock()->Acquire();
+		BlkLen = 0;
+		TheCond->notify();
+		TheCond->GetInternLock()->Release();
+	}
+	fRdBuff::~fRdBuff() {
+		Close();
+		Thrd.Join();
+	}
+	wString fRdBuff::GetName() {
+		return FlObj->GetName();
+	}
+	unsigned long fRdBuff::GetMode() {
+		return FlObj->GetMode();
+	}
+	ByteArray fRdBuff::Read(unsigned long Num) {
+		if (Pos + Num > FlLen) Num = FlLen - Pos;
+		SizeL CurPos = 0;
+		ByteArray Rtn(Byte(0), Num);
+		while (Num > MinMax[1]) {
+			if (TheCond->GetInternLock()->TryAcquire())
+			{
+				if (Buff.Length() < MinMax[0]) TheCond->notify();
+				TheCond->GetInternLock()->Release();
+			}
+			Buff.GetBytes(Rtn, MinMax[1], CurPos);
+			CurPos += MinMax[1];
+			Num -= MinMax[1];
+		}
+		if (TheCond->GetInternLock()->TryAcquire())
+		{
+			if (Buff.Length() < MinMax[0]) TheCond->notify();
+			TheCond->GetInternLock()->Release();
+		}
+		Buff.GetBytes(Rtn, Num, CurPos);
+		return Rtn;
+	}
+	ByteArray fRdBuff::Read() {
+		if (FlLen - Pos <= MAX_INT32) return Read(FlLen - Pos);
+
 	}
 }
