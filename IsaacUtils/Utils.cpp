@@ -70,6 +70,7 @@ namespace Utils{
 	}
 	BigLong::BigLong(const Byte *Data, SizeL LenData) {
 		Longs.SetLength((LenData + 3) / 4);
+		Sign = false;
 		if (LenData % 4 > 0) Longs.AtEnd() = 0;
 		if (IsBigEnd)
 		{
@@ -98,6 +99,17 @@ namespace Utils{
 	BigLong BigLong::MulPow(SizeL Num){
 		BigLong Rtn = *this;
 		Rtn.Longs.AddBeg(Num, 0);
+		return Rtn;
+	}
+	ByteArray BigLong::ToByteArray() {
+		if (Utils::IsBigEnd) return ByteArray((Byte *)Longs.GetData(), Longs.Length() * 4);
+		ByteArray Rtn(Utils::Byte(0), Longs.Length() * 4);
+		for (SizeL c = 0; c < Longs.Length(); ++c) {
+			Rtn[c * 4 + 3] = Longs[c] & 0xFF;
+			Rtn[c * 4 + 2] = (Longs[c] >> 8) & 0xFF;
+			Rtn[c * 4 + 1] = (Longs[c] >> 16) & 0xFF;
+			Rtn[c * 4] = (Longs[c] >> 24) & 0xFF;
+		}
 		return Rtn;
 	}
 	SizeL BigLong::RemNulls(){
@@ -309,28 +321,28 @@ namespace Utils{
 	}
 	void BigLong::TowStr(wString &wStr, Byte Radix){
 		if (Radix == 0) return;
+		BigLong BlRadix = (unsigned long)Radix;
 		BigLong Tmp = (*this);
 		char Digits[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 		wStr = "";
 		while (Tmp > (unsigned long)0){
-			BigLong *Val = Tmp.DivRem((unsigned long)Radix);
-			Tmp -= Val[1];
+			BigLong *Val = Tmp.DivRem(BlRadix);
 			wStr.Insert(0, Digits[Val[1].GetByte(0)]);
-			Tmp = Val[0];
+			Tmp = (BigLong &&)Val[0];
 			delete[] Val;
 		}
 		if (Sign) wStr.Insert(0, '-');
 	}
 	void BigLong::ToStr(String &Str, Byte Radix){
 		if (Radix == 0) return;
+		BigLong BlRadix = (unsigned long)Radix;
 		BigLong Tmp = (*this);
 		char Digits[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 		Str = "";
 		while (Tmp > (unsigned long)0){
-			BigLong *Val = Tmp.DivRem((unsigned long)Radix);
-			Tmp -= Val[1];
+			BigLong *Val = Tmp.DivRem(BlRadix);
 			Str.Insert(0, Digits[Val[1].GetByte(0)]);
-			Tmp = Val[0];
+			Tmp = (BigLong &&)Val[0];
 			delete[] Val;
 		}
 		if (Sign) Str.Insert(0, '-');
@@ -344,6 +356,43 @@ namespace Utils{
 			if (Longs[c] != 0) return false;
 		}
 		return true;
+	}
+	SizeL BigLong::ToSizeL() const {
+		if (Longs.Length() == 0) return 0;
+#ifdef _WIN64
+		if (Longs.Length() == 1) return Longs[0];
+		if (IsBigEnd) return ((SizeL *)Longs.GetData())[0];
+		else
+		{
+			SizeL Rtn = Longs[0];
+			Rtn <<= 32;
+			Rtn |= Longs[1];
+			return Rtn;
+		}
+#else
+		return Longs[0];
+#endif
+	}
+	long long BigLong::ToLL() const {
+		if (Longs.Length() == 0) return 0;
+		long long Rtn = 0;
+		if (Longs.Length() == 1) Rtn = Longs[0];
+		else if (IsBigEnd) Rtn = ((long long *)Longs.GetData())[0];
+		else
+		{
+			Rtn = Longs[0];
+			Rtn <<= 32;
+			Rtn |= Longs[1];
+			return Rtn;
+		}
+		if (Sign)
+		{
+			Rtn -= 1;
+			Rtn &= ~0x8000000000000000;
+			Rtn = ~Rtn;
+		}
+		else Rtn &= ~0x8000000000000000;
+		return Rtn;
 	}
 	void BigLong::Minus(){
 		Sign = !Sign;
@@ -988,10 +1037,23 @@ namespace Utils{
 		Last = 0;
 	}
 	ByteArray ConQueue::GetBytes(SizeL NumBytes) {
-		ByteArray Rtn;
+		ByteArray Rtn(Byte(0), NumBytes);
+		GetBytes(Rtn, NumBytes, 0);
+		return Rtn;
+	}
+	ByteArray ConQueue::TryGetBytes(SizeL NumBytes) {
+		ByteArray Rtn(Byte(0), NumBytes);
+		Rtn.SetLength(TryGetBytes(Rtn, NumBytes, 0));
+		return Rtn;
+	}
+	void ConQueue::GetBytes(ByteArray &Into, SizeL NumBytes, SizeL At) {
 		QBlk *MyLast = 0;
-		while (true){
+		SizeL PrevRead = 0;
+		while (true) {
 			LastLock->Acquire();
+			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
+			TotBytes -= PrevRead;
+			if (NumBytes == 0) break;
 			if (MyLast != Last) MyLast = Last;
 			else break;//break while the lock is held to preserve the current synchronized state
 			LastLock->Release();
@@ -1001,29 +1063,30 @@ namespace Utils{
 				if (First->Data.Length() <= NumBytes)
 				{
 					ByteArray Tmp((ByteArray &&)First->Data);
-					Rtn += Tmp;
-					NumBytes -= Tmp.Length();
+					Into.WriteFromAt(Tmp, At);
+					SizeL CurRd = Tmp.Length();
+					PrevRead += CurRd;
+					NumBytes -= CurRd;
+					At += CurRd;
 					delete First;
 					First = Next;
 				}
 				else
 				{
-					Rtn += First->Data.SubArr(0, NumBytes);
+					Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
 					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					PrevRead += NumBytes;
+					At += NumBytes;
 					NumBytes = 0;
-				}
-				if (NumBytes == 0)
-				{
-					ChgBytes(Rtn.Length(), false);
-					return Rtn;
 				}
 			}
 		}
 		while (NumBytes > 0) {
 			if (First->Data.Length() <= NumBytes)
 			{
+				PrevRead = First->Data.Length();
 				ByteArray Tmp((ByteArray &&)First->Data);
-				Rtn += Tmp;
+				Into.WriteFromAt(Tmp, At);
 				NumBytes -= Tmp.Length();
 				delete First;
 				First = 0;
@@ -1031,16 +1094,56 @@ namespace Utils{
 			}
 			else
 			{
-				Rtn += First->Data.SubArr(0, NumBytes);
+				PrevRead = NumBytes;
+				Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
 				First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
 				NumBytes = 0;
 			}
+			At += PrevRead;
+			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
+			TotBytes -= PrevRead;
 			if (NumBytes == 0) break;
 			LastCond->wait();
 		}
-		ChgBytes(Rtn.Length(), false);
 		LastLock->Release();
-		return Rtn;
+	}
+	SizeL ConQueue::TryGetBytes(ByteArray &Into, SizeL NumBytes, SizeL At) {
+		QBlk *MyLast = 0;
+		SizeL PrevRead = 0;
+		while (true) {
+			LastLock->Acquire();
+			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
+			TotBytes -= PrevRead;
+			if (NumBytes == 0) break;
+			if (MyLast != Last) MyLast = Last;
+			else break;//break while the lock is held to preserve the current synchronized state
+			LastLock->Release();
+			while (First != MyLast)
+			{
+				QBlk *Next = First->Next;
+				if (First->Data.Length() <= NumBytes)
+				{
+					ByteArray Tmp((ByteArray &&)First->Data);
+					Into.WriteFromAt(Tmp, At);
+					SizeL CurRd = Tmp.Length();
+					PrevRead += CurRd;
+					NumBytes -= CurRd;
+					At += CurRd;
+					delete First;
+					First = Next;
+				}
+				else
+				{
+					Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
+					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					PrevRead += NumBytes;
+					At += NumBytes;
+					NumBytes = 0;
+				}
+			}
+		}
+		LastLock->Release();
+		return At;
 	}
 	ByteArray ConQueue::PeekBytes(SizeL NumBytes) {
 		ByteArray Rtn;
@@ -1085,47 +1188,12 @@ namespace Utils{
 		LastLock->Release();
 		return Rtn;
 	}
-	ByteArray ConQueue::TryGetBytes(SizeL NumBytes) {
-		ByteArray Rtn;
-		QBlk *MyLast = 0;
-		while (MyLast != Last) {
-			LastLock->Acquire();
-			if (MyLast != Last) MyLast = Last;
-			else break;//break while the lock is held to preserve the current synchronized state
-			LastLock->Release();
-			while (First != MyLast)
-			{
-				QBlk *Next = First->Next;
-				if (First->Data.Length() <= NumBytes)
-				{
-					ByteArray Tmp((ByteArray &&)First->Data);
-					Rtn += Tmp;
-					NumBytes -= Tmp.Length();
-					delete First;
-					First = Next;
-				}
-				else
-				{
-					Rtn += First->Data.SubArr(0, NumBytes);
-					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
-					NumBytes = 0;
-				}
-				if (NumBytes == 0)
-				{
-					ChgBytes(Rtn.Length(), false);
-					return Rtn;
-				}
-			}
-		}
-		LastLock->Release();
-		ChgBytes(Rtn.Length(), false);
-		return Rtn;
-	}
 	void ConQueue::PutBytes(const ByteArray &Bytes) {
 		QBlk &Add = *new QBlk();
 		Add.Data = Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
+		TotBytes += Bytes.Length();
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1144,6 +1212,7 @@ namespace Utils{
 		Add.Data = Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
+		TotBytes += Bytes.Length();
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1157,6 +1226,52 @@ namespace Utils{
 		LastCond->notify();
 		LastLock->Release();
 	}
+	void ConQueue::Clear(SizeL NumBytes) {
+		LastLock->Acquire();
+		if (NumBytes >= TotBytes)
+		{
+			while (First != Last)
+			{
+				QBlk *Next = First->Next;
+				delete First;
+				First = Next;
+			}
+			if (Last != 0) delete Last;
+			TotBytes = 0;
+			First = 0;
+			Last = 0;
+			return;
+		}
+		while (First != Last) {
+			SizeL NumClr = First->Data.Length();
+			if (NumBytes > NumClr)
+			{
+				TotBytes -= NumClr;
+				NumBytes -= NumClr;
+				QBlk *Next = First->Next;
+				delete First;
+				First = Next;
+			}
+			else if (NumBytes == NumClr)
+			{
+				QBlk *Next = First->Next;
+				delete First;
+				First = Next;
+				TotBytes -= NumClr;
+				break;
+			}
+			else
+			{
+				First->Data.RemBeg(NumBytes);
+				TotBytes -= NumBytes;
+				break;
+			}
+		}
+		LastLock->Release();
+	}
+	SizeL ConQueue::Length() {
+		return TotBytes;
+	}
 	ConQueue::~ConQueue() {
 		LastCond->IsLockRef = false;
 		DestroyCond(LastCond);
@@ -1166,6 +1281,30 @@ namespace Utils{
 			delete First;
 			First = Cur;
 		}
+	}
+	Lock::Lock(Mutex *Obj, bool Access) {
+		LockObj = Obj;
+		Attr = Access;
+		LockObj->Acquire(Attr);
+	}
+	Lock::Lock(Lock &&Cpy) {
+		LockObj = Cpy.LockObj;
+		Attr = Cpy.Attr;
+		Cpy.LockObj = 0;
+	}
+	Lock &Lock::operator=(Lock &&Cpy) {
+		{
+			Mutex *Tmp = LockObj;
+			LockObj = Cpy.LockObj;
+			Cpy.LockObj = Tmp;
+		}
+		bool Tmp = Attr;
+		Attr = Cpy.Attr;
+		Cpy.Attr = Tmp;
+		return *this;
+	}
+	Lock::~Lock() {
+		if (LockObj) LockObj->Release(Attr);
 	}
 
 	Random::Random(){}
@@ -1312,15 +1451,17 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	union BtuLongConv{
-		unsigned long uLong;
-		Byte Bts[4];
-	};
 	bool IsBigEnd;
+	Array<BlkCiph *> LstCiph;
+	Array<MidEncSt::CiphMode> LstCiphModes;
 	void Init(){
-		BtuLongConv Test;
-		Test.uLong = 0xFF000000;
-		IsBigEnd = Test.Bts[3] > 0;
+		union BtuLongConv {
+			SizeL Num;
+			Byte Bts[sizeof(SizeL)];
+		} Test;
+		Test.Num = 0;
+		Test.Bts[0] = 0xFF;
+		IsBigEnd = (Test.Num == 0xFF);
 		fs::DriveMap.SetHashFunc(wStringHash, false);
 		sock::ErrCodes.SetHashFunc(NumHash, false);
 		OsInit();
@@ -1329,13 +1470,18 @@ namespace Utils{
 		RandTm = new Clock();
 		for (SizeL c = 1; c < 257; ++c) {
 			for (SizeL Test = 1; Test < 257; ++Test) {
-				if ((257 * Test + 1) % c == 0)
+				if ((c * Test) % 257 == 1)
 				{
 					CipherNums[c - 1] = Test - 1;
 					break;
 				}
 			}
 		}
+		LstCiph.SetLength(2);
+		LstCiph[0] = &BlkCipheros;
+		LstCiph[1] = &BlkCipheron;
+		LstCiphModes.SetLength(1);
+		LstCiphModes[0] = CmpxCBCCrypt;
 	}
 	void DeInit() {
 		OsDeInit();
@@ -1345,6 +1491,218 @@ namespace Utils{
 		while (wStr[c] != 0)++c;
 		return c;
 	}
+	SizeL BtToL(const ByteArray &Bts, SizeL &Pos, SizeL Sz) {
+		if (Pos >= Bts.Length()) return 0;
+		SizeL Rtn = 0;
+		SizeL c = sizeof(SizeL) + Pos;
+		if (c > Sz) c = Sz + Pos;
+		if (c > Bts.Length()) c = Bts.Length();
+		while (Pos < c) {
+			Rtn <<= 8;
+			Rtn |= Bts[Pos];
+			++Pos;
+		}
+		return Rtn;
+	}
+	SizeL BtToL(const ByteArray &Bts) {
+		SizeL Rtn = 0;
+		SizeL c = sizeof(SizeL);
+		if (c > Bts.Length()) c = Bts.Length();
+		while (c-- > 0) {
+			Rtn <<= 8;
+			Rtn |= Bts[c];
+		}
+		return Rtn;
+	}
+	ByteArray LToBt(SizeL Num, SizeL Align) {
+		if (Align == 0)
+		{
+			ByteArray Rtn(Byte(0), sizeof(Num));
+			for (SizeL c = 0; c < sizeof(Num); ++c) {
+				if (Num == 0)
+				{
+					Rtn.SetLength(c);
+					break;
+				}
+				Rtn[c] = Num & 0xFF;
+				Num >>= 8;
+			}
+			return Rtn;
+		}
+		else
+		{
+			ByteArray Rtn(Byte(0), Align);
+			while (Align-- > 0) {
+				Rtn[Align] = Num & 0xFF;
+				Num >>= 8;
+			}
+			return Rtn;
+		}
+	}
+	void WriteLToBt(SizeL Num, ByteArray &Dest, SizeL &Pos, SizeL Align) {
+		if (Align == 0)
+		{
+			do {
+				if (Dest.Length() >= Pos) Dest += Num & 0xFF;
+				else Dest[Pos] = Num & 0xFF;
+				++Pos;
+				Num >>= 8;
+			} while (Num > 0);
+		}
+		else
+		{
+			if (Align + Pos < Dest.Length()) Dest.SetLength(Align + Pos);
+			while (Align-- > 0) {
+				Dest[Pos++] = Num & 0xFF;
+				Num >>= 8;
+			}
+		}
+	}
+	void PackStrLen(String &Dest, SizeL &Pos, const String &StrSrc, SizeL HeadLen) {
+		if (Dest.Length() < Pos + StrSrc.Length() + HeadLen) Dest.SetLength(Pos + StrSrc.Length() + HeadLen);
+		WriteLToBt(StrSrc.Length(), (ByteArray &)Dest, Pos, HeadLen);
+		for (SizeL c = 0; c < Dest.Length(); ++c, ++Pos) Dest[c] = StrSrc[Pos];
+	}
+	String UnpackStrLen(const String &Str, SizeL HeadLen, SizeL &Pos) {
+		SizeL Len = BtToL((const ByteArray &)Str, Pos, HeadLen);
+		return Str.SubStr(Pos, Pos += Len);
+	}
+	Array<String> UnpackListStrFl(fs::FileBase *Fl, SizeL HeadLen, SizeL StrHeadLen) {
+		Array<String> Rtn("", BtToL(Fl->Read(HeadLen)));
+		for (String &Elem : Rtn) Elem = Fl->Read(BtToL(Fl->Read(StrHeadLen)));
+		return Rtn;
+	}
+	Array<String> UnpackListStr(const String &StrSrc, SizeL HeadLen, SizeL StrHeadLen) {
+		Array<String> Rtn;
+		SizeL Pos = 0;
+		Rtn.SetLength(BtToL((const ByteArray &)StrSrc, Pos, HeadLen));
+		Pos += HeadLen;
+		for (String &Elem : Rtn) Elem = UnpackStrLen(StrSrc, StrHeadLen, Pos);
+		return Rtn;
+	}
+	Array<String> UnpackListStr(const String &StrSrc, SizeL HeadLen, SizeL StrHeadLen, SizeL &Pos) {
+		Array<String> Rtn;
+		Rtn.SetLength(BtToL((const ByteArray &)StrSrc, Pos, HeadLen));
+		Pos += HeadLen;
+		for (String &Elem : Rtn) Elem = UnpackStrLen(StrSrc, StrHeadLen, Pos);
+		return Rtn;
+	}
+	void PackListStrFl(fs::FileBase *Fl, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen) {
+		Fl->Write(LToBt(LstStr.Length(), HeadLen));
+		for (SizeL c = 0; c < LstStr.Length(); ++c) {
+			Fl->Write(LToBt(LstStr[c].Length(), StrHeadLen));
+			Fl->Write((const ByteArray &)LstStr[c]);
+		}
+	}
+	void PackListStr(String &Dest, SizeL &Pos, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen) {
+		{
+			SizeL LookAheadLen = HeadLen + StrHeadLen * LstStr.Length();
+			for (SizeL c = 0; c < LstStr.Length(); ++c) LookAheadLen += LstStr[c].Length();
+			if (Dest.Length() < Pos + LookAheadLen) Dest.SetLength(Pos + LookAheadLen);
+		}
+		WriteLToBt(LstStr.Length(), (ByteArray &)Dest, Pos, HeadLen);
+		for (SizeL c = 0; c < LstStr.Length(); ++c) {
+			WriteLToBt(LstStr[c].Length(), (ByteArray &)Dest, Pos, StrHeadLen);
+			LstStr[c].CopyTo((char *)Dest.GetData() + Pos, LstStr[c].Length());
+			Pos += LstStr[c].Length();
+		}
+	}
+	Array<String> SplitStr(const String &Str, SizeL HeadLen) {
+		Array<String> Rtn(String(), Str.Length() / (HeadLen + 1));
+		SizeL CurPos = 0;
+		for (SizeL c = 0; c < Rtn.Length(); ++c) {
+			SizeL LenPart = BigLong((Byte *)(Str.GetData() + CurPos), HeadLen).ToSizeL();
+			Rtn[c] = Str.SubStr(CurPos, CurPos += LenPart + 1);//Not a mistake to increment CurPos in the second parameter to provide the future position
+			if (CurPos >= Str.Length())
+			{
+				Rtn.SetLength(c + 1);
+				break;
+			}
+		}
+		return Rtn;
+	}
 	Mutex::~Mutex() {}
 	const Utils::BigLong Two((unsigned long)2), Six((unsigned long)6), One((unsigned long)1), Zero((unsigned long)0);
+	AbsFile::AbsFile() {
+		Pos = 0;
+		Meta[0] = 0;
+		Meta[1] = 1;
+		TheData = 0;
+	}
+	AbsFile::AbsFile(fs::FileBase *Fl) {
+		Pos = 0;
+		Meta[0] = 1;
+		Meta[1] = 1;
+		TheData = Fl;
+	}
+	AbsFile::AbsFile(ByteArray &BArr) {
+		Pos = 0;
+		Meta[0] = 2;
+		Meta[1] = 1;
+		TheData = &BArr;
+	}
+	AbsFile::AbsFile(String &Str) {
+		Pos = 0;
+		Meta[0] = 2;
+		Meta[1] = 1;
+		TheData = &Str;
+	}
+	void AbsFile::SetData(fs::FileBase *Fl) {
+		Pos = 0;
+		Meta[0] = 1;
+		Meta[1] = 1;
+		TheData = Fl;
+	}
+	void AbsFile::SetData(ByteArray *BArr) {
+		Pos = 0;
+		Meta[0] = 2;
+		Meta[1] = 1;
+		TheData = BArr;
+	}
+	void AbsFile::PreAlloc(BigLong NumAlloc) {
+		if (Meta[0] == 2) ((ByteArray *)TheData)->SetLength(NumAlloc.ToSizeL());
+	}
+	void AbsFile::Write(const ByteArray &Data) {
+		if (Meta[0] == 2)
+		{
+			ByteArray &CurData = *(ByteArray *)TheData;
+			if (CurData.Length() < Pos + Data.Length())
+				CurData.SetLength(((Pos + Data.Length() - 1 + Meta[1]) / Meta[1]) * Meta[1]);
+			SizeL c;
+			for (c = 0; c < Data.Length(); ++c, ++Pos) {
+				CurData[Pos] = Data[c];
+			}
+			for (c = Pos; c < CurData.Length(); ++c) {
+				CurData[c] = 0;
+			}
+		}
+		else if (Meta[0] == 1)
+		{
+			fs::FileBase *CurData = (fs::FileBase *)TheData;
+			CurData->Write(Data);
+		}
+	}
+	void AbsFile::Read(ByteArray &Data, SizeL Len) const{
+		if (Meta[0] == 2)
+		{
+			if (Pos < ((ByteArray *)TheData)->Length())
+				Data = ((ByteArray *)TheData)->SubArr(Pos, Pos + Len);
+			Pos += Data.Length();
+		}
+		else if (Meta[0] == 1) Data = ((fs::FileBase *)TheData)->Read(Len);
+		else Data.SetLength(0);
+	}
+	BigLong AbsFile::GetLen() const {
+		if (Meta[0] == 2) return ((ByteArray *)TheData)->Length();
+		else if (Meta[0] == 1)
+		{
+			fs::FileBase *CurData = (fs::FileBase *)TheData;
+			long long PrevPos = CurData->Tell();
+			CurData->Seek(0, fs::SK_END);
+			BigLong Rtn((unsigned long long)CurData->Tell() - PrevPos);
+			CurData->Seek(PrevPos);
+			return Rtn;
+		}
+		else return (unsigned long)0;
+	}
 }
