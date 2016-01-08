@@ -37,6 +37,7 @@ namespace Utils{
 		String(const String &StrCp);
 		String(const char ChFill, const SizeL Len);
 		~String();
+		void SetLength(SizeL Len);
 		bool operator==(const String &Cmp) const;
 		bool operator!=(const String &Cmp) const;
 		bool operator<(const String &Cmp) const;
@@ -46,8 +47,12 @@ namespace Utils{
 		String operator+(const String &Add) const;
 		String &operator=(const String &Cp);
 		String &operator=(String &&Cp);
+		String &operator=(ByteArray &&Cp);
 		String &operator+=(const String &Add);
 		String &operator+=(const char Add);
+		explicit operator ByteArray &();
+		void CopyTo(char *To, SizeL LenTo) const;
+		void CopyTo(wchar_t *To, SizeL LenTo) const;
 		bool Contains(const char Val) const;
 		SizeL GetNumCh(const char Val) const;
 		//null terminated string allocated using new wchar_t[len + 1]
@@ -108,6 +113,7 @@ namespace Utils{
 		wString(const wString &StrCp);
 		wString(const wchar_t ChFill, const SizeL Len);
 		~wString();
+		void SetLength(SizeL Len);
 		bool operator==(const wString &Cmp) const;
 		bool operator!=(const wString &Cmp) const;
 		bool operator<(const wString &Cmp) const;
@@ -120,6 +126,7 @@ namespace Utils{
 		wString &operator=(wString &&Cp);
 		wString &operator+=(const wString &Add);
 		wString &operator+=(const wchar_t Add);
+		void CopyTo(wchar_t *To, SizeL LenTo) const;
 		bool Contains(const wchar_t Val) const;
 		SizeL GetNumCh(const wchar_t Val) const;
 		//null terminated string allocated using new wchar_t[len + 1]
@@ -171,6 +178,7 @@ namespace Utils{
 		BigLong(const Byte *Data, SizeL LenData);
 		void IMulPow(SizeL Num);
 		BigLong MulPow(SizeL Num);
+		ByteArray ToByteArray();
 		//LimNum is the maximum number of bytes to provide
 		BigLong &IMulLim(const BigLong &MulBy, SizeL LimNum);
 		SizeL RemNulls();
@@ -191,6 +199,8 @@ namespace Utils{
 		bool FromwStr(const wString &wStr, Byte Radix = 10);
 		void TowStr(wString &wStr, Byte Radix = 10);
 		bool IsPow2() const;
+		SizeL ToSizeL() const;
+		long long ToLL() const;
 		//returns an array of 2 BigLongs that must be deallocated with delete []
 		//the array returned is in the form {Quotient, Remainder}
 		BigLong* DivRem(const BigLong &Denom) const;
@@ -271,6 +281,8 @@ namespace Utils{
 	};
 	extern ISAACUTILS_API BlkCiph BlkCipheron;
 	extern ISAACUTILS_API BlkCiph BlkCipheros;
+	extern ISAACUTILS_API Array<BlkCiph *> LstCiph;
+	extern ISAACUTILS_API Array<MidEncSt::CiphMode> LstCiphModes;
 	class ISAACUTILS_API Clock{
 	private:
 		unsigned long NumTimes;
@@ -314,6 +326,7 @@ namespace Utils{
 		UtilsThread(unsigned long ThreadId);
 		UtilsThread &operator=(UtilsThread &&Copy);
 		UtilsThread &operator=(const UtilsThread &Copy);
+		void Init(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams);
 		void SetThread(unsigned long Id);
 		void SetThisToCurr();
 		bool Suspend();
@@ -364,10 +377,12 @@ namespace Utils{
 		Mutex *LockObj;
 	public:
 		Lock(Mutex *Obj, bool Access = false);
+		Lock(Lock &&Cpy);
+		Lock &operator=(Lock &&Cpy);
 		~Lock();
 	};
 	//Concurrent Queue: allows one to insert stuff at the end while simultaneously retreiving from the beginning
-	class ISAACUTILS_API ConQueue {
+	class ISAACUTILS_API ConQueue {//Not Tested
 	public:
 		struct QBlk {
 			QBlk *Next;
@@ -383,22 +398,19 @@ namespace Utils{
 	public:
 		ConQueue();
 		ByteArray GetBytes(SizeL NumBytes);
+		void GetBytes(ByteArray &Into, SizeL NumBytes, SizeL At = 0);
+		SizeL TryGetBytes(ByteArray &Into, SizeL NumBytes, SizeL At = 0);//Returns the position where it left off (NumBytesRead = Rtn - At and maxed at NumBytes)
 		ByteArray PeekBytes(SizeL NumBytes);
 		ByteArray TryGetBytes(SizeL NumBytes);
 		void PutBytes(const ByteArray &Bytes);
 		void PutBytes(ByteArray &&Bytes);
+		void Clear(SizeL NumBytes);
+		SizeL Length();
 		~ConQueue();
-	};/*
-	class ISAACUTILS_API AsyncTask {
-	public:
-		bool Done;
-		CondVar *TheCond;
-		virtual bool TryRun() = 0;
-		virtual void WaitOnce() = 0;
-		virtual ~AsyncTask();
+
+		void *CbObj;
+		void(*GetFunc)(void *Obj, SizeL NumBytes);
 	};
-	extern AsyncTask *OpThrdTasks;
-	extern UtilsThread AsyncOpThrd;*/
 
 	ISAACUTILS_API wString FromNumber(unsigned long Num, unsigned char Radix = 10);
 	ISAACUTILS_API SizeL StringHash(String Str, SizeL Range);
@@ -474,7 +486,7 @@ namespace Utils{
 		*   Array<wString> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
 		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("C:/home/John.Doe/Music", "mp3");
 		*/
-		ISAACUTILS_API Array<wString> GetFileExt(wString Path, wString Ext);
+		ISAACUTILS_API Array<wString> GetFileExt(wString Path, const Array<wString> &Exts);
 		ISAACUTILS_API FileDesc Stat(wString Path);
 		ISAACUTILS_API Array<FileDesc> ListDirStats(wString Path);
 		ISAACUTILS_API wString Getcwd();
@@ -492,7 +504,7 @@ namespace Utils{
 		*   Windows: Array<String> Mp3Files = GetFileExt("C:/Users/John.Doe/Music", "mp3");
 		*   Linux/Unix: Array<String> Mp3Files = GetFileExt("C:/home/John.Doe/Music", "mp3");
 		*/
-		Array<String> ISAACUTILS_API GetFileExt(String Path, String Ext);
+		Array<String> ISAACUTILS_API GetFileExt(String Path, const Array<String> &Exts);
 		FileDescA ISAACUTILS_API Stat(String Path);
 		Array<FileDescA> ISAACUTILS_API ListDirStats(String Path);
 		String ISAACUTILS_API GetcwdA();
@@ -513,12 +525,12 @@ namespace Utils{
 		//abstract file class representing a file from a drive
 		class ISAACUTILS_API FileBase {
 		public:
-			FileBase();
+//			FileBase();
 			virtual ByteArray Read() = 0;
 			virtual ByteArray Read(unsigned long Num) = 0;
 			virtual bool Seek(long long Pos, int From = SK_SET) = 0;
 			virtual long long Tell() = 0;
-			virtual unsigned long Write(ByteArray Data) = 0;
+			virtual unsigned long Write(const ByteArray &Data) = 0;
 			virtual void Close() = 0;
 			virtual wString GetName() = 0;
 			virtual unsigned long GetMode() = 0;
@@ -526,27 +538,27 @@ namespace Utils{
 		};
 		class ISAACUTILS_API DriveBase {
 		public:
-			DriveBase();
+//			DriveBase();
 			FileError Err;
 			bool ErrNotRead;
 			virtual wString GetName() = 0;
 			virtual String GetNameA() = 0;
-			virtual FileBase *OpenFile(wString Path, unsigned long Mode) = 0;
-			virtual FileBase *OpenFile(String Path, unsigned long Mode) = 0;
-			virtual bool IsFile(wString Path) = 0;
-			virtual bool IsFile(String Path) = 0;
-			virtual bool Exists(wString Path) = 0;
-			virtual bool Exists(String Path) = 0;
-			virtual bool IsDir(wString Path) = 0;
-			virtual bool IsDir(String Path) = 0;
-			virtual Array<wString> ListDir(wString Path) = 0;
-			virtual Array<String> ListDir(String Path) = 0;
-			virtual FileDesc Stat(wString Path) = 0;
-			virtual FileDescA Stat(String Path) = 0;
-			virtual Array<FileDesc> ListDirSt(wString Path) = 0;
-			virtual Array<FileDescA> ListDirSt(String Path) = 0;
-			virtual Array<wString> GetFileExt(wString Path, wString Ext) = 0;
-			virtual Array<String> GetFileExt(String Path, String Ext) = 0;
+			virtual FileBase *OpenFile(const wString &Path, unsigned long Mode) = 0;
+			virtual FileBase *OpenFile(const String &Path, unsigned long Mode) = 0;
+			virtual bool IsFile(const wString &Path) = 0;
+			virtual bool IsFile(const String &Path) = 0;
+			virtual bool Exists(const wString &Path) = 0;
+			virtual bool Exists(const String &Path) = 0;
+			virtual bool IsDir(const wString &Path) = 0;
+			virtual bool IsDir(const String &Path) = 0;
+			virtual Array<wString> ListDir(const wString &Path) = 0;
+			virtual Array<String> ListDir(const String &Path) = 0;
+			virtual FileDesc Stat(const wString &Path) = 0;
+			virtual FileDescA Stat(const String &Path) = 0;
+			virtual Array<FileDesc> ListDirSt(const wString &Path) = 0;
+			virtual Array<FileDescA> ListDirSt(const String &Path) = 0;
+			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
+			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
 		};
 		bool ISAACUTILS_API GetIsError(DriveBase *Drv);
 		enum OpenMode {
@@ -564,6 +576,7 @@ namespace Utils{
 		ISAACUTILS_API signed long GetDrvNPath(String &Path, DriveBase *&Drv);
 		ISAACUTILS_API signed long GetDrvNPath(wString &Path, DriveBase *&Drv);
 		ISAACUTILS_API unsigned long ParseModeStr(const String &ModeStr);
+		ISAACUTILS_API String ParseModeLong(unsigned long Md);
 	}
 	namespace sock {
 		enum AddrFam {
@@ -625,10 +638,14 @@ namespace Utils{
 			} Data;
 			SockAddr SockName;
 			SockAddr PeerName;
-			SizeL NumAccess;
 			unsigned long TmOuts[2];
+			Mutex *SockLock;
+			//base timeout [0]; high byte is seconds, low word and other byte is microseconds
+			//[1]; NumAccess except for highest bit: IsReqClose
+			unsigned long MngdTmOut[2];
 		public:
 			Socket();
+			~Socket();
 			void Init(int af = UNSPEC, int Type = STREAM, int Prot = 0);
 			void bind(const SockAddr &Addr);
 			void connect(const SockAddr &Addr);
@@ -636,10 +653,16 @@ namespace Utils{
 			void accept(Socket &Sock);
 			void listen(int AllowBuff);
 			void close();
+			void InitMngd(unsigned long MidTmOut);
+			SizeL sendBase(const char *SendDat, SizeL LenDat, int Flags = 0);
+			SizeL sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, int Flags = 0);
 			SizeL send(const ByteArray &Bytes, int Flags = 0);
 			SizeL send(const String &Bytes, int Flags = 0);
 			SizeL sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags = 0);
 			SizeL sendto(const String &Bytes, const SockAddr &Addr, int Flags = 0);
+			SizeL recvBase(char *RecvDat, SizeL LenDat, int Flags = 0);
+			//Support for reading until LenDat bytes have been read, when managed, is limited due to recvfrom behavior with other source addresses
+			SizeL recvfromBase(SockAddr &Addr, char *RecvDat, SizeL LenDat, int Flags = 0);
 			ByteArray recv(SizeL Num, int Flags = 0);
 			String recvS(SizeL Num, int Flags = 0);
 			ByteArray recvfrom(SockAddr &Addr, SizeL Num, int Flags = 0);
@@ -659,6 +682,146 @@ namespace Utils{
 		};
 
 	}
+	ISAACUTILS_API SizeL BtToL(const ByteArray &Bts, SizeL &Pos, SizeL Sz = MAX_INT);
+	ISAACUTILS_API SizeL BtToL(const ByteArray &Bts);
+	ISAACUTILS_API void WriteLToBt(SizeL Num, ByteArray &Dest, SizeL &Pos, SizeL Align = 0);
+	ISAACUTILS_API ByteArray LToBt(SizeL Num, SizeL Align = 0);
+	ISAACUTILS_API Array<String> SplitStr(const String &Str, SizeL HeadLen);
+	ISAACUTILS_API String UnpackStrLen(const String &Str, SizeL HeadLen, SizeL &Pos);
+	ISAACUTILS_API Array<String> UnpackListStrFl(fs::FileBase *Fl, SizeL HeadLen, SizeL StrHeadLen);
+	ISAACUTILS_API Array<String> UnpackListStr(const String &StrSrc, SizeL HeadLen, SizeL StrHeadLen);
+	ISAACUTILS_API Array<String> UnpackListStr(const String &StrSrc, SizeL HeadLen, SizeL StrHeadLen, SizeL &Pos);
+	ISAACUTILS_API void PackStrLen(String &Dest, SizeL &Pos, const String &StrSrc, SizeL HeadLen);
+	ISAACUTILS_API void PackListStrFl(fs::FileBase *Fl, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen);
+	ISAACUTILS_API void PackListStr(String &Dest, SizeL &Pos, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen);
+	class ISAACUTILS_API fRdBuff : public fs::FileBase {
+	private:
+		ConQueue Buff;
+		long long Pos;
+		unsigned long long FlLen;
+		fs::FileBase *FlObj;
+		unsigned long MinMax[2];
+		CondVar *TheCond;
+		unsigned long BlkLen;
+		UtilsThread Thrd;
+	public:
+		static unsigned long BuffWorker(void *hThread, unsigned long Id, void *Params);
+		static void BuffGetFunc(void *Obj, SizeL NumBytes);
+		fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen);
+		ByteArray Read();
+		ByteArray Read(unsigned long Num);
+		bool Seek(long long SkPos, int From = fs::SK_SET);
+		long long Tell();
+		unsigned long Write(const ByteArray &Data);
+		void Close();
+		wString GetName();
+		unsigned long GetMode();
+		~fRdBuff();
+	};
+	class ISAACUTILS_API AbsFile {
+	public:
+		void *TheData;
+		mutable SizeL Pos;
+		unsigned long Meta[2]; //Meta[0] is Type, Meta[1] is the Allocation BlockSize or zero for allocations for exact needed length
+		AbsFile();
+		AbsFile(fs::FileBase *Fl);
+		AbsFile(ByteArray &BArr);
+		AbsFile(String &Str);
+		void SetData(fs::FileBase *Fl);
+		void SetData(ByteArray *BArr);
+		void PreAlloc(BigLong NumAlloc);
+		void Write(const ByteArray &Data);
+		void Read(ByteArray &Data, SizeL Len) const;
+		BigLong GetLen() const;
+	};
+	// if Enc == 0 the EncProt will not send EncDat
+	class ISAACUTILS_API EncProt {
+	public:
+		sock::Socket *Sock;
+		MidEncSt *Enc;
+		SizeL BlkLen;
+		double Timeout;
+		EncProt(MidEncSt *EncSt, sock::Socket *Conn, double TmOut = 30);
+		void Recv(AbsFile NoEnc, AbsFile EncDat);
+		void Send(const AbsFile NoEnc, const AbsFile EncDat);
+	};
+	enum ReFiSys {
+		FL_OPEN, FL_READ, FL_WRITE, FL_SEEK, FL_TELL, FL_LEN,
+		FL_READ_DELIM, FL_CLOSE, FL_UPLOAD, FL_DOWNLOAD,
+		FL_LIST, FL_DEL,
+		OPT_LIST,
+		OPT_EXIT,
+		OPT_CHANGE_PASS,
+		OPT_LST_PERMS,
+		OPT_MOD_PERMS,
+		SYS_RESTART,
+		FL_EXIST,
+		FL_ISDIR,
+		FL_ISFILE,
+		SERVICE_EXEC,
+		SERVICE_EXECFL,
+		SERVICE_LIST,
+		FL_LIST_EXTS
+	};
+	enum gfeOpts {
+		FL_LS_OPT_NOT = 0x01,
+		FL_LS_OPT_BEGDOTS = 0x02
+	};
+	class RfsFile : public fs::FileBase {
+	private:
+		EncProt *Prot;
+		signed long long Pos;
+		ByteArray IdStr;
+		Mutex *FsLock;
+		String ThisfName;
+		String Md;
+	private:
+		void InternRead(ByteArray &Data, unsigned long Num);
+		bool InternSeek(long long Pos, int From);
+		long long InternTell();
+		unsigned long InternWrite(const ByteArray &Data);
+		void InternClose();
+		unsigned long long InternGetLen();
+	public:
+		RfsFile(EncProt *Serv, const String &fName, const String &Mode, Mutex *RfsLock);
+		ByteArray Read();
+		ByteArray Read(unsigned long Num);
+		bool Seek(long long Pos, int From = fs::SK_SET);
+		long long Tell();
+		unsigned long Write(const ByteArray &Data);
+		void Close();
+		wString GetName();
+		unsigned long GetMode();
+	};
+	class RfsDrv : public fs::DriveBase {//Decent TODO(Unicode support) but should(maybe) work
+	private:
+		void UniStrNi();
+		void NoImp();
+	public:
+		EncProt *Prot;
+		String Name;
+		Mutex *FsLock;
+
+		RfsDrv(EncProt *Serv, const String &Username);
+		wString GetName();
+		String GetNameA();
+		fs::FileBase *OpenFile(const wString &Path, unsigned long Mode);
+		fs::FileBase *OpenFile(const String &Path, unsigned long Mode);
+		bool IsFile(const wString &Path);
+		bool IsFile(const String &Path);
+		bool Exists(const wString &Path);
+		bool Exists(const String &Path);
+		bool IsDir(const wString &Path);
+		bool IsDir(const String &Path);
+		Array<wString> ListDir(const wString &Path);
+		Array<String> ListDir(const String &Path);
+		fs::FileDesc Stat(const wString &Path);
+		fs::FileDescA Stat(const String &Path);
+		Array<fs::FileDesc> ListDirSt(const wString &Path);
+		Array<fs::FileDescA> ListDirSt(const String &Path);
+		Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false);
+		Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false);
+	};
 	ISAACUTILS_API wString GetStrNumTest(BigLong Bl);
 	ISAACUTILS_API BigLong GetNumStrTest(wString Str);
 	ISAACUTILS_API BigLong GetNumStrTestB(ByteArray Str);
