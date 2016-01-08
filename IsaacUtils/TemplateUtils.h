@@ -17,8 +17,8 @@ namespace Utils{
 	template<typename T>
 	class Array{
 	private:
-		T * Data;
 		SizeL AllocNum;
+		T * Data;
 	public:
 		Array();
 		Array(Array<T> &&Cpy);
@@ -27,12 +27,15 @@ namespace Utils{
 		Array(const T ChFill, const SizeL Len);
 		Array(const Array<T> &Cpy, SizeL Len);
 		~Array();
+		void Take(T *StrIn, SizeL Len);
+		void Give(T *&StrOut, SizeL &Len);
 		void Swap(Array<T> &Other);
 		void AddMissing(const Array<T> &Other);
 		void AddMissing(const Array<T> &Other, SizeL Until);
 		void RemBeg(SizeL NumRem);
 		void AddBeg(SizeL NumAdd);
 		void AddBeg(SizeL NumAdd, T Val);
+		void WriteFromAt(const Array<T> &From, SizeL Beg = 0, SizeL End = MAX_INT);
 		Array<T> SubArr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;
 		void SetLength(SizeL Len);
 		bool operator==(const Array<T> &Cmp) const;
@@ -49,6 +52,7 @@ namespace Utils{
 		bool Insert(SizeL Pos, T Val);
 		bool Remove(SizeL Pos);
 		T &operator[](const SizeL Pos);
+		bool Contains(const T &Val) const;
 		bool Find(SizeL &Pos, T Val, bool PosIsStart = false);
 		bool RFind(SizeL &Pos, T Val, bool PosIsStart = false);
 		SizeL Length() const;
@@ -142,6 +146,20 @@ namespace Utils{
 	}
 
 	template<typename T>
+	void Array<T>::Take(T *StrIn, SizeL Len) {
+		Data = StrIn;
+		AllocNum = Len;
+	}
+
+	template<typename T>
+	void Array<T>::Give(T *&StrOut, SizeL &Len) {
+		StrOut = Data;
+		Len = AllocNum;
+		Data = 0;
+		AllocNum = 0;
+	}
+
+	template<typename T>
 	void Array<T>::Swap(Array<T> &Other){
 		T *TmpData = Data;
 		SizeL TmpLen = AllocNum;
@@ -152,6 +170,7 @@ namespace Utils{
 	}
 	template<typename T>
 	void Array<T>::SetLength(SizeL Len){
+		if (AllocNum == Len) return;
 		T *NewData = new T[Len];
 		for (SizeL c = 0; (c < Len) && (c < AllocNum); ++c){
 			NewData[c] = Data[c];
@@ -244,6 +263,17 @@ namespace Utils{
 		}
 		AllocNum += NumAdd;
 		Data = NewData;
+	}
+	template<typename T>
+	void Array<T>::WriteFromAt(const Array<T> &From, SizeL Beg, SizeL End) {
+		if (End - Beg > From.AllocNum) End = Beg + From.AllocNum;
+		if (End > AllocNum) End = AllocNum;
+		Data -= Beg;
+		End -= Beg;
+		for (SizeL c = 0; c < End; ++c) {
+			Data[c] = From.Data[c];
+		}
+		Data += Beg;
 	}
 	template<typename T>
 	Array<T> Array<T>::SubArr(SizeL Start, SizeL Stop, SnzL Step) const {
@@ -377,12 +407,14 @@ namespace Utils{
 			++c;
 		}
 		if (AllocNum > 0) delete[] Data;
-		const SizeL PrevAllocNum = AllocNum;
-		AllocNum += Add.AllocNum;
-		while (c < AllocNum){
-			NewData[c] = Add.Data[c - PrevAllocNum];
+		NewData += AllocNum;
+		c = 0;
+		while (c < Add.AllocNum){
+			NewData[c] = Add.Data[c];
 			++c;
 		}
+		NewData -= AllocNum;
+		AllocNum += Add.AllocNum;
 		Data = NewData;
 		return (*this);
 	}
@@ -451,6 +483,12 @@ namespace Utils{
 	template<typename T>
 	T &Array<T>::operator[](const SizeL Pos){
 		return Data[Pos];
+	}
+
+	template<typename T>
+	bool Array<T>::Contains(const T &Val) const {
+		for (SizeL c = 0; c < AllocNum; ++c) if (Data[c] == Val) return true;
+		return false;
 	}
 
 	template<typename T>
