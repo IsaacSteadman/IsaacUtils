@@ -84,6 +84,16 @@ namespace Utils{
 	String::~String(){
 		if (Data != 0) delete[] Data;
 	}
+	void String::SetLength(SizeL Len) {
+		if (AllocNum == Len) return;
+		char *NewData = new char[Len];
+		for (SizeL c = 0; (c < Len) && (c < AllocNum); ++c) {
+			NewData[c] = Data[c];
+		}
+		delete[] Data;
+		Data = NewData;
+		AllocNum = Len;
+	}
 	bool String::operator==(const String &Cmp) const{
 		if (AllocNum != Cmp.AllocNum) return false;
 		SizeL c = 0;
@@ -157,6 +167,11 @@ namespace Utils{
 		Cp.Data = 0;
 		return (*this);
 	}
+	String &String::operator=(ByteArray &&Cp) {
+		if (Data != 0) delete[] Data;
+		Cp.Give((Byte *&)Data, AllocNum);
+		return *this;
+	}
 	String &String::operator+=(const String &Add){
 		char *NewData = new char[AllocNum + Add.AllocNum];
 		SizeL c = 0;
@@ -188,12 +203,27 @@ namespace Utils{
 		Data = NewData;
 		return (*this);
 	}
+	String::operator ByteArray &() {
+		return *(ByteArray *)this;
+	}
 	char String::operator[](const SizeL Pos) const{
 		if (Pos < AllocNum) return Data[Pos];
 		else return 0;
 	}
 	char &String::operator[](const SizeL Pos){
 		return Data[Pos];
+	}
+	void String::CopyTo(char *To, SizeL LenTo) const{
+		if (AllocNum < LenTo) LenTo = AllocNum;
+		for (SizeL c = 0; c < LenTo; ++c) {
+			To[c] = Data[c];
+		}
+	}
+	void String::CopyTo(wchar_t *To, SizeL LenTo) const {
+		if (AllocNum < LenTo) LenTo = AllocNum;
+		for (SizeL c = 0; c < LenTo; ++c) {
+			To[c] = Data[c];
+		}
 	}
 	bool String::Contains(const char Val) const{
 		SizeL c = 0;
@@ -688,6 +718,16 @@ namespace Utils{
 	wString::~wString(){
 		if (Data != 0) delete[] Data;
 	}
+	void wString::SetLength(SizeL Len) {
+		if (AllocNum == Len) return;
+		wchar_t *NewData = new wchar_t[Len];
+		for (SizeL c = 0; (c < Len) && (c < AllocNum); ++c) {
+			NewData[c] = Data[c];
+		}
+		delete[] Data;
+		Data = NewData;
+		AllocNum = Len;
+	}
 	bool wString::operator==(const wString &Cmp) const{
 		if (AllocNum != Cmp.AllocNum) return false;
 		SizeL c = 0;
@@ -799,9 +839,15 @@ namespace Utils{
 	wchar_t &wString::operator[](const SizeL Pos){
 		return Data[Pos];
 	}
-	bool wString::Contains(const wchar_t Val) const{
+	void wString::CopyTo(wchar_t *To, SizeL LenTo) const {
+		if (AllocNum < LenTo) LenTo = AllocNum;
+		for (SizeL c = 0; c < LenTo; ++c) {
+			To[c] = Data[c];
+		}
+	}
+	bool wString::Contains(const wchar_t Val) const {
 		SizeL c = 0;
-		while (c < AllocNum){
+		while (c < AllocNum) {
 			if (Data[c] == Val) return true;
 			++c;
 		}
