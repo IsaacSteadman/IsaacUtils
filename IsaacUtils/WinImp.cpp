@@ -763,7 +763,7 @@ namespace Utils {
 	}
 	long long Clock::Tps = 0;
 	WSADATA WinSockData;
-	extern fs::FileBase *DbgLog;
+//	extern fs::FileBase *DbgLog;
 	void OsInit() {
 		sock::ErrCodes.SetHashFunc(NumHash);
 		sock::ErrCodes.Put(21, "Invalid address format.");
@@ -805,11 +805,11 @@ namespace Utils {
 		}
 		WORD VerReq = MAKEWORD(2, 2);
 		sock::Usable = WSAStartup(VerReq, &WinSockData) == 0 && WinSockData.wVersion == VerReq;
-		DbgLog = fs::GetFileObj(String("C:/Users/Isaac/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
+//		DbgLog = fs::GetFileObj(String("C:/Users/Isaac/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
 	}
 	void OsDeInit() {
 		if (sock::Usable) WSACleanup();
-		DbgLog->Close();
+//		DbgLog->Close();
 	}
 	void Clock::StartTime() {
 		++NumTimes;
@@ -1127,7 +1127,7 @@ namespace Utils {
 	//======================================================END THREAD=============================================================
 
 	//======================================================BEGIN SOCK=============================================================
-	fs::FileBase *DbgLog;
+/*	fs::FileBase *DbgLog;
 	unsigned long long GetSysTimeNum() {
 		unsigned long long Rtn = 0;
 		FILETIME SysTm;
@@ -1159,7 +1159,7 @@ namespace Utils {
 		HeadDat.WriteFromAt(BigLong(Data).ToByteArray(), 10, 18);
 		DbgLog->Write(HeadDat);
 		DbgLog->Flush();
-	}
+	}*/
 	namespace sock {
 		enum DbgInfs {
 			DBGINF_RECV = 0,
@@ -1285,7 +1285,7 @@ namespace Utils {
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
 				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
-				DbgLogData(ByteArray((Byte *)SendDat, LenDat), DBGINF_KYSEND);
+//				DbgLogData(ByteArray((Byte *)SendDat, LenDat), DBGINF_KYSEND);
 				timeval TimeOut;
 				TimeOut.tv_sec = MngdTmOut[0] >> 24;
 				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
@@ -1308,8 +1308,8 @@ namespace Utils {
 					else if (Rtn == SOCKET_ERROR)
 					{
 						SockErr Exc(WSAGetLastError());
-						DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
-						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+//						DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+//						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 						throw Exc;
 					}
 					else
@@ -1318,8 +1318,8 @@ namespace Utils {
 						if ((Rtn = ::send(Data.Ptr, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
 							SockErr Exc(WSAGetLastError());
-							DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
-							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+//							DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+//							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 							throw Exc;
 						}
 						if (Rtn != 0)
@@ -1327,18 +1327,18 @@ namespace Utils {
 							TmLeft = OrigTmOut;
 							CurLenDat -= Rtn;
 							SendDat += Rtn;
-							DbgLogData(Rtn, DBGINF_KYSEND);
+//							DbgLogData(Rtn, DBGINF_KYSEND);
 							if (!CurLenDat)
 							{
-								DbgLogData(LenDat, DBGINF_OKKYSEND);
+//								DbgLogData(LenDat, DBGINF_OKKYSEND);
 								return LenDat;
 							}
 						}
 					}
 				}
 				SockErr Exc(10060);
-				DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
-				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+//				DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+//				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 				throw Exc;
 			}
 			if (TmOuts[0] != MAX_INT32)
@@ -1425,7 +1425,7 @@ namespace Utils {
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
 				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
-				DbgLogData(LenDat, DBGINF_KYRECV);
+//				DbgLogData(LenDat, DBGINF_KYRECV);
 				timeval TimeOut;
 				TimeOut.tv_sec = MngdTmOut[0] >> 24;
 				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
@@ -1442,8 +1442,8 @@ namespace Utils {
 					if (!NumZeroLeft)
 					{
 						SockErr Exc(10054);
-						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
-						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+//						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+//						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 						throw Exc;
 					}
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
@@ -1456,8 +1456,8 @@ namespace Utils {
 					else if (Rtn == SOCKET_ERROR)
 					{
 						SockErr Exc(WSAGetLastError());
-						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
-						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+//						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+//						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 						throw Exc;
 					}
 					else
@@ -1466,8 +1466,8 @@ namespace Utils {
 						if ((Rtn = ::recv(Data.Ptr, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
 							SockErr Exc(WSAGetLastError());
-							DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
-							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+//							DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+//							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 							throw Exc;
 						}
 						if (Rtn != 0)
@@ -1478,7 +1478,7 @@ namespace Utils {
 							CurLenDat -= Rtn;
 							if (!CurLenDat)
 							{
-								DbgLogData(ByteArray((Byte *)RecvDat - LenDat, LenDat), DBGINF_OKKYRECV);
+//								DbgLogData(ByteArray((Byte *)RecvDat - LenDat, LenDat), DBGINF_OKKYRECV);
 								return LenDat;
 							}
 						}
@@ -1486,8 +1486,8 @@ namespace Utils {
 					}
 				}
 				SockErr Exc(10060);
-				DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
-				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+//				DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+//				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 				throw Exc;
 			}
 			if (TmOuts[0] != MAX_INT32)
