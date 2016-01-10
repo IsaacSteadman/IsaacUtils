@@ -977,6 +977,20 @@ extern "C" {
 		if (!AssertType(Fl, &FlPool, 0, __FUNCTION__)) return 0;
 		return AddObject(new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen));
 	}
+
+	void *File_newA(char *fName, char *Mode) {
+		void *Rtn = AddObject(Utils::fs::GetFileObj(Utils::String(fName), Utils::fs::ParseModeStr(Mode)));
+		if (Rtn) return Rtn;
+		LastErrCode = 24;
+		LastError = Utils::UtilsGetError();
+		return 0;
+	}
+
+	bool File_flush(void *FlObj) {
+		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
+		((Utils::fs::FileBase *)FlObj)->Flush();
+		return true;
+	}
 	
 	bool File_seek(void *FlObj, long long Pos, int From) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;

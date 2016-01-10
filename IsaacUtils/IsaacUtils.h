@@ -181,7 +181,9 @@ extern "C"{
 	// Constructs a new File that acts as a read buffer for [Fl]
 	ISAACUTILS_API void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen = 8192);
 	// Constructs a host file system File object
-	//ISAACUTILS_API void *File_newA(char *fName, char *Mode);//TODO add
+	ISAACUTILS_API void *File_newA(char *fName, char *Mode);
+	// Flushes the write buffers for the File [FlObj]
+	ISAACUTILS_API bool File_flush(void *FlObj);
 	// Constructs a host file system File object
 	//ISAACUTILS_API void *File_newW(wchar_t *fName, wchar_t *Mode);//TODO add
 	// Seeks a file [FlObj] to position [Pos] from [From]
