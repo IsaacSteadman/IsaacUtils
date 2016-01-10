@@ -358,6 +358,7 @@ namespace Utils {
 		InternClose();
 		if (FsLock) FsLock->Release();
 	}
+	void RfsFile::Flush() {}
 	wString RfsFile::GetName() {
 		return ThisfName.wStr();
 	}

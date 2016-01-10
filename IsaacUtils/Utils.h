@@ -532,6 +532,7 @@ namespace Utils{
 			virtual long long Tell() = 0;
 			virtual unsigned long Write(const ByteArray &Data) = 0;
 			virtual void Close() = 0;
+			virtual void Flush() = 0;
 			virtual wString GetName() = 0;
 			virtual unsigned long GetMode() = 0;
 			virtual ~FileBase();
@@ -714,6 +715,7 @@ namespace Utils{
 		long long Tell();
 		unsigned long Write(const ByteArray &Data);
 		void Close();
+		void Flush();
 		wString GetName();
 		unsigned long GetMode();
 		~fRdBuff();
@@ -727,6 +729,7 @@ namespace Utils{
 		AbsFile(fs::FileBase *Fl);
 		AbsFile(ByteArray &BArr);
 		AbsFile(String &Str);
+		AbsFile(const AbsFile &Cpy);
 		void SetData(fs::FileBase *Fl);
 		void SetData(ByteArray *BArr);
 		void PreAlloc(BigLong NumAlloc);
@@ -790,6 +793,7 @@ namespace Utils{
 		long long Tell();
 		unsigned long Write(const ByteArray &Data);
 		void Close();
+		void Flush();
 		wString GetName();
 		unsigned long GetMode();
 	};
