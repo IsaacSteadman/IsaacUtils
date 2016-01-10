@@ -268,12 +268,12 @@ namespace Utils{
 	void Array<T>::WriteFromAt(const Array<T> &From, SizeL Beg, SizeL End) {
 		if (End - Beg > From.AllocNum) End = Beg + From.AllocNum;
 		if (End > AllocNum) End = AllocNum;
-		Data -= Beg;
+		Data += Beg;
 		End -= Beg;
 		for (SizeL c = 0; c < End; ++c) {
 			Data[c] = From.Data[c];
 		}
-		Data += Beg;
+		Data -= Beg;
 	}
 	template<typename T>
 	Array<T> Array<T>::SubArr(SizeL Start, SizeL Stop, SnzL Step) const {
