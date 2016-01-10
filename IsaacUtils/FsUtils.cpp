@@ -20,7 +20,7 @@ namespace Utils {
 			{
 				SizeL Pos = 0;
 				String TmpPath;
-				if (!Path.Find(Pos, ":/")) TmpPath = GetFullPath(Path.wStr()).Str();
+				if (!Path.Find(Pos, ':')) TmpPath = GetFullPath(Path.wStr()).Str();
 				else TmpPath = Path;
 				if (TmpPath[0] == '/')
 				{
@@ -28,7 +28,7 @@ namespace Utils {
 					Drv = DriveMap["/"];
 					return 0;
 				}
-				if (!TmpPath.Find(Pos, ":/"))
+				if (!TmpPath.Find(Pos, ':'))
 				{
 					UtilsSetError("Path Name could not be resolved. The Path Name must either be a relative directory or must include the drive name");
 					return -2;
@@ -288,8 +288,6 @@ namespace Utils {
 					Rtn |= F_OUT | F_NOREPLACE;
 					break;
 				case 'w':
-					Rtn |= F_TRUNC;
-					break;
 				case 'a':
 					Rtn |= F_IN;
 					break;
@@ -374,6 +372,7 @@ namespace Utils {
 		TheCond->notify();
 		TheCond->GetInternLock()->Release();
 	}
+	void fRdBuff::Flush() {}
 	fRdBuff::~fRdBuff() {
 		Close();
 		Thrd.Join();

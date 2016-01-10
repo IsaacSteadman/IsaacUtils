@@ -124,6 +124,7 @@ namespace Utils {
 			virtual long long Tell();
 			virtual unsigned long Write(const ByteArray &Data);
 			virtual void Close();
+			virtual void Flush();
 			virtual wString GetName();
 			virtual unsigned long GetMode();
 		};
@@ -597,14 +598,14 @@ namespace Utils {
 			for (SizeL c = 0; c < wStrRtn.Length(); ++c) Rtn[c] = wStrRtn[c].Str();
 			return Rtn;
 		}
-		WinFile::WinFile(wchar_t *Path, unsigned long Mode) {
-			if (Mode & F_APP > 0 && Mode & F_TRUNC > 0)
+		WinFile::WinFile(wchar_t *Path, unsigned long Mode) {//OLD Version
+			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
 			if (ExtPath != wString(Path, ExtPath.Length())) fName = Path;
 			else fName = wString(Path + ExtPath.Length());
 			unsigned long Generic = 0;
-			if (Mode & F_IN > 0) Generic |= GENERIC_READ;
-			if (Mode & F_OUT > 0) Generic |= GENERIC_WRITE;
+			if (Mode & F_IN) Generic |= GENERIC_READ;
+			if (Mode & F_OUT) Generic |= GENERIC_WRITE;
 			SECURITY_ATTRIBUTES SecAttr;
 			SecAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 			SecAttr.lpSecurityDescriptor = NULL;
@@ -612,19 +613,19 @@ namespace Utils {
 			unsigned long Create = 0;
 			if (Mode & F_OUT)
 			{
-				if (Mode & F_TRUNC > 0)
+				if (Mode & F_TRUNC)
 				{
-					if (Mode & F_NOREPLACE > 0) Create |= TRUNCATE_EXISTING;
-					else Create |= CREATE_NEW;
+					if (Mode & F_NOREPLACE) Create |= TRUNCATE_EXISTING;
+					else Create |= CREATE_ALWAYS;
 				}
-				else if (Mode & F_APP > 0)
+				else if (Mode & F_APP)
 				{
 					Create |= OPEN_EXISTING;
 				}
 				else
 				{
-					if (Mode & F_NOREPLACE == 0) Create |= OPEN_ALWAYS;
-					else Create |= OPEN_EXISTING;
+					if (Mode & F_NOREPLACE) Create |= OPEN_EXISTING;
+					else Create |= OPEN_ALWAYS;
 				}
 			}
 			else Create |= OPEN_EXISTING;
@@ -632,7 +633,7 @@ namespace Utils {
 			if (hFile == NULL)
 			{
 				wchar_t *BuffErr = 0;
-				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
+				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
 				FileError Err("OpenFileFailed", wString(BuffErr));
 				LocalFree(BuffErr);
 				throw Err;
@@ -640,12 +641,12 @@ namespace Utils {
 			Md = Mode;
 		}
 		WinFile::WinFile(char *Path, unsigned long Mode) {
-			if (Mode & F_APP > 0 && Mode & F_TRUNC > 0)
+			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
 			fName = Path;
 			unsigned long Generic = 0;
-			if (Mode & F_IN > 0) Generic |= GENERIC_READ;
-			if (Mode & F_OUT > 0) Generic |= GENERIC_WRITE;
+			if (Mode & F_IN) Generic |= GENERIC_READ;
+			if (Mode & F_OUT) Generic |= GENERIC_WRITE;
 			SECURITY_ATTRIBUTES SecAttr;
 			SecAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 			SecAttr.lpSecurityDescriptor = NULL;
@@ -653,27 +654,27 @@ namespace Utils {
 			unsigned long Create = 0;
 			if (Mode & F_OUT)
 			{
-				if (Mode & F_TRUNC > 0)
+				if (Mode & F_TRUNC)
 				{
-					if (Mode & F_NOREPLACE > 0) Create |= TRUNCATE_EXISTING;
-					else Create |= CREATE_NEW;
+					if (Mode & F_NOREPLACE) Create |= TRUNCATE_EXISTING;
+					else Create |= CREATE_ALWAYS;
 				}
-				else if (Mode & F_APP > 0)
+				else if (Mode & F_APP)
 				{
 					Create |= OPEN_EXISTING;
 				}
 				else
 				{
-					if (Mode & F_NOREPLACE == 0) Create |= OPEN_ALWAYS;
-					else Create |= OPEN_EXISTING;
+					if (Mode & F_NOREPLACE) Create |= OPEN_EXISTING;
+					else Create |= OPEN_ALWAYS;
 				}
 			}
 			else Create |= OPEN_EXISTING;
 			hFile = (HFILE)CreateFileA(Path, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (hFile == NULL)
+			if ((HANDLE)hFile == INVALID_HANDLE_VALUE)
 			{
 				wchar_t *BuffErr = 0;
-				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
+				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
 				FileError Err("OpenFileFailed", wString(BuffErr));
 				LocalFree(BuffErr);
 				throw Err;
@@ -728,6 +729,9 @@ namespace Utils {
 		void WinFile::Close() {
 			CloseHandle((HANDLE)hFile);
 		}
+		void WinFile::Flush() {
+			if (Md & F_OUT) FlushFileBuffers((HANDLE)hFile);
+		}
 		wString WinFile::GetName() {
 			return fName;
 		}
@@ -759,6 +763,7 @@ namespace Utils {
 	}
 	long long Clock::Tps = 0;
 	WSADATA WinSockData;
+	extern fs::FileBase *DbgLog;
 	void OsInit() {
 		sock::ErrCodes.SetHashFunc(NumHash);
 		sock::ErrCodes.Put(21, "Invalid address format.");
@@ -786,11 +791,25 @@ namespace Utils {
 			Avail = Drvs % 2;
 			Drvs >>= 1;
 		}
+		char Name = 'A';
+		for (SizeL c = 0; c < DrvAvail.Length(); ++c, ++Name) {
+			if (!DrvAvail[c]) continue;
+			String FullName(char(0), MAX_PATH + 1);
+			String OrigName(char(0), 4);
+			OrigName[0] = Name;
+			OrigName[1] = ':';
+			OrigName[2] = '\\';
+			GetVolumeInformationA(OrigName.GetData(), (char *)FullName.GetData(), FullName.Length(), NULL, NULL, NULL, NULL, NULL);
+			fs::WinDrive *MyDrv = new fs::WinDrive(Name, FullName.wStr());
+			fs::DriveMap.Put(wString(Name, 1), MyDrv);
+		}
 		WORD VerReq = MAKEWORD(2, 2);
 		sock::Usable = WSAStartup(VerReq, &WinSockData) == 0 && WinSockData.wVersion == VerReq;
+		DbgLog = fs::GetFileObj(String("C:/Users/Isaac/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
 	}
 	void OsDeInit() {
 		if (sock::Usable) WSACleanup();
+		DbgLog->Close();
 	}
 	void Clock::StartTime() {
 		++NumTimes;
@@ -1108,7 +1127,55 @@ namespace Utils {
 	//======================================================END THREAD=============================================================
 
 	//======================================================BEGIN SOCK=============================================================
+	fs::FileBase *DbgLog;
+	unsigned long long GetSysTimeNum() {
+		unsigned long long Rtn = 0;
+		FILETIME SysTm;
+		GetSystemTimeAsFileTime(&SysTm);
+		Rtn = SysTm.dwHighDateTime;
+		Rtn <<= 32;
+		Rtn |= SysTm.dwLowDateTime;
+		return Rtn;
+	}
+	void DbgLogData(const ByteArray &Data, Byte InfId) {
+		if (!DbgLog) return;
+		ByteArray HeadDat(Byte(0), 14);
+		HeadDat[1] = InfId;
+		HeadDat.WriteFromAt(BigLong(GetSysTimeNum()).ToByteArray(), 2, 10);
+		HeadDat[10] = Data.Length() & 0xFF;
+		HeadDat[11] = (Data.Length() >> 8) & 0xFF;
+		HeadDat[12] = (Data.Length() >> 16) & 0xFF;
+		HeadDat[13] = (Data.Length() >> 24) & 0xFF;
+		DbgLog->Write(HeadDat);
+		DbgLog->Write(Data);
+		DbgLog->Flush();
+	}
+	void DbgLogData(unsigned long long Data, Byte InfId) {
+		if (!DbgLog) return;
+		ByteArray HeadDat(Byte(0), 18);
+		HeadDat[0] = 1;
+		HeadDat[1] = InfId;
+		HeadDat.WriteFromAt(BigLong(GetSysTimeNum()).ToByteArray(), 2, 10);
+		HeadDat.WriteFromAt(BigLong(Data).ToByteArray(), 10, 18);
+		DbgLog->Write(HeadDat);
+		DbgLog->Flush();
+	}
 	namespace sock {
+		enum DbgInfs {
+			DBGINF_RECV = 0,
+			DBGINF_SEND = 1,
+			DBGINF_EXCRECV = 2,
+			DBGINF_EXCSEND = 3,
+			DBGINF_OKRECV = 4,
+			DBGINF_OKSEND = 5,
+			DBGINF_KYRECV = 6,
+			DBGINF_KYSEND = 7,
+			DBGINF_EXCKYRECV = 8,
+			DBGINF_EXCKYSEND = 9,
+			DBGINF_OKKYRECV = 10,
+			DBGINF_OKKYSEND = 11,
+			DBGINF_DHXCHG = 12
+		};
 		Socket::Socket() {
 			Data.Ptr = INVALID_SOCKET;
 			TmOuts[0] = MAX_INT32;
@@ -1213,10 +1280,12 @@ namespace Utils {
 		}
 		SizeL Socket::sendBase(const char *SendDat, SizeL LenDat, int Flags) {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (LenDat == 0) return LenDat;
 			if (SockLock)
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
 				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
+				DbgLogData(ByteArray((Byte *)SendDat, LenDat), DBGINF_KYSEND);
 				timeval TimeOut;
 				TimeOut.tv_sec = MngdTmOut[0] >> 24;
 				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
@@ -1227,7 +1296,7 @@ namespace Utils {
 				MyTmOut *= 1000000;
 				MyTmOut += TimeOut.tv_usec;
 				signed long long TmLeft = OrigTmOut;
-				SizeL Pos = 0;
+				SizeL CurLenDat = LenDat;
 				while (TmLeft > 0) {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
@@ -1237,21 +1306,40 @@ namespace Utils {
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
-						throw SockErr(WSAGetLastError());
+					{
+						SockErr Exc(WSAGetLastError());
+						DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+						throw Exc;
+					}
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::send(Data.Ptr, &SendDat[Pos], LenDat - Pos, Flags)) == SOCKET_ERROR)
-							throw SockErr(WSAGetLastError());
+						if ((Rtn = ::send(Data.Ptr, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						{
+							SockErr Exc(WSAGetLastError());
+							DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+							throw Exc;
+						}
 						if (Rtn != 0)
 						{
 							TmLeft = OrigTmOut;
-							Pos += Rtn;
-							if (Pos >= LenDat) return LenDat;
+							CurLenDat -= Rtn;
+							SendDat += Rtn;
+							DbgLogData(Rtn, DBGINF_KYSEND);
+							if (!CurLenDat)
+							{
+								DbgLogData(LenDat, DBGINF_OKKYSEND);
+								return LenDat;
+							}
 						}
 					}
 				}
-				throw SockErr(10060);
+				SockErr Exc(10060);
+				DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
+				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
+				throw Exc;
 			}
 			if (TmOuts[0] != MAX_INT32)
 			{
@@ -1272,6 +1360,7 @@ namespace Utils {
 		}
 		SizeL Socket::sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, int Flags) {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (LenDat == 0) return LenDat;
 			if (SockLock)
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
@@ -1286,7 +1375,7 @@ namespace Utils {
 				MyTmOut *= 1000000;
 				MyTmOut += TimeOut.tv_usec;
 				signed long long TmLeft = OrigTmOut;
-				SizeL Pos = 0;
+				SizeL CurLenDat = LenDat;
 				while (TmLeft > 0) {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
@@ -1300,13 +1389,14 @@ namespace Utils {
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::sendto(Data.Ptr, &SendDat[Pos], LenDat - Pos, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
+						if ((Rtn = ::sendto(Data.Ptr, SendDat, CurLenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 							throw SockErr(WSAGetLastError());
 						if (Rtn != 0)
 						{
 							TmLeft = OrigTmOut;
-							Pos += Rtn;
-							if (Pos >= LenDat) return LenDat;
+							SendDat += Rtn;
+							CurLenDat -= Rtn;
+							if (!CurLenDat) return LenDat;
 						}
 					}
 				}
@@ -1335,6 +1425,7 @@ namespace Utils {
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
 				if (MngdTmOut[1] & 0xC0000000) throw SockErr(10054);
+				DbgLogData(LenDat, DBGINF_KYRECV);
 				timeval TimeOut;
 				TimeOut.tv_sec = MngdTmOut[0] >> 24;
 				TimeOut.tv_usec = MngdTmOut[0] & 0x00FFFFFF;
@@ -1345,10 +1436,16 @@ namespace Utils {
 				MyTmOut *= 1000000;
 				MyTmOut += TimeOut.tv_usec;
 				signed long long TmLeft = OrigTmOut;
-				SizeL Pos = 0;
+				SizeL CurLenDat = LenDat;
 				SizeL NumZeroLeft = 16;
 				while (TmLeft > 0) {
-					if (!NumZeroLeft) throw SockErr(10054);
+					if (!NumZeroLeft)
+					{
+						SockErr Exc(10054);
+						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+						throw Exc;
+					}
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
@@ -1357,23 +1454,41 @@ namespace Utils {
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
-						throw SockErr(WSAGetLastError());
+					{
+						SockErr Exc(WSAGetLastError());
+						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+						throw Exc;
+					}
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::recv(Data.Ptr, &RecvDat[Pos], LenDat - Pos, Flags)) == SOCKET_ERROR)
-							throw SockErr(WSAGetLastError());
+						if ((Rtn = ::recv(Data.Ptr, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						{
+							SockErr Exc(WSAGetLastError());
+							DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+							throw Exc;
+						}
 						if (Rtn != 0)
 						{
 							NumZeroLeft = 16;
 							TmLeft = OrigTmOut;
-							Pos += Rtn;
-							if (Pos >= LenDat) return LenDat;
+							RecvDat += Rtn;
+							CurLenDat -= Rtn;
+							if (!CurLenDat)
+							{
+								DbgLogData(ByteArray((Byte *)RecvDat - LenDat, LenDat), DBGINF_OKKYRECV);
+								return LenDat;
+							}
 						}
 						else --NumZeroLeft;
 					}
 				}
-				throw SockErr(10060);
+				SockErr Exc(10060);
+				DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
+				DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
+				throw Exc;
 			}
 			if (TmOuts[0] != MAX_INT32)
 			{
@@ -1408,7 +1523,6 @@ namespace Utils {
 				MyTmOut *= 1000000;
 				MyTmOut += TimeOut.tv_usec;
 				signed long long TmLeft = OrigTmOut;
-				SizeL Pos = 0;
 				SizeL NumZeroLeft = 16;
 				while (TmLeft > 0) {
 					if (!NumZeroLeft) throw SockErr(10054);
@@ -1426,15 +1540,14 @@ namespace Utils {
 						SOCKADDR_STORAGE Tmp;
 						int TmpLen = sizeof(Tmp);
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::recvfrom(Data.Ptr, &RecvDat[Pos], LenDat - Pos, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+						if ((Rtn = ::recvfrom(Data.Ptr, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
 							throw SockErr(WSAGetLastError());
 						if (Rtn != 0)
 						{
 							NumZeroLeft = 16;
 							TmLeft = OrigTmOut;
-							Pos += Rtn;
 							Addr.Init(&Tmp);
-							return Pos;
+							return Rtn;
 						}
 						else --NumZeroLeft;
 					}
