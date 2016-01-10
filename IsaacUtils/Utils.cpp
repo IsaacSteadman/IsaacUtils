@@ -1647,6 +1647,12 @@ namespace Utils{
 		Meta[1] = 1;
 		TheData = &Str;
 	}
+	AbsFile::AbsFile(const AbsFile &Cpy) {
+		Pos = Cpy.Pos;
+		Meta[0] = Cpy.Meta[0];
+		Meta[1] = Cpy.Meta[1];
+		TheData = Cpy.TheData;
+	}
 	void AbsFile::SetData(fs::FileBase *Fl) {
 		Pos = 0;
 		Meta[0] = 1;
@@ -1687,6 +1693,7 @@ namespace Utils{
 		{
 			if (Pos < ((ByteArray *)TheData)->Length())
 				Data = ((ByteArray *)TheData)->SubArr(Pos, Pos + Len);
+			else Data.SetLength(0);
 			Pos += Data.Length();
 		}
 		else if (Meta[0] == 1) Data = ((fs::FileBase *)TheData)->Read(Len);
