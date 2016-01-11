@@ -970,12 +970,26 @@ extern "C" {
 	void *RfsFile_newA(void *Prot, char *Str, char *Mode, void *FsLock) {
 		if (!AssertType(Prot, &EncProtPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(FsLock, &LockPool, 3, __FUNCTION__)) return 0;
-		return AddObject(new Utils::RfsFile((Utils::EncProt *)Prot, Str, Mode, (Utils::Mutex *)FsLock));
+		try{
+			return AddObject(new Utils::RfsFile((Utils::EncProt *)Prot, Str, Mode, (Utils::Mutex *)FsLock));
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
 	}
 
 	void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen) {
 		if (!AssertType(Fl, &FlPool, 0, __FUNCTION__)) return 0;
-		return AddObject(new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen));
+		try{
+			return AddObject(new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen));
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
 	}
 
 	void *File_newA(char *fName, char *Mode) {
@@ -988,35 +1002,107 @@ extern "C" {
 
 	bool File_flush(void *FlObj) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
-		((Utils::fs::FileBase *)FlObj)->Flush();
-		return true;
+		try {
+			((Utils::fs::FileBase *)FlObj)->Flush();
+			return true;
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 	
 	bool File_seek(void *FlObj, long long Pos, int From) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
-		return ((Utils::fs::FileBase *)FlObj)->Seek(Pos, From);
+		try {
+			return ((Utils::fs::FileBase *)FlObj)->Seek(Pos, From);
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	long long File_tell(void *FlObj) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
-		return ((Utils::fs::FileBase *)FlObj)->Tell();
+		try {
+			return ((Utils::fs::FileBase *)FlObj)->Tell();
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	void *File_read(void *FlObj, unsigned long Num) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
-		return AddObject(new Utils::ByteArray(((Utils::fs::FileBase *)FlObj)->Read(Num)));
+		try {
+			return AddObject(new Utils::ByteArray(((Utils::fs::FileBase *)FlObj)->Read(Num)));
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	unsigned long File_write(void *FlObj, void *bArray) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(bArray, &BArrPool, 1, __FUNCTION__)) return 0;
-		return ((Utils::fs::FileBase *)FlObj)->Write(*(Utils::ByteArray *)bArray);
+		try {
+			return ((Utils::fs::FileBase *)FlObj)->Write(*(Utils::ByteArray *)bArray);
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	bool File_close(void *FlObj) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
-		((Utils::fs::FileBase *)FlObj)->Close();
-		return true;
+		try {
+			((Utils::fs::FileBase *)FlObj)->Close();
+			return true;
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	void *SingleMutex_new() {

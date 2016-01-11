@@ -316,18 +316,12 @@ namespace Utils {
 		CondVar *TheCond = ThisObj->TheCond;
 		TheCond->GetInternLock()->Acquire();
 		while (ThisObj->BlkLen > 0) {
-			ThisObj->Buff.PutBytes(ThisObj->FlObj->Read(ThisObj->BlkLen));
+			ThisObj->Buff.PutBytes(ThisObj->FlObj->Read(ThisObj->BlkLen & 0x7FFFFFFF));
 			if (ThisObj->Buff.Length() >= ThisObj->MinMax[1] ||
-				(ThisObj->BlkLen & 0x80000000 > 0) ||
+				(ThisObj->BlkLen & 0x80000000) ||
 				ThisObj->Buff.Length() + ThisObj->Pos >= ThisObj->FlLen)
 				TheCond->wait();
 		}
-		TheCond->IsLockRef = false;
-		DestroyCond(TheCond);
-		ThisObj->TheCond = 0;
-		ThisObj->FlObj->Close();
-		ThisObj->FlObj = 0;
-		ThisObj->TheCond = 0;
 		TheCond->GetInternLock()->Release();
 		return 0;
 	}
@@ -339,6 +333,7 @@ namespace Utils {
 		Fl->Seek(0, fs::SK_END);
 		FlLen = Fl->Tell();
 		Fl->Seek(Pos);
+		FlObj = Fl;
 		Buff.GetFunc = BuffGetFunc;
 		Buff.CbObj = this;
 		BlkLen = InBlkLen;
@@ -354,7 +349,8 @@ namespace Utils {
 		if (From == fs::SK_SET) SkPos -= Pos;
 		else if (From == fs::SK_END) SkPos = FlLen - Pos;
 		else if (From != fs::SK_CUR) SkPos = FlObj->Tell() - Pos;
-		Buff.Clear(SkPos);
+		if (SkPos < 0) Buff.Clear(Buff.Length());
+		else Buff.Clear(SkPos);
 		TheCond->notify();
 		BlkLen &= 0x7FFFFFFF;
 		TheCond->GetInternLock()->Release();
@@ -367,6 +363,7 @@ namespace Utils {
 		throw fs::FileError("NI", "NotImplemented: Write method is not defined for read only buffer");
 	}
 	void fRdBuff::Close() {
+		if (!BlkLen) return;
 		TheCond->GetInternLock()->Acquire();
 		BlkLen = 0;
 		TheCond->notify();
@@ -376,6 +373,11 @@ namespace Utils {
 	fRdBuff::~fRdBuff() {
 		Close();
 		Thrd.Join();
+		TheCond->IsLockRef = false;
+		DestroyCond(TheCond);
+		TheCond = 0;
+		FlObj->Close();
+		FlObj = 0;
 	}
 	wString fRdBuff::GetName() {
 		return FlObj->GetName();
@@ -390,7 +392,7 @@ namespace Utils {
 		while (Num > MinMax[1]) {
 			if (TheCond->GetInternLock()->TryAcquire())
 			{
-				if (Buff.Length() < MinMax[0]) TheCond->notify();
+				if (Buff.Length() < MinMax[1]) TheCond->notify();
 				TheCond->GetInternLock()->Release();
 			}
 			Buff.GetBytes(Rtn, MinMax[1], CurPos);
@@ -403,10 +405,15 @@ namespace Utils {
 			TheCond->GetInternLock()->Release();
 		}
 		Buff.GetBytes(Rtn, Num, CurPos);
+		if (TheCond->GetInternLock()->TryAcquire())
+		{
+			if (Buff.Length() < MinMax[0]) TheCond->notify();
+			TheCond->GetInternLock()->Release();
+		}
 		return Rtn;
 	}
 	ByteArray fRdBuff::Read() {
 		if (FlLen - Pos <= MAX_INT32) return Read(FlLen - Pos);
-
+		else throw fs::FileError("DataOverflow", "Too much data to read");
 	}
 }

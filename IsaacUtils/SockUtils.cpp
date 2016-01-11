@@ -319,44 +319,70 @@ namespace Utils {
 		ThisfName = fName;
 		FsLock = RfsLock;
 		Pos = 0;
-		
+		Prot = Serv;
+		ByteArray NoEnc(Byte(FL_OPEN), 1);
+		NoEnc += (ByteArray &)Mode;
+		if (FsLock) FsLock->Acquire();
+		Prot->Send(NoEnc, ThisfName);
+		Prot->Recv(NoEnc, AbsFile());
+		if (FsLock) FsLock->Release();
+		if (NoEnc[0] != 0)
+			throw fs::FileError(wString("Error Code ") + FromNumber(NoEnc[0]),
+				wString((char *)NoEnc.GetData() + 1, NoEnc.Length() - 1));
+		NoEnc.RemBeg(1);
+		IdStr = (ByteArray&&)NoEnc;
 	}
 	ByteArray RfsFile::Read() {
-		if (FsLock) FsLock->Acquire();
 		ByteArray Rtn;
-		InternRead(Rtn, InternGetLen());
-		if (FsLock) FsLock->Release();
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			InternRead(Rtn, InternGetLen());
+		}
+		else InternRead(Rtn, InternGetLen());
 		return Rtn;
 	}
 	ByteArray RfsFile::Read(unsigned long Num) {
-		if (FsLock) FsLock->Acquire();
 		ByteArray Rtn;
-		InternRead(Rtn, Num);
-		if (FsLock) FsLock->Release();
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			InternRead(Rtn, Num);
+		}
+		else InternRead(Rtn, Num);
 		return Rtn;
 	}
-	bool RfsFile::Seek(long long Pos, int From) {
-		if (FsLock) FsLock->Acquire();
-		bool Rtn = InternSeek(Pos, From);
-		if (FsLock) FsLock->Release();
-		return Rtn;
+	bool RfsFile::Seek(long long PosIn, int From) {
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			return InternSeek(PosIn, From);
+		}
+		else return InternSeek(PosIn, From);
 	}
 	long long RfsFile::Tell() {
-		if (FsLock) FsLock->Acquire();
-		long long Rtn = InternTell();
-		if (FsLock) FsLock->Release();
-		return Rtn;
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			return InternTell();
+		}
+		else return InternTell();
 	}
 	unsigned long RfsFile::Write(const ByteArray &Data) {
-		if (FsLock) FsLock->Acquire();
-		unsigned long Rtn = InternWrite(Data);
-		if (FsLock) FsLock->Release();
-		return Rtn;
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			return InternWrite(Data);
+		}
+		else return InternWrite(Data);
 	}
 	void RfsFile::Close() {
-		if (FsLock) FsLock->Acquire();
-		InternClose();
-		if (FsLock) FsLock->Release();
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			InternClose();
+		}
+		else InternClose();
 	}
 	void RfsFile::Flush() {}
 	wString RfsFile::GetName() {
@@ -400,11 +426,12 @@ namespace Utils {
 			else if (Data.Length() == 0) throw fs::FileError("Rfs:-1", "Unknown error occured");
 			Data.RemBeg(1);
 		}
+		if (Pos != -1) Pos += Data.Length();
 	}
 	unsigned long RfsFile::InternWrite(const ByteArray &Data) {
 		bool IsEnc = Md[0] >= 'A' && Md[0] <= 'Z';
 		ByteArray NoEnc = IdStr;
-		NoEnc.Insert(0, FL_READ);
+		NoEnc.Insert(0, FL_WRITE);
 		NoEnc.SetLength(6);
 		NoEnc.AtEnd() = IsEnc;
 		if (IsEnc)
@@ -422,18 +449,20 @@ namespace Utils {
 		if (NoEnc.Length() > 0 && NoEnc[0] != 0)
 			throw fs::FileError(wString("Rfs:") + FromNumber(NoEnc[0], 10), wString((char *)&NoEnc[1], NoEnc.Length() - 1));
 		else if (NoEnc.Length() == 0) throw fs::FileError("Rfs:-1", "Unknown error occured");
+		if (Pos != -1) Pos += Data.Length();
 		return Data.Length();
 	}
-	bool RfsFile::InternSeek(long long Pos, int From) {
-		if (Pos < 0)
+	bool RfsFile::InternSeek(long long PosIn, int From) {
+		Pos = -1;
+		if (PosIn < 0)
 		{
 			From |= 0x80;
-			Pos = -Pos;
+			PosIn = -PosIn;
 		}
 		ByteArray NoEnc = IdStr;
 		NoEnc.Insert(0, FL_SEEK);
 		NoEnc += Byte(From);
-		NoEnc += BigLong((unsigned long long)Pos).ToByteArray();
+		NoEnc += BigLong((unsigned long long)PosIn).ToByteArray();
 		Prot->Send(NoEnc, AbsFile());
 		NoEnc.SetLength(0);
 		Prot->Recv(NoEnc, AbsFile());
@@ -451,7 +480,7 @@ namespace Utils {
 		if (NoEnc.Length() > 0 && NoEnc[0] != 0)
 			throw fs::FileError(wString("Rfs:") + FromNumber(NoEnc[0], 10), wString((char *)&NoEnc[1], NoEnc.Length() - 1));
 		else if (NoEnc.Length() == 0) throw fs::FileError("Rfs:-1", "Unknown error occured");
-		return BigLong(NoEnc.GetData(), NoEnc.Length()).ToLL();
+		return Pos = BigLong(NoEnc.GetData() + 1, NoEnc.Length() - 1).ToLL();
 	}
 	void RfsFile::InternClose() {
 		ByteArray NoEnc = IdStr;

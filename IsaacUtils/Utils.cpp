@@ -1035,6 +1035,7 @@ namespace Utils{
 		LastCond = GetCondVar(LastLock);
 		First = 0;
 		Last = 0;
+		TotBytes = 0;
 	}
 	ByteArray ConQueue::GetBytes(SizeL NumBytes) {
 		ByteArray Rtn(Byte(0), NumBytes);
@@ -1053,6 +1054,7 @@ namespace Utils{
 			LastLock->Acquire();
 			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
 			TotBytes -= PrevRead;
+			PrevRead = 0;
 			if (NumBytes == 0) break;
 			if (MyLast != Last) MyLast = Last;
 			else break;//break while the lock is held to preserve the current synchronized state
@@ -1074,36 +1076,43 @@ namespace Utils{
 				else
 				{
 					Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
-					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					First->Data.RemBeg(NumBytes);
 					PrevRead += NumBytes;
 					At += NumBytes;
 					NumBytes = 0;
 				}
+				if (NumBytes == 0) break;
 			}
 		}
 		while (NumBytes > 0) {
+			if (First && First->Data.Length() == 0)
+			{
+				QBlk *Next = First->Next;
+				delete First;
+				First = Next;
+				if (!First) Last = 0;
+			}
+			At += PrevRead;
+			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
+			TotBytes -= PrevRead;
+			if (NumBytes == 0) break;
+			while (!First) LastCond->wait();//If there isn't a next then wait for one
+			LastLock->Release();
 			if (First->Data.Length() <= NumBytes)
 			{
 				PrevRead = First->Data.Length();
 				ByteArray Tmp((ByteArray &&)First->Data);
 				Into.WriteFromAt(Tmp, At);
 				NumBytes -= Tmp.Length();
-				delete First;
-				First = 0;
-				Last = 0;
 			}
 			else
 			{
 				PrevRead = NumBytes;
 				Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
-				First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+				First->Data.RemBeg(NumBytes);
 				NumBytes = 0;
 			}
-			At += PrevRead;
-			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
-			TotBytes -= PrevRead;
-			if (NumBytes == 0) break;
-			LastCond->wait();
+			LastLock->Acquire();
 		}
 		LastLock->Release();
 	}
@@ -1135,12 +1144,30 @@ namespace Utils{
 				else
 				{
 					Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
-					First->Data = (ByteArray &&)(First->Data.SubArr(NumBytes));
+					First->Data.RemBeg(NumBytes);
 					PrevRead += NumBytes;
 					At += NumBytes;
 					NumBytes = 0;
 				}
 			}
+		}
+		if (!First);
+		else if (First->Data.Length() <= NumBytes)
+		{
+			PrevRead = First->Data.Length();
+			ByteArray Tmp((ByteArray &&)First->Data);
+			Into.WriteFromAt(Tmp, At);
+			NumBytes -= Tmp.Length();
+			delete First;
+			First = 0;
+			Last = 0;
+		}
+		else if (NumBytes)
+		{
+			PrevRead = NumBytes;
+			Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
+			First->Data.RemBeg(NumBytes);
+			NumBytes = 0;
 		}
 		LastLock->Release();
 		return At;
@@ -1179,11 +1206,12 @@ namespace Utils{
 			}
 			else
 			{
-				Rtn += First->Data.SubArr(0, NumBytes);
+				Rtn += PeekFirst->Data.SubArr(0, NumBytes);
 				NumBytes = 0;
 			}
 			if (NumBytes == 0) break;
-			LastCond->wait();
+			while (!PeekFirst->Next) LastCond->wait();
+			PeekFirst = PeekFirst->Next;
 		}
 		LastLock->Release();
 		return Rtn;
@@ -1193,7 +1221,7 @@ namespace Utils{
 		Add.Data = Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
-		TotBytes += Bytes.Length();
+		TotBytes += Add.Data.Length();
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1209,10 +1237,10 @@ namespace Utils{
 	}
 	void ConQueue::PutBytes(ByteArray &&Bytes) {
 		QBlk &Add = *new QBlk();
-		Add.Data = Bytes;
+		Add.Data = (ByteArray &&)Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
-		TotBytes += Bytes.Length();
+		TotBytes += Add.Data.Length();
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1227,7 +1255,7 @@ namespace Utils{
 		LastLock->Release();
 	}
 	void ConQueue::Clear(SizeL NumBytes) {
-		LastLock->Acquire();
+		Lock Lk(LastLock);
 		if (NumBytes >= TotBytes)
 		{
 			while (First != Last)
@@ -1267,7 +1295,6 @@ namespace Utils{
 				break;
 			}
 		}
-		LastLock->Release();
 	}
 	SizeL ConQueue::Length() {
 		return TotBytes;

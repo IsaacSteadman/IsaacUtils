@@ -224,7 +224,7 @@ namespace Utils{
 			NewData[c] = (T &&)Data[c];
 			++c;
 		}
-		Data -= Until;
+		Data -= NumRem;
 		delete[] Data;
 		Data = NewData;
 		AllocNum = Until;

@@ -404,6 +404,7 @@ namespace Utils{
 		ByteArray TryGetBytes(SizeL NumBytes);
 		void PutBytes(const ByteArray &Bytes);
 		void PutBytes(ByteArray &&Bytes);
+		//Use from the getter thread, it will interfere with the getbytes functions otherwise
 		void Clear(SizeL NumBytes);
 		SizeL Length();
 		~ConQueue();
@@ -780,7 +781,7 @@ namespace Utils{
 		String Md;
 	private:
 		void InternRead(ByteArray &Data, unsigned long Num);
-		bool InternSeek(long long Pos, int From);
+		bool InternSeek(long long PosIn, int From);
 		long long InternTell();
 		unsigned long InternWrite(const ByteArray &Data);
 		void InternClose();
@@ -789,7 +790,7 @@ namespace Utils{
 		RfsFile(EncProt *Serv, const String &fName, const String &Mode, Mutex *RfsLock);
 		ByteArray Read();
 		ByteArray Read(unsigned long Num);
-		bool Seek(long long Pos, int From = fs::SK_SET);
+		bool Seek(long long PosIn, int From = fs::SK_SET);
 		long long Tell();
 		unsigned long Write(const ByteArray &Data);
 		void Close();
