@@ -1052,8 +1052,18 @@ namespace Utils{
 		SizeL PrevRead = 0;
 		while (true) {
 			LastLock->Acquire();
-			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
-			TotBytes -= PrevRead;
+			//TotBytes -= PrevRead;
+			AtomicSub(TotBytes, PrevRead);
+			if (GetFunc != 0 && PrevRead > 0)
+			{
+				try {
+					GetFunc(CbObj, PrevRead);
+				}
+				catch (...) {
+					LastLock->Release();
+					throw;
+				}
+			}
 			PrevRead = 0;
 			if (NumBytes == 0) break;
 			if (MyLast != Last) MyLast = Last;
@@ -1085,17 +1095,6 @@ namespace Utils{
 			}
 		}
 		while (NumBytes > 0) {
-			if (First && First->Data.Length() == 0)
-			{
-				QBlk *Next = First->Next;
-				delete First;
-				First = Next;
-				if (!First) Last = 0;
-			}
-			At += PrevRead;
-			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
-			TotBytes -= PrevRead;
-			if (NumBytes == 0) break;
 			while (!First) LastCond->wait();//If there isn't a next then wait for one
 			LastLock->Release();
 			if (First->Data.Length() <= NumBytes)
@@ -1104,6 +1103,11 @@ namespace Utils{
 				ByteArray Tmp((ByteArray &&)First->Data);
 				Into.WriteFromAt(Tmp, At);
 				NumBytes -= Tmp.Length();
+				LastLock->Acquire();
+				QBlk *Next = First->Next;
+				delete First;
+				First = Next;
+				if (!First) Last = 0;
 			}
 			else
 			{
@@ -1111,8 +1115,21 @@ namespace Utils{
 				Into.WriteFromAt(First->Data.SubArr(0, NumBytes), At);
 				First->Data.RemBeg(NumBytes);
 				NumBytes = 0;
+				LastLock->Acquire();
 			}
-			LastLock->Acquire();
+			At += PrevRead;
+			//TotBytes -= PrevRead;
+			AtomicSub(TotBytes, PrevRead);
+			if (GetFunc != 0 && PrevRead > 0)
+			{
+				try {
+					GetFunc(CbObj, PrevRead);
+				}
+				catch (...) {
+					LastLock->Release();
+					throw;
+				}
+			}
 		}
 		LastLock->Release();
 	}
@@ -1121,8 +1138,18 @@ namespace Utils{
 		SizeL PrevRead = 0;
 		while (true) {
 			LastLock->Acquire();
-			if (GetFunc != 0 && PrevRead > 0) GetFunc(CbObj, PrevRead);
 			TotBytes -= PrevRead;
+			if (GetFunc != 0 && PrevRead > 0)
+			{
+				try {
+					GetFunc(CbObj, PrevRead);
+				}
+				catch (...) {
+					LastLock->Release();
+					throw;
+				}
+			}
+			PrevRead = 0;
 			if (NumBytes == 0) break;
 			if (MyLast != Last) MyLast = Last;
 			else break;//break while the lock is held to preserve the current synchronized state
@@ -1151,7 +1178,7 @@ namespace Utils{
 				}
 			}
 		}
-		if (!First);
+		if (!First) PrevRead = 0;
 		else if (First->Data.Length() <= NumBytes)
 		{
 			PrevRead = First->Data.Length();
@@ -1169,6 +1196,8 @@ namespace Utils{
 			First->Data.RemBeg(NumBytes);
 			NumBytes = 0;
 		}
+		else PrevRead = 0;
+		TotBytes -= PrevRead;
 		LastLock->Release();
 		return At;
 	}
@@ -1221,7 +1250,8 @@ namespace Utils{
 		Add.Data = Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
-		TotBytes += Add.Data.Length();
+		//TotBytes += Add.Data.Length();
+		AtomicAdd(TotBytes, Add.Data.Length());
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1240,7 +1270,8 @@ namespace Utils{
 		Add.Data = (ByteArray &&)Bytes;
 		Add.Next = 0;
 		LastLock->Acquire();
-		TotBytes += Add.Data.Length();
+		//TotBytes += Add.Data.Length();
+		AtomicAdd(TotBytes, Add.Data.Length());
 		if (Last != 0)
 		{
 			Last->Next = &Add;
@@ -1274,7 +1305,8 @@ namespace Utils{
 			SizeL NumClr = First->Data.Length();
 			if (NumBytes > NumClr)
 			{
-				TotBytes -= NumClr;
+				//TotBytes -= NumClr;
+				AtomicSub(TotBytes, NumClr);
 				NumBytes -= NumClr;
 				QBlk *Next = First->Next;
 				delete First;
@@ -1285,13 +1317,15 @@ namespace Utils{
 				QBlk *Next = First->Next;
 				delete First;
 				First = Next;
-				TotBytes -= NumClr;
+				//TotBytes -= NumClr;
+				AtomicSub(TotBytes, NumClr);
 				break;
 			}
 			else
 			{
 				First->Data.RemBeg(NumBytes);
-				TotBytes -= NumBytes;
+				//TotBytes -= NumBytes;
+				AtomicSub(TotBytes, NumBytes);
 				break;
 			}
 		}
