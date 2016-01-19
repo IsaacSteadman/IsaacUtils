@@ -811,7 +811,7 @@ namespace Utils {
 		}
 		WORD VerReq = MAKEWORD(2, 2);
 		sock::Usable = WSAStartup(VerReq, &WinSockData) == 0 && WinSockData.wVersion == VerReq;
-//		DbgLog = fs::GetFileObj(String("C:/Users/Isaac/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
+//		DbgLog = fs::GetFileObj(String("C:/Users/UserName/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
 	}
 	void OsDeInit() {
 		if (sock::Usable) WSACleanup();
