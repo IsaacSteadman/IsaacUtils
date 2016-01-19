@@ -352,6 +352,17 @@ namespace Utils {
 		else InternRead(Rtn, Num);
 		return Rtn;
 	}
+	unsigned long RfsFile::Read(ByteArray &Data) {
+		ByteArray Rtn;
+		if (FsLock)
+		{
+			Lock Lk(FsLock);
+			InternRead(Rtn, Data.Length());
+		}
+		else InternRead(Rtn, Data.Length());
+		Data.WriteFromAt(Rtn);
+		return Rtn.Length();
+	}
 	bool RfsFile::Seek(long long PosIn, int From) {
 		if (FsLock)
 		{
