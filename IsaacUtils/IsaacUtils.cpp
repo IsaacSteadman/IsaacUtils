@@ -194,10 +194,12 @@ bool ObjPool<T>::RemDelObject(void *Obj) {
 	if (Obj == 0) return false;
 	else
 	{
-		Utils::Lock InstLk(Lk, true);
-		SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
-		if (Pos >= Objects.Length()) return false;
-		Objects.Remove(Pos);
+		{
+			Utils::Lock InstLk(Lk, true);
+			SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
+			if (Pos >= Objects.Length()) return false;
+			Objects.Remove(Pos);
+		}
 		delete (T *)Obj;
 		return true;
 	}
@@ -207,10 +209,12 @@ bool ObjPool<Utils::EncProt>::RemDelObject(void *Obj) {
 	if (Obj == 0) return false;
 	else
 	{
-		Utils::Lock InstLk(Lk, true);
-		SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
-		if (Pos >= Objects.Length()) return false;
-		Objects.Remove(Pos);
+		{
+			Utils::Lock InstLk(Lk, true);
+			SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
+			if (Pos >= Objects.Length()) return false;
+			Objects.Remove(Pos);
+		}
 		delete ((Utils::EncProt *)Obj)->Enc;
 		((Utils::EncProt *)Obj)->Enc = 0;
 		delete (Utils::EncProt *)Obj;
@@ -978,18 +982,43 @@ extern "C" {
 			LastError = Exc.Type + ": " + Exc.Msg;
 			return 0;
 		}
+		catch (Utils::sock::SockErr &Exc) {
+			LastError = Exc.Msg;
+			LastErrCode = Exc.ErrCode;
+			return false;
+		}
 	}
 
 	void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen) {
 		if (!AssertType(Fl, &FlPool, 0, __FUNCTION__)) return 0;
 		try{
-			return AddObject(new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen));
+			Utils::fRdBuff *Rtn = new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen, true);
+			Rtn->SetFlDelFunc(DelObj);
+			return AddObject(Rtn);
 		}
 		catch (Utils::fs::FileError &Exc) {
 			LastErrCode = 24;
 			LastError = Exc.Type + ": " + Exc.Msg;
 			return 0;
 		}
+	}
+	
+	bool RdBuffFile_SetMode(void *FlObj, bool Direct) {
+		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
+		/*if (&((Utils::fs::FileBase *)FlObj)->Flush != &Utils::fRdBuff::Flush)
+		{
+			SetErrStr("RdBuffFile", 0, __FUNCTION__);
+			return 0;
+		}*/
+		try {
+			((Utils::fRdBuff *)FlObj)->SetBuffMode(Direct);
+		}
+		catch (Utils::fs::FileError &Exc) {
+			LastErrCode = 24;
+			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		return true;
 	}
 
 	void *File_newA(char *fName, char *Mode) {
@@ -1118,13 +1147,13 @@ extern "C" {
 		return ((Utils::Mutex *)Lk)->TryAcquire(Access);
 	}
 
-	bool Lock_Acquire(void *Lk, bool Access) {
+	bool Lock_acquire(void *Lk, bool Access) {
 		if (!AssertType(Lk, &LockPool, 0, __FUNCTION__)) return 0;
 		((Utils::Mutex *)Lk)->Acquire(Access);
 		return true;
 	}
 
-	bool Lock_Release(void *Lk, bool Access) {
+	bool Lock_release(void *Lk, bool Access) {
 		if (!AssertType(Lk, &LockPool, 0, __FUNCTION__)) return 0;
 		((Utils::Mutex *)Lk)->Release(Access);
 		return true;
