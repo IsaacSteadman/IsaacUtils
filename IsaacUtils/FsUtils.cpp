@@ -3,10 +3,10 @@
 namespace Utils {
 	namespace fs {
 		FileError::FileError() {}
-//		DriveBase::DriveBase() {}
+		//		DriveBase::DriveBase() {}
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {}
-//		FileBase::FileBase() {}
+		//		FileBase::FileBase() {}
 
 		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;
@@ -310,25 +310,52 @@ namespace Utils {
 			return Rtn;
 		}
 	}
+	bool DefDelFl(void *Fl) {
+		delete (fs::FileBase *)Fl;
+		return true;
+	}
 	unsigned long fRdBuff::BuffWorker(void *hThread, unsigned long Id, void *Params) {
 		UtilsThread CurThrd(Id);
 		fRdBuff *ThisObj = (fRdBuff *)Params;
 		CondVar *TheCond = ThisObj->TheCond;
 		TheCond->GetInternLock()->Acquire();
+		if (ThisObj->BlkLen & 0x80000000) TheCond->wait();
 		while (ThisObj->BlkLen > 0) {
-			ThisObj->Buff.PutBytes(ThisObj->FlObj->Read(ThisObj->BlkLen & 0x7FFFFFFF));
+			try {
+				ThisObj->Buff.PutBytes(ThisObj->FlObj->Read(ThisObj->BlkLen & 0x7FFFFFFF));
+			}
+			catch (fs::FileError &Exc) {
+				ThisObj->ThrdErr = new fs::FileError(Exc);
+				ThisObj->BlkLen = 0;
+				break;
+			}
+			catch (sock::SockErr &Exc) {
+				ThisObj->ThrdErr = new fs::FileError(wString("Error: ") + FromNumber(Exc.ErrCode), Exc.Msg);
+				ThisObj->BlkLen = 0;
+				break;
+			}
 			if (ThisObj->Buff.Length() >= ThisObj->MinMax[1] ||
 				(ThisObj->BlkLen & 0x80000000) ||
-				ThisObj->Buff.Length() + ThisObj->Pos >= ThisObj->FlLen)
+				ThisObj->FlObj->Tell() >= ThisObj->FlLen)
 				TheCond->wait();
 		}
 		TheCond->GetInternLock()->Release();
 		return 0;
 	}
 	void fRdBuff::BuffGetFunc(void *Obj, SizeL NumBytes) {
-		((fRdBuff *)Obj)->Pos += NumBytes;
+		fRdBuff *ThisObj = (fRdBuff *)Obj;
+		if (ThisObj->ThrdErr) throw *ThisObj->ThrdErr;
+		ThisObj->Pos += NumBytes;
+		//ThisObj->IsAtEnd = ThisObj->Buff.Length() + ThisObj->Pos >= ThisObj->FlLen;//Do We Need this or can we use Fl->Tell()
+		if (ThisObj->Buff.Length() < ThisObj->MinMax[0]
+			&& ThisObj->TheCond->GetInternLock()->TryAcquire())
+		{
+			ThisObj->TheCond->notify();
+			ThisObj->TheCond->GetInternLock()->Release();
+		}
 	}
-	fRdBuff::fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long InBlkLen) {
+	fRdBuff::fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long InBlkLen, bool Direct) {
+		ThrdErr = 0;
 		Pos = Fl->Tell();
 		Fl->Seek(0, fs::SK_END);
 		FlLen = Fl->Tell();
@@ -336,23 +363,50 @@ namespace Utils {
 		FlObj = Fl;
 		Buff.GetFunc = BuffGetFunc;
 		Buff.CbObj = this;
+		FreeFlCb = DefDelFl;
 		BlkLen = InBlkLen;
 		MinMax[0] = Min;
 		MinMax[1] = Max;
 		TheCond = GetCondVar(GetSingleMutex());
+		if (Direct) BlkLen |= 0x80000000;
 		Thrd.Init(BuffWorker, this);
 	}
+	void fRdBuff::SetFlDelFunc(bool(*DelFunc)(void *)) {
+		FreeFlCb = DelFunc;
+	}
 	bool fRdBuff::Seek(long long SkPos, int From) {
+		if (BlkLen & 0x80000000)
+		{
+			if (!FlObj->Seek(SkPos, From)) return false;
+			Pos = FlObj->Tell();
+			return true;
+		}
 		BlkLen |= 0x80000000;
+		if (ThrdErr) throw *ThrdErr;
 		TheCond->GetInternLock()->Acquire();
-		FlObj->Seek(SkPos, From);
+		try {
+			if (!FlObj->Seek(SkPos, From))
+			{
+				TheCond->notify();
+				BlkLen &= 0x7FFFFFFF;
+				TheCond->GetInternLock()->Release();
+				return false;
+			}
+		}
+		catch (...) {
+			TheCond->notify();
+			BlkLen &= 0x7FFFFFFF;
+			TheCond->GetInternLock()->Release();
+			throw;
+		}
 		if (From == fs::SK_SET) SkPos -= Pos;
-		else if (From == fs::SK_END) SkPos = FlLen - Pos;
+		else if (From == fs::SK_END) SkPos = (FlLen + SkPos) - Pos;
 		else if (From != fs::SK_CUR) SkPos = FlObj->Tell() - Pos;
 		if (SkPos < 0) Buff.Clear(Buff.Length());
 		else Buff.Clear(SkPos);
 		TheCond->notify();
 		BlkLen &= 0x7FFFFFFF;
+		Pos = FlObj->Tell();
 		TheCond->GetInternLock()->Release();
 		return true;
 	}
@@ -370,14 +424,40 @@ namespace Utils {
 		TheCond->GetInternLock()->Release();
 	}
 	void fRdBuff::Flush() {}
+	void fRdBuff::SetBuffMode(bool Direct) {
+		if (Direct && (BlkLen & 0x80000000) > 0) return;
+		else if (!Direct && (BlkLen & 0x80000000) == 0) return;
+		if (Direct)
+		{
+			BlkLen |= 0x80000000;
+			if (ThrdErr) throw *ThrdErr;
+			TheCond->GetInternLock()->Acquire();
+			Buff.Clear(Buff.Length());
+			FlObj->Seek(Pos);
+			TheCond->GetInternLock()->Release();
+		}
+		else
+		{
+			if (ThrdErr) throw *ThrdErr;
+			TheCond->GetInternLock()->Acquire();
+			BlkLen &= 0x7FFFFFFF;
+			TheCond->notify();
+			TheCond->GetInternLock()->Release();
+		}
+	}
 	fRdBuff::~fRdBuff() {
 		Close();
 		Thrd.Join();
 		TheCond->IsLockRef = false;
 		DestroyCond(TheCond);
 		TheCond = 0;
-		FlObj->Close();
+		try {
+			FlObj->Close();
+		}
+		catch (...) {}
+		if (FreeFlCb) FreeFlCb(FlObj);
 		FlObj = 0;
+		if (ThrdErr) delete ThrdErr;
 	}
 	wString fRdBuff::GetName() {
 		return FlObj->GetName();
@@ -386,34 +466,32 @@ namespace Utils {
 		return FlObj->GetMode();
 	}
 	ByteArray fRdBuff::Read(unsigned long Num) {
+		if (BlkLen & 0x80000000)
+		{
+			ByteArray Rtn = FlObj->Read(Num);
+			Pos += Rtn.Length();
+			return Rtn;
+		}
 		if (Pos + Num > FlLen) Num = FlLen - Pos;
 		SizeL CurPos = 0;
 		ByteArray Rtn(Byte(0), Num);
-		while (Num > MinMax[1]) {
-			if (TheCond->GetInternLock()->TryAcquire())
-			{
-				if (Buff.Length() < MinMax[1]) TheCond->notify();
-				TheCond->GetInternLock()->Release();
-			}
-			Buff.GetBytes(Rtn, MinMax[1], CurPos);
-			CurPos += MinMax[1];
-			Num -= MinMax[1];
-		}
-		if (TheCond->GetInternLock()->TryAcquire())
-		{
-			if (Buff.Length() < MinMax[0]) TheCond->notify();
-			TheCond->GetInternLock()->Release();
-		}
-		Buff.GetBytes(Rtn, Num, CurPos);
-		if (TheCond->GetInternLock()->TryAcquire())
-		{
-			if (Buff.Length() < MinMax[0]) TheCond->notify();
-			TheCond->GetInternLock()->Release();
-		}
+		Buff.GetBytes(Rtn, Num);
 		return Rtn;
 	}
 	ByteArray fRdBuff::Read() {
 		if (FlLen - Pos <= MAX_INT32) return Read(FlLen - Pos);
 		else throw fs::FileError("DataOverflow", "Too much data to read");
+	}
+	unsigned long fRdBuff::Read(ByteArray &Data) {
+		if (BlkLen & 0x80000000)
+		{
+			unsigned long Rtn = FlObj->Read(Data);
+			Pos += Rtn;
+			return Rtn;
+		}
+		unsigned long Num = Data.Length();
+		if (Pos + Num > FlLen) Num = FlLen - Pos;
+		Buff.GetBytes(Data, Num);
+		return Num;
 	}
 }
