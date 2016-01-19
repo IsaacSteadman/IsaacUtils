@@ -120,6 +120,7 @@ namespace Utils {
 			WinFile(char *fName, unsigned long Mode);
 			virtual ByteArray Read();
 			virtual ByteArray Read(unsigned long Num);
+			virtual unsigned long Read(ByteArray &Data);
 			virtual bool Seek(long long Pos, int From = SK_SET);
 			virtual long long Tell();
 			virtual unsigned long Write(const ByteArray &Data);
@@ -705,6 +706,11 @@ namespace Utils {
 			Rtn.SetLength(NumHasRead);
 			return Rtn;
 		}
+		unsigned long WinFile::Read(ByteArray &Data) {
+			unsigned long Rtn = 0;
+			ReadFile((HANDLE)hFile, (LPVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
+			return Rtn;
+		}
 		bool WinFile::Seek(long long Pos, int From) {
 			LARGE_INTEGER ToPos;
 			ToPos.QuadPart = Pos;
@@ -929,6 +935,34 @@ namespace Utils {
 		if (GetCurrentThreadId() == ThreadId) return false;
 		return WaitForSingleObject(hThread, INFINITE) != 0xFFFFFFFF;
 	}
+	void AtomicInc(unsigned long &Num) {
+		InterlockedIncrement(&Num);
+	}
+	void AtomicInc(unsigned long long &Num) {
+		InterlockedIncrement(&Num);
+	}
+	void AtomicDec(unsigned long &Num) {
+		InterlockedDecrement(&Num);
+	}
+	void AtomicDec(unsigned long long &Num) {
+		InterlockedDecrement(&Num);
+	}
+	void AtomicAdd(unsigned long &Num, unsigned long Add) {
+		InterlockedExchangeAdd(&Num, Add);
+	}
+	void AtomicAdd(unsigned long long &Num, unsigned long long Add) {
+		InterlockedExchangeAdd(&Num, Add);
+	}
+	void AtomicSub(unsigned long &Num, unsigned long Add) {
+		Add -= 1;
+		Add = ~Add;
+		InterlockedExchangeAdd(&Num, Add);
+	}
+	void AtomicSub(unsigned long long &Num, unsigned long long Add) {
+		Add -= 1;
+		Add = ~Add;
+		InterlockedExchangeAdd(&Num, Add);
+	}
 
 	class SingleMutex : public Mutex {
 	public:
@@ -1077,8 +1111,8 @@ namespace Utils {
 		InitializeConditionVariable(&Data);
 	}
 	void CSCondVar::notify() {
-		if (PreWtNtfy) NumAllowWake += 1;
-		else if (NumWaiting > 0 && NumAllowWake < NumWaiting) NumAllowWake += 1;
+		if (PreWtNtfy) AtomicInc(NumAllowWake);
+		else if (NumWaiting > 0 && NumAllowWake < NumWaiting) AtomicInc(NumAllowWake);
 		WakeConditionVariable(&Data);
 	}
 	void CSCondVar::notifyAll() {
@@ -1086,10 +1120,10 @@ namespace Utils {
 		WakeAllConditionVariable(&Data);
 	}
 	void CSCondVar::wait(unsigned long Timeout, bool Access) {
-		++NumWaiting;
+		AtomicInc(NumWaiting);
 		while (NumAllowWake == 0) SleepConditionVariableCS(&Data, &CSLock->Data, Timeout);
-		--NumAllowWake;
-		--NumWaiting;
+		AtomicDec(NumAllowWake);
+		AtomicDec(NumWaiting);
 	}
 	Mutex *CSCondVar::GetInternLock() {
 		return CSLock;
