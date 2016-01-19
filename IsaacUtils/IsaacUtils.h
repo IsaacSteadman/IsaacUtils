@@ -178,8 +178,10 @@ extern "C"{
 	ISAACUTILS_API bool EncProt_Recv(void *Prot, void *NoEncDat, void *EncDat);
 	// Constructs a new File given a filename [Str] and a mode [Mode] and a file system lock [FsLock]
 	ISAACUTILS_API void *RfsFile_newA(void *Prot, char *Str, char *Mode, void *FsLock);
-	// Constructs a new File that acts as a read buffer for [Fl]
+	// Constructs a new File that acts as a read buffer for [Fl], Initially not buffered
 	ISAACUTILS_API void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen = 8192);
+	// Sets the the buffering mode of [FlObj] to (Direct ? Non-Buffered : Buffered)
+	ISAACUTILS_API bool RdBuffFile_SetMode(void *FlObj, bool Direct = false);
 	// Constructs a host file system File object
 	ISAACUTILS_API void *File_newA(char *fName, char *Mode);
 	// Flushes the write buffers for the File [FlObj]
@@ -203,9 +205,9 @@ extern "C"{
 	// Trys to Acquire the Lock [Lk] without blocking and returns if the lock was acquired
 	ISAACUTILS_API bool Lock_TryAcquire(void *Lk, bool Access = false);
 	// Acquires the Lock [Lk] or blocks untils it is acquired
-	ISAACUTILS_API bool Lock_Acquire(void *Lk, bool Access = false);
+	ISAACUTILS_API bool Lock_acquire(void *Lk, bool Access = false);
 	// Releases the Lock [Lk]
-	ISAACUTILS_API bool Lock_Release(void *Lk, bool Access = false);
+	ISAACUTILS_API bool Lock_release(void *Lk, bool Access = false);
 	// Constructs a new empty Concurrent Queue
 	//ISAACUTILS_API void *ConQueue_new();//NextTime
 	// Constructs a new SockAddr from a human readable address [Str], a port [Port] and, for Ipv6 [FlowInf] and [ScopeId]

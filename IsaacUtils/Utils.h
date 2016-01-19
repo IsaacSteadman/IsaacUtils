@@ -381,6 +381,14 @@ namespace Utils{
 		Lock &operator=(Lock &&Cpy);
 		~Lock();
 	};
+	ISAACUTILS_API void AtomicInc(unsigned long &Num);
+	ISAACUTILS_API void AtomicInc(unsigned long long &Num);
+	ISAACUTILS_API void AtomicDec(unsigned long &Num);
+	ISAACUTILS_API void AtomicDec(unsigned long long &Num);
+	ISAACUTILS_API void AtomicAdd(unsigned long &Num, unsigned long Add);
+	ISAACUTILS_API void AtomicAdd(unsigned long long &Num, unsigned long long Add);
+	ISAACUTILS_API void AtomicSub(unsigned long &Num, unsigned long Add);
+	ISAACUTILS_API void AtomicSub(unsigned long long &Num, unsigned long long Add);
 	//Concurrent Queue: allows one to insert stuff at the end while simultaneously retreiving from the beginning
 	class ISAACUTILS_API ConQueue {//Not Tested
 	public:
@@ -529,6 +537,8 @@ namespace Utils{
 //			FileBase();
 			virtual ByteArray Read() = 0;
 			virtual ByteArray Read(unsigned long Num) = 0;
+			// Does not modify the length of Data
+			virtual unsigned long Read(ByteArray &Data) = 0;
 			virtual bool Seek(long long Pos, int From = SK_SET) = 0;
 			virtual long long Tell() = 0;
 			virtual unsigned long Write(const ByteArray &Data) = 0;
@@ -696,6 +706,7 @@ namespace Utils{
 	ISAACUTILS_API void PackStrLen(String &Dest, SizeL &Pos, const String &StrSrc, SizeL HeadLen);
 	ISAACUTILS_API void PackListStrFl(fs::FileBase *Fl, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen);
 	ISAACUTILS_API void PackListStr(String &Dest, SizeL &Pos, const Array<String> &LstStr, SizeL HeadLen, SizeL StrHeadLen);
+	ISAACUTILS_API bool DefDelFl(void *Fl);
 	class ISAACUTILS_API fRdBuff : public fs::FileBase {
 	private:
 		ConQueue Buff;
@@ -706,17 +717,22 @@ namespace Utils{
 		CondVar *TheCond;
 		unsigned long BlkLen;
 		UtilsThread Thrd;
+		fs::FileError *ThrdErr;
+		bool(*FreeFlCb)(void *);
 	public:
 		static unsigned long BuffWorker(void *hThread, unsigned long Id, void *Params);
 		static void BuffGetFunc(void *Obj, SizeL NumBytes);
-		fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen);
+		fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen, bool Direct = false);
+		void SetFlDelFunc(bool(*DelFunc)(void *));
 		ByteArray Read();
 		ByteArray Read(unsigned long Num);
+		unsigned long Read(ByteArray &Data);
 		bool Seek(long long SkPos, int From = fs::SK_SET);
 		long long Tell();
 		unsigned long Write(const ByteArray &Data);
 		void Close();
 		void Flush();
+		void SetBuffMode(bool Direct = false);
 		wString GetName();
 		unsigned long GetMode();
 		~fRdBuff();
@@ -790,6 +806,7 @@ namespace Utils{
 		RfsFile(EncProt *Serv, const String &fName, const String &Mode, Mutex *RfsLock);
 		ByteArray Read();
 		ByteArray Read(unsigned long Num);
+		unsigned long Read(ByteArray &Data);
 		bool Seek(long long PosIn, int From = fs::SK_SET);
 		long long Tell();
 		unsigned long Write(const ByteArray &Data);
