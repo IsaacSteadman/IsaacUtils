@@ -21,6 +21,7 @@ namespace Utils {
 		void Seed(BigLong Val);
 		~CryptRandom();
 	};
+	//#GC-CHECK delete
 	Random *GetCryptoRand() {
 		return new CryptRandom();
 	}
@@ -160,7 +161,7 @@ namespace Utils {
 			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert = false, bool RtnBegDots = false);
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Exts, bool Invert = false, bool RtnBegDots = false);
 		};
-
+		//#GC-CHECK Ptr: delete[]
 		void WinDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
 			Len += Path.Length();
 			if (Len + 2 > MAX_PATH)
@@ -185,6 +186,7 @@ namespace Utils {
 				Len += 2;
 			}
 		}
+		//#GC-CHECK Ptr: delete[]
 		void WinDrive::AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len) {
 			Len += Path.Length();
 			if (Len + 2 > MAX_PATH)
@@ -209,6 +211,7 @@ namespace Utils {
 				Len += 2;
 			}
 		}
+		//#GC-CHECK Ptr: delete[]
 		bool WinDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
 			if (Path.Length() + 2 > MAX_PATH) return false;
 			Len += Path.Length();
@@ -233,6 +236,7 @@ namespace Utils {
 		String WinDrive::GetNameA() {
 			return Name.Str();
 		}
+		//#GC-CHECK delete
 		FileBase *WinDrive::OpenFile(const wString &Path, unsigned long Mode) {
 			SizeL Len = 0;
 			wchar_t *Str = 0;
@@ -241,6 +245,7 @@ namespace Utils {
 			delete[] Str;
 			return Rtn;
 		}
+		//#GC-CHECK delete
 		FileBase *WinDrive::OpenFile(const String &Path, unsigned long Mode) {
 			SizeL Len = 0;
 			FileBase *Rtn = 0;
@@ -1020,9 +1025,11 @@ namespace Utils {
 		return 2;
 	}
 	RWMutex::~RWMutex() {}
+	//#GC-CHECK DestroyMutex(Rtn)
 	Mutex *GetSingleMutex() {
 		return new SingleMutex();
 	}
+	//#GC-CHECK DestroyMutex(Rtn)
 	Mutex *GetRWMutex() {
 		return new RWMutex();
 	}
@@ -1131,6 +1138,7 @@ namespace Utils {
 	CSCondVar::~CSCondVar() {
 		if (!IsLockRef) DestroyMutex(CSLock);
 	}
+	//#GC-CHECK DestroyCond(Rtn)
 	CondVar *GetCondVar(Mutex *TheLock) {
 		if (TheLock == 0)
 		{

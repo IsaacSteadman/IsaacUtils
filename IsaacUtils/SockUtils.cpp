@@ -227,6 +227,7 @@ namespace Utils {
 		UniStrNi();
 		return 0;
 	}
+	//#GC-CHECK delete
 	fs::FileBase *RfsDrv::OpenFile(const String &Path, unsigned long Mode) {
 		Lock Lk(FsLock);
 		return new RfsFile(Prot, Path, fs::ParseModeLong(Mode), FsLock);

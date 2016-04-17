@@ -776,6 +776,8 @@ namespace Utils{
 		}
 		//deallocate the array of pairs
 		delete[] Datas;
+		AllocNum = 0;
+		Datas = 0;
 		if (IsDelEnd) delete Pairs;
 	}
 	template<typename T1, typename T2>

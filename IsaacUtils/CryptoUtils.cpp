@@ -63,6 +63,7 @@ namespace Utils {
 			Data[c] = Num - 1;
 		}
 	}
+	//#GC-CHECK delete
 	BigLong *ExtEuclidAlg(const BigLong &a, const BigLong &b) {
 		BigLong *Rtn = new BigLong[3];
 		if (b.Zero() == 1)

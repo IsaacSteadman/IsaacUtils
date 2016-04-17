@@ -413,7 +413,7 @@ extern "C" {
 		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, Len));
 	}
 	void *ByteArray_newW(wchar_t *Str, Utils::Byte ChOpt) {
-		if (ChOpt == 0) return new Utils::ByteArray((unsigned char *)Str, 2 * Utils::wStrLen(Str));
+		if (ChOpt == 0) return AddObject(new Utils::ByteArray((unsigned char *)Str, 2 * Utils::wStrLen(Str)));
 		Utils::ByteArray *Rtn = new Utils::ByteArray(Utils::Byte(0), Utils::wStrLen(Str));
 		for (SizeL c = 0; c < Rtn->Length(); ++c) {
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
@@ -423,7 +423,7 @@ extern "C" {
 	void *ByteArray_newWStr(void *wStr, Utils::Byte ChOpt) {
 		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
 		Utils::wString &Str = *(Utils::wString *)wStr;
-		if (ChOpt == 0) return new Utils::ByteArray((unsigned char *)Str.GetData(), 2 * Str.Length());
+		if (ChOpt == 0) return AddObject(new Utils::ByteArray((unsigned char *)Str.GetData(), 2 * Str.Length()));
 		Utils::ByteArray *Rtn = new Utils::ByteArray(Utils::Byte(0), Str.Length());
 		for (SizeL c = 0; c < Rtn->Length(); ++c) {
 			(*Rtn)[c] = ChOpt == 1 ? Str[c] & 0xFF : (Str[c] & 0xFF00) >> 8;
@@ -433,7 +433,7 @@ extern "C" {
 	void *ByteArray_newBigLong(void *BLong) {
 		if (!AssertType(BLong, &BigLongPool, 0, __FUNCTION__)) return 0;
 		Utils::BigLong &Bl = *(Utils::BigLong*)BLong;
-		if (Utils::IsBigEnd) return new Utils::ByteArray((Utils::Byte *)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4);
+		if (Utils::IsBigEnd) return AddObject(new Utils::ByteArray((Utils::Byte *)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4));
 		Utils::Array<unsigned long> &Longs = Bl.GetLongs();
 		Utils::ByteArray &Rtn = *new Utils::ByteArray(Utils::Byte(0), Longs.Length() * 4);
 		for (SizeL c = 0; c < Longs.Length(); ++c) {
@@ -1161,7 +1161,7 @@ extern "C" {
 
 	void *RegMyHash_10(unsigned long BitLen) {
 		for (BitLenNum &Elem : HashPrimes1) {
-			if (Elem.BitLen == BitLen) return new Utils::BigLong(Elem.Num);
+			if (Elem.BitLen == BitLen) return AddObject(new Utils::BigLong(Elem.Num));
 		}
 		Utils::ShowError("hello Level", "we are at Pos 0");
 		BitLenNum Add = { BitLen, GetHighestPrime(BitLen, 18) };

@@ -422,6 +422,7 @@ namespace Utils{
 		}
 		return Rtn;
 	}
+	//#GC-CHECK, delete[]
 	BigLong* BigLong::DivRem(const BigLong &Denom) const{
 		if (Denom == (unsigned long)0) return 0;
 		FuncTimer Tmr(BlDivTm);
@@ -1095,7 +1096,7 @@ namespace Utils{
 			}
 		}
 		while (NumBytes > 0) {
-			while (!First) LastCond->wait();//If there isn't a next then wait for one
+			while (!First) LastCond->wait();// If there isn't a next then wait for one
 			LastLock->Release();
 			if (First->Data.Length() <= NumBytes)
 			{
@@ -1545,7 +1546,15 @@ namespace Utils{
 		LstCiphModes[0] = CmpxCBCCrypt;
 	}
 	void DeInit() {
+		Array<HashMap<wString, fs::DriveBase *>::DataPair *> KeyPairs = fs::DriveMap.GetKeyPairs();
+		for (HashMap<wString, fs::DriveBase *>::DataPair *CurDrv : KeyPairs) {
+			delete CurDrv->Val;
+		}
+		fs::DriveMap.~HashMap();
 		OsDeInit();
+		delete RandTm;
+		delete BlDivTm;
+		delete BlMulTm;
 	}
 	SizeL wStrLen(wchar_t *wStr){
 		SizeL c = 0;
