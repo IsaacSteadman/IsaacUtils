@@ -80,7 +80,8 @@ namespace Utils {
 	}
 	void PadForEnc(SizeL KeyLen, ByteArray &Data) {
 		SizeL CurLen = Data.Length();
-		Data.SetLength(CurLen + (KeyLen - CurLen % KeyLen));
+		if (CurLen % KeyLen != 0) Data.SetLength(CurLen + (KeyLen - CurLen % KeyLen));
+		else return;
 		for (; CurLen < Data.Length(); ++CurLen) {
 			Data[CurLen] = 0;
 		}
