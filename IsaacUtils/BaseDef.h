@@ -6,6 +6,10 @@
  *     used to convey that the size of the value/type is defined as
  *     (32bit value)/(64bit value) -> UInt32/UInt64 TRHA
  * Guaranteed defines/typedefs (for platforms this library is supported on)
+ *   typedef ... UInt8; // unsigned 8 bit integer
+ *   typedef ... SInt8; // signed 8 bit integer
+ *   typedef ... UInt16; // unsigned 16 bit integer
+ *   typedef ... SInt16; // signed 16 bit integer
  *   typedef ... UInt32; // unsigned 32 bit integer
  *   typedef ... SInt32; // signed 32 bit integer
  *   typedef ... UInt64; // unsigned 64 bit integer
