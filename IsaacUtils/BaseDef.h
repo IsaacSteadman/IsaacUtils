@@ -24,9 +24,14 @@
 
 #define MAX_INT64 0xFFFFFFFFFFFFFFFF
 #define MAX_INT32 0xFFFFFFFF
+
+typedef unsigned char UInt8;
+typedef signed char SInt8;
+typedef unsigned short UInt16;
+typedef signed short SInt16;
 typedef unsigned int UInt32;
-typedef unsigned long long UInt64;
 typedef signed int SInt32;
+typedef unsigned long long UInt64;
 typedef signed long long SInt64;
 
 #if defined(_M_X64) || defined(_M_AMD64) || defined(__amd64__) || defined(__amd64)\
