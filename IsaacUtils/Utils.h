@@ -154,15 +154,15 @@ namespace Utils{
 	};
 	class ISAACUTILS_API BigLong {
 	private:
-		Array<unsigned long> Longs;
+		Array<UInt32> Longs;
 		bool Sign;
 	public:
 		static BigLong NomMul(const BigLong &Bl1, const BigLong &Bl2);
 		static BigLong KarMul(const BigLong &Bl1, const BigLong &Bl2);
 		static void KarSplit(BigLong &Bl1, BigLong &Bl2, SizeL &Power, BigLong &BlRem1, BigLong &BlRem2);
 		BigLong();
-		BigLong(unsigned long Ul);
-		BigLong(unsigned long long Ull);
+		BigLong(UInt32 Ul);
+		BigLong(UInt64 Ull);
 		BigLong(BigLong &&Cpy);
 		BigLong(const BigLong &Cpy);
 		BigLong(const BigLong &Cpy, SizeL BtCopy);
@@ -173,16 +173,16 @@ namespace Utils{
 		//LimNum is the maximum number of bytes to provide
 		BigLong &IMulLim(const BigLong &MulBy, SizeL LimNum);
 		SizeL RemNulls();
-		Array<unsigned long> &GetLongs();
+		Array<UInt32> &GetLongs();
 		Byte &GetByte(SizeL Pos);
-		bool GetBit(unsigned long long Pos);
-		void SetBit(unsigned long long Pos, bool Set);
-		BigLong PostInc(unsigned long Num);
-		BigLong &PreInc(unsigned long Num);
+		bool GetBit(UInt64 Pos);
+		void SetBit(UInt64 Pos, bool Set);
+		BigLong PostInc(UInt32 Num);
+		BigLong &PreInc(UInt32 Num);
 		//Not Tested
-		BigLong PostDec(unsigned long Num);
+		BigLong PostDec(UInt32 Num);
 		//Not Tested
-		BigLong &PreDec(unsigned long Num);
+		BigLong &PreDec(UInt32 Num);
 		void Minus();
 		BigLong Negate() const;
 		bool FromStr(const String &Str, Byte Radix = 10);
@@ -191,7 +191,7 @@ namespace Utils{
 		void TowStr(wString &wStr, Byte Radix = 10);
 		bool IsPow2() const;
 		SizeL ToSizeL() const;
-		long long ToLL() const;
+		SInt64 ToLL() const;
 		//returns an array of 2 BigLongs that must be deallocated with delete []
 		//the array returned is in the form {Quotient, Remainder}
 		BigLong* DivRem(const BigLong &Denom) const;
@@ -203,7 +203,7 @@ namespace Utils{
 		bool operator>(const BigLong &Cmp) const;
 		BigLong &operator=(BigLong &&Cpy);
 		BigLong &operator=(const BigLong &Cpy);
-		unsigned long long BitLength() const;
+		UInt64 BitLength() const;
 		BigLong &operator*=(BigLong Num);
 		BigLong operator*(BigLong Num) const;
 		BigLong operator+(const BigLong Add) const;
@@ -227,7 +227,7 @@ namespace Utils{
 		//tests for zeroness, if zero returns 1, if greater than zero returns 2, if less than zero returns 0
 		Byte Zero() const;
 	};
-	BigLong ISAACUTILS_API Pow(BigLong Base, BigLong Exp, BigLong Mod = (unsigned long)0);
+	BigLong ISAACUTILS_API Pow(BigLong Base, BigLong Exp, BigLong Mod = (UInt32)0);
 
 	class ISAACUTILS_API Random{
 	public:
@@ -244,9 +244,9 @@ namespace Utils{
 	//TODO: big errors in cryptography and primes
 	ISAACUTILS_API BigLong RandNoMultiple(Random * Rnd, Array<BigLong> &Against, BigLong a, BigLong b, unsigned short NumQuit = 0);
 
-	ISAACUTILS_API bool FermatBaseTest(Random *, const BigLong &Num, unsigned long NumTest = 16);
+	ISAACUTILS_API bool FermatBaseTest(Random *, const BigLong &Num, UInt32 NumTest = 16);
 
-	ISAACUTILS_API BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, unsigned long), SizeL BitLen, unsigned long NumTimes);
+	ISAACUTILS_API BigLong GetRandPrimeProb(Random *Rnd, bool(*Test)(Random *, const BigLong &, UInt32), SizeL BitLen, UInt32 NumTimes);
 	ISAACUTILS_API BigLong GetRandPrime(Random *Rnd, bool(*Test)(Random *, const BigLong &), SizeL BitLen);
 	ISAACUTILS_API void XorBytes(Byte *Obj, const Byte *Param, SizeL Len);
 	struct BlkCiph;
@@ -276,16 +276,16 @@ namespace Utils{
 	extern ISAACUTILS_API Array<MidEncSt::CiphMode> LstCiphModes;
 	class ISAACUTILS_API Clock{
 	private:
-		unsigned long NumTimes;
+		UInt32 NumTimes;
 		double TotTime;
-		long long CurClk;
+		SInt64 CurClk;
 		Clock(const Clock &Clk);
 		Clock &operator=(const Clock &Cpy);
 	public:
-		static long long Tps;//ticks per seconds
+		static SInt64 Tps;//ticks per seconds
 		Clock();
 		~Clock();
-		unsigned long GetNumTimes();
+		UInt32 GetNumTimes();
 		double GetAvgTime();
 		double GetTotalTime();
 		void StartTime();
@@ -303,28 +303,28 @@ namespace Utils{
 	class ISAACUTILS_API UtilsThread {
 	private:
 		void *hThread;
-		unsigned long ThreadId;
+		UInt32 ThreadId;
 		struct ThreadParams {
 			void *hThread;
-			unsigned long ThreadId;
-			unsigned long(*Function)(void *, unsigned long, void *);
+			UInt32 ThreadId;
+			UInt32(*Function)(void *, UInt32, void *);
 			void *FunctParams;
 		};
-		static unsigned long OS_CALL ThreadProc(void *Params);
+		static UInt32 OS_CALL ThreadProc(void *Params);
 	public:
 		UtilsThread();
-		UtilsThread(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams);
-		UtilsThread(unsigned long ThreadId);
+		UtilsThread(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams);
+		UtilsThread(UInt32 ThreadId);
 		UtilsThread &operator=(UtilsThread &&Copy);
 		UtilsThread &operator=(const UtilsThread &Copy);
-		void Init(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams);
-		void SetThread(unsigned long Id);
+		void Init(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams);
+		void SetThread(UInt32 Id);
 		void SetThisToCurr();
 		bool Suspend();
 		bool Resume();
 		bool Join();
-		bool ExitCurrentThread(unsigned long ExitCode = 0);
-		bool Terminate(unsigned long ExitCode = 0);
+		bool ExitCurrentThread(UInt32 ExitCode = 0);
+		bool Terminate(UInt32 ExitCode = 0);
 		bool IsCallingThread(); // Is the thread that the object represents the same as the thread that called this function
 		~UtilsThread();
 	};
@@ -353,7 +353,7 @@ namespace Utils{
 		bool PreWtNtfy;//Allow notifies to affect waits later on NOTE: only works on single notifies
 		virtual void notify() = 0;
 		virtual void notifyAll() = 0;
-		virtual void wait(unsigned long Timeout = MAX_INT32, bool Access = false) = 0;
+		virtual void wait(UInt32 Timeout = MAX_INT32, bool Access = false) = 0;
 		virtual Mutex *GetInternLock() = 0;
 		virtual ~CondVar();
 	};
@@ -372,14 +372,14 @@ namespace Utils{
 		Lock &operator=(Lock &&Cpy);
 		~Lock();
 	};
-	ISAACUTILS_API void AtomicInc(unsigned long &Num);
-	ISAACUTILS_API void AtomicInc(unsigned long long &Num);
-	ISAACUTILS_API void AtomicDec(unsigned long &Num);
-	ISAACUTILS_API void AtomicDec(unsigned long long &Num);
-	ISAACUTILS_API void AtomicAdd(unsigned long &Num, unsigned long Add);
-	ISAACUTILS_API void AtomicAdd(unsigned long long &Num, unsigned long long Add);
-	ISAACUTILS_API void AtomicSub(unsigned long &Num, unsigned long Add);
-	ISAACUTILS_API void AtomicSub(unsigned long long &Num, unsigned long long Add);
+	ISAACUTILS_API void AtomicInc(UInt32 &Num);
+	ISAACUTILS_API void AtomicInc(UInt64 &Num);
+	ISAACUTILS_API void AtomicDec(UInt32 &Num);
+	ISAACUTILS_API void AtomicDec(UInt64 &Num);
+	ISAACUTILS_API void AtomicAdd(UInt32 &Num, UInt32 Add);
+	ISAACUTILS_API void AtomicAdd(UInt64 &Num, UInt64 Add);
+	ISAACUTILS_API void AtomicSub(UInt32 &Num, UInt32 Add);
+	ISAACUTILS_API void AtomicSub(UInt64 &Num, UInt64 Add);
 	//Concurrent Queue: allows one to insert stuff at the end while simultaneously retreiving from the beginning
 	class ISAACUTILS_API ConQueue {//Not Tested
 	public:
@@ -412,7 +412,7 @@ namespace Utils{
 		void(*GetFunc)(void *Obj, SizeL NumBytes);
 	};
 
-	ISAACUTILS_API wString FromNumber(unsigned long Num, unsigned char Radix = 10);
+	ISAACUTILS_API wString FromNumber(UInt32 Num, unsigned char Radix = 10);
 	ISAACUTILS_API SizeL StringHash(String Str, SizeL Range);
 	ISAACUTILS_API SizeL wStringHash(wString wStr, SizeL Range);
 	ISAACUTILS_API SizeL StringHash(const String &Str, SizeL Range);
@@ -430,30 +430,30 @@ namespace Utils{
 		FUNC_LAST
 	};
 	extern ISAACUTILS_API wString LastError;
-	extern ISAACUTILS_API unsigned long ErrorFuncId;
+	extern ISAACUTILS_API UInt32 ErrorFuncId;
 	extern ISAACUTILS_API bool ErrIsRead;
 	ISAACUTILS_API wString UtilsGetError();
 	ISAACUTILS_API bool UtilsGetIsErr();
-	ISAACUTILS_API void UtilsSetError(wString Err, unsigned long FuncErrId = 0);
+	ISAACUTILS_API void UtilsSetError(wString Err, UInt32 FuncErrId = 0);
 	/* File System namespace:
 	*   Can be hooked to expose virtual file systems in the same process
 	*/
 	namespace fs{
 		struct ISAACUTILS_API FileDesc{
 			wString fName;
-			unsigned long Attr;
-			unsigned long long Size;
-			unsigned long long CreateTime;
-			unsigned long long LastWriteTime;
-			unsigned long long LastAccessTime;
+			UInt32 Attr;
+			UInt64 Size;
+			UInt64 CreateTime;
+			UInt64 LastWriteTime;
+			UInt64 LastAccessTime;
 		};
 		struct ISAACUTILS_API FileDescA{
 			String fName;
-			unsigned long Attr;
-			unsigned long long Size;
-			unsigned long long CreateTime;
-			unsigned long long LastWriteTime;
-			unsigned long long LastAccessTime;
+			UInt32 Attr;
+			UInt64 Size;
+			UInt64 CreateTime;
+			UInt64 LastWriteTime;
+			UInt64 LastAccessTime;
 		};
 		enum FileAttr{
 			FILE_ATTR_READONLY = 0x1,
@@ -527,16 +527,16 @@ namespace Utils{
 		public:
 //			FileBase();
 			virtual ByteArray Read() = 0;
-			virtual ByteArray Read(unsigned long Num) = 0;
+			virtual ByteArray Read(UInt32 Num) = 0;
 			// Does not modify the length of Data
-			virtual unsigned long Read(ByteArray &Data) = 0;
-			virtual bool Seek(long long Pos, int From = SK_SET) = 0;
-			virtual long long Tell() = 0;
-			virtual unsigned long Write(const ByteArray &Data) = 0;
+			virtual UInt32 Read(ByteArray &Data) = 0;
+			virtual bool Seek(SInt64 Pos, SInt32 From = SK_SET) = 0;
+			virtual SInt64 Tell() = 0;
+			virtual UInt32 Write(const ByteArray &Data) = 0;
 			virtual void Close() = 0;
 			virtual void Flush() = 0;
 			virtual wString GetName() = 0;
-			virtual unsigned long GetMode() = 0;
+			virtual UInt32 GetMode() = 0;
 			virtual ~FileBase();
 		};
 		class ISAACUTILS_API DriveBase {
@@ -546,8 +546,8 @@ namespace Utils{
 			bool ErrNotRead;
 			virtual wString GetName() = 0;
 			virtual String GetNameA() = 0;
-			virtual FileBase *OpenFile(const wString &Path, unsigned long Mode) = 0;
-			virtual FileBase *OpenFile(const String &Path, unsigned long Mode) = 0;
+			virtual FileBase *OpenFile(const wString &Path, UInt32 Mode) = 0;
+			virtual FileBase *OpenFile(const String &Path, UInt32 Mode) = 0;
 			virtual bool IsFile(const wString &Path) = 0;
 			virtual bool IsFile(const String &Path) = 0;
 			virtual bool Exists(const wString &Path) = 0;
@@ -574,12 +574,12 @@ namespace Utils{
 			F_TRUNC = 64
 		};
 		extern ISAACUTILS_API HashMap<wString, DriveBase *> DriveMap;
-		ISAACUTILS_API FileBase *GetFileObj(wString Path, unsigned long Mode = F_IN);
-		ISAACUTILS_API FileBase *GetFileObj(String Path, unsigned long Mode = F_IN);
-		ISAACUTILS_API signed long GetDrvNPath(String &Path, DriveBase *&Drv);
-		ISAACUTILS_API signed long GetDrvNPath(wString &Path, DriveBase *&Drv);
-		ISAACUTILS_API unsigned long ParseModeStr(const String &ModeStr);
-		ISAACUTILS_API String ParseModeLong(unsigned long Md);
+		ISAACUTILS_API FileBase *GetFileObj(wString Path, UInt32 Mode = F_IN);
+		ISAACUTILS_API FileBase *GetFileObj(String Path, UInt32 Mode = F_IN);
+		ISAACUTILS_API SInt32 GetDrvNPath(String &Path, DriveBase *&Drv);
+		ISAACUTILS_API SInt32 GetDrvNPath(wString &Path, DriveBase *&Drv);
+		ISAACUTILS_API UInt32 ParseModeStr(const String &ModeStr);
+		ISAACUTILS_API String ParseModeLong(UInt32 Md);
 	}
 	namespace sock {
 		enum AddrFam {
@@ -620,14 +620,14 @@ namespace Utils{
 			SockAddr();
 			SockAddr(const SockAddr &Cpy);
 			SockAddr(SockAddr &&Cpy);
-			void Init(const wString &AddrStr, unsigned short Port, unsigned long FlowInf = 0, unsigned long ScopeId = 0);
-			void Init(const String &AddrStr, unsigned short Port, unsigned long FlowInf = 0, unsigned long ScopeId = 0);
+			void Init(const wString &AddrStr, unsigned short Port, UInt32 FlowInf = 0, UInt32 ScopeId = 0);
+			void Init(const String &AddrStr, unsigned short Port, UInt32 FlowInf = 0, UInt32 ScopeId = 0);
 			SockAddr &operator=(const SockAddr &Cpy);
 			SockAddr &operator=(SockAddr &&Cpy);
 			SockAddr(const String &Addr, unsigned short Port);
 			SockAddr(void *Bytes);
 			void Init(void *Bytes);
-			int GetSize() const;
+			SInt32 GetSize() const;
 			void *GetData() const;
 			~SockAddr();
 			String GetAddrStr();
@@ -636,40 +636,40 @@ namespace Utils{
 		class ISAACUTILS_API Socket {
 		private:
 			union DatType {
-				int Fd;
+				SInt32 Fd;
 				SizeL Ptr;
 			} Data;
 			SockAddr SockName;
 			SockAddr PeerName;
-			unsigned long TmOuts[2];
+			UInt32 TmOuts[2];
 			Mutex *SockLock;
 			//base timeout [0]; high byte is seconds, low word and other byte is microseconds
 			//[1]; NumAccess except for highest bit: IsReqClose
-			unsigned long MngdTmOut[2];
+			UInt32 MngdTmOut[2];
 		public:
 			Socket();
 			~Socket();
-			void Init(int af = UNSPEC, int Type = STREAM, int Prot = 0);
+			void Init(SInt32 af = UNSPEC, SInt32 Type = STREAM, SInt32 Prot = 0);
 			void bind(const SockAddr &Addr);
 			void connect(const SockAddr &Addr);
-			void setsockopt(int Lvl, int OptName, void *Data, unsigned long DataLen);
+			void setsockopt(SInt32 Lvl, SInt32 OptName, void *Data, UInt32 DataLen);
 			void accept(Socket &Sock);
-			void listen(int AllowBuff);
+			void listen(SInt32 AllowBuff);
 			void close();
-			void InitMngd(unsigned long MidTmOut);
-			SizeL sendBase(const char *SendDat, SizeL LenDat, int Flags = 0);
-			SizeL sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, int Flags = 0);
-			SizeL send(const ByteArray &Bytes, int Flags = 0);
-			SizeL send(const String &Bytes, int Flags = 0);
-			SizeL sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags = 0);
-			SizeL sendto(const String &Bytes, const SockAddr &Addr, int Flags = 0);
-			SizeL recvBase(char *RecvDat, SizeL LenDat, int Flags = 0);
+			void InitMngd(UInt32 MidTmOut);
+			SizeL sendBase(const char *SendDat, SizeL LenDat, SInt32 Flags = 0);
+			SizeL sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, SInt32 Flags = 0);
+			SizeL send(const ByteArray &Bytes, SInt32 Flags = 0);
+			SizeL send(const String &Bytes, SInt32 Flags = 0);
+			SizeL sendto(const ByteArray &Bytes, const SockAddr &Addr, SInt32 Flags = 0);
+			SizeL sendto(const String &Bytes, const SockAddr &Addr, SInt32 Flags = 0);
+			SizeL recvBase(char *RecvDat, SizeL LenDat, SInt32 Flags = 0);
 			//Support for reading until LenDat bytes have been read, when managed, is limited due to recvfrom behavior with other source addresses
-			SizeL recvfromBase(SockAddr &Addr, char *RecvDat, SizeL LenDat, int Flags = 0);
-			ByteArray recv(SizeL Num, int Flags = 0);
-			String recvS(SizeL Num, int Flags = 0);
-			ByteArray recvfrom(SockAddr &Addr, SizeL Num, int Flags = 0);
-			String recvfromS(SockAddr &Addr, SizeL Num, int Flags = 0);
+			SizeL recvfromBase(SockAddr &Addr, char *RecvDat, SizeL LenDat, SInt32 Flags = 0);
+			ByteArray recv(SizeL Num, SInt32 Flags = 0);
+			String recvS(SizeL Num, SInt32 Flags = 0);
+			ByteArray recvfrom(SockAddr &Addr, SizeL Num, SInt32 Flags = 0);
+			String recvfromS(SockAddr &Addr, SizeL Num, SInt32 Flags = 0);
 			void settimeout(double Sec);
 			void setblocking(bool IsBlk);
 			double gettimeout();
@@ -681,7 +681,7 @@ namespace Utils{
 			wString Msg;
 			SizeL ErrCode;
 			SockErr();
-			SockErr(int SockErrCode);
+			SockErr(SInt32 SockErrCode);
 		};
 
 	}
@@ -701,38 +701,38 @@ namespace Utils{
 	class ISAACUTILS_API fRdBuff : public fs::FileBase {
 	private:
 		ConQueue Buff;
-		long long Pos;
-		unsigned long long FlLen;
+		SInt64 Pos;
+		UInt64 FlLen;
 		fs::FileBase *FlObj;
-		unsigned long MinMax[2];
+		UInt32 MinMax[2];
 		CondVar *TheCond;
-		unsigned long BlkLen;
+		UInt32 BlkLen;
 		UtilsThread Thrd;
 		fs::FileError *ThrdErr;
 		bool(*FreeFlCb)(void *);
 	public:
-		static unsigned long BuffWorker(void *hThread, unsigned long Id, void *Params);
+		static UInt32 BuffWorker(void *hThread, UInt32 Id, void *Params);
 		static void BuffGetFunc(void *Obj, SizeL NumBytes);
-		fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen, bool Direct = false);
+		fRdBuff(fs::FileBase *Fl, UInt32 Min, UInt32 Max, UInt32 BlkLen, bool Direct = false);
 		void SetFlDelFunc(bool(*DelFunc)(void *));
 		ByteArray Read();
-		ByteArray Read(unsigned long Num);
-		unsigned long Read(ByteArray &Data);
-		bool Seek(long long SkPos, int From = fs::SK_SET);
-		long long Tell();
-		unsigned long Write(const ByteArray &Data);
+		ByteArray Read(UInt32 Num);
+		UInt32 Read(ByteArray &Data);
+		bool Seek(SInt64 SkPos, SInt32 From = fs::SK_SET);
+		SInt64 Tell();
+		UInt32 Write(const ByteArray &Data);
 		void Close();
 		void Flush();
 		void SetBuffMode(bool Direct = false);
 		wString GetName();
-		unsigned long GetMode();
+		UInt32 GetMode();
 		~fRdBuff();
 	};
 	class ISAACUTILS_API AbsFile {
 	public:
 		void *TheData;
 		mutable SizeL Pos;
-		unsigned long Meta[2]; //Meta[0] is Type, Meta[1] is the Allocation BlockSize or zero for allocations for exact needed length
+		UInt32 Meta[2]; //Meta[0] is Type, Meta[1] is the Allocation BlockSize or zero for allocations for exact needed length
 		AbsFile();
 		AbsFile(fs::FileBase *Fl);
 		AbsFile(ByteArray &BArr);
@@ -781,30 +781,30 @@ namespace Utils{
 	class RfsFile : public fs::FileBase {
 	private:
 		EncProt *Prot;
-		signed long long Pos;
+		SInt64 Pos;
 		ByteArray IdStr;
 		Mutex *FsLock;
 		String ThisfName;
 		String Md;
 	private:
-		void InternRead(ByteArray &Data, unsigned long Num);
-		bool InternSeek(long long PosIn, int From);
-		long long InternTell();
-		unsigned long InternWrite(const ByteArray &Data);
+		void InternRead(ByteArray &Data, UInt32 Num);
+		bool InternSeek(SInt64 PosIn, SInt32 From);
+		SInt64 InternTell();
+		UInt32 InternWrite(const ByteArray &Data);
 		void InternClose();
-		unsigned long long InternGetLen();
+		UInt64 InternGetLen();
 	public:
 		RfsFile(EncProt *Serv, const String &fName, const String &Mode, Mutex *RfsLock);
 		ByteArray Read();
-		ByteArray Read(unsigned long Num);
-		unsigned long Read(ByteArray &Data);
-		bool Seek(long long PosIn, int From = fs::SK_SET);
-		long long Tell();
-		unsigned long Write(const ByteArray &Data);
+		ByteArray Read(UInt32 Num);
+		UInt32 Read(ByteArray &Data);
+		bool Seek(SInt64 PosIn, SInt32 From = fs::SK_SET);
+		SInt64 Tell();
+		UInt32 Write(const ByteArray &Data);
 		void Close();
 		void Flush();
 		wString GetName();
-		unsigned long GetMode();
+		UInt32 GetMode();
 	};
 	class RfsDrv : public fs::DriveBase {//Decent TODO(Unicode support) but should(maybe) work
 	private:
@@ -818,8 +818,8 @@ namespace Utils{
 		RfsDrv(EncProt *Serv, const String &Username);
 		wString GetName();
 		String GetNameA();
-		fs::FileBase *OpenFile(const wString &Path, unsigned long Mode);
-		fs::FileBase *OpenFile(const String &Path, unsigned long Mode);
+		fs::FileBase *OpenFile(const wString &Path, UInt32 Mode);
+		fs::FileBase *OpenFile(const String &Path, UInt32 Mode);
 		bool IsFile(const wString &Path);
 		bool IsFile(const String &Path);
 		bool Exists(const wString &Path);

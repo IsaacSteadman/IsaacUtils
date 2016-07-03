@@ -21,9 +21,9 @@ namespace Utils {
 		if (IsEnc)
 		{
 			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
-				unsigned long Num = Data[Pos];
+				UInt32 Num = Data[Pos];
 				Num += 1;
-				unsigned long NumK = Key[c];
+				UInt32 NumK = Key[c];
 				NumK += 1;
 				Num *= NumK;
 				Num %= 257;
@@ -33,9 +33,9 @@ namespace Utils {
 		else
 		{
 			for (SizeL c = 0; c < Key.Length(); ++c, ++Pos) {
-				unsigned long Num = Data[Pos];
+				UInt32 Num = Data[Pos];
 				Num += 1;
-				unsigned long NumK = CipherNums[Key[c]];
+				UInt32 NumK = CipherNums[Key[c]];
 				NumK += 1;
 				Num *= NumK;
 				Num %= 257;
@@ -45,9 +45,9 @@ namespace Utils {
 	}
 	void CipherosEnc(MidEncSt *EncSt, Byte *Data) {
 		for (SizeL c = 0; c < EncSt->Key.Length(); ++c) {
-			unsigned long Num = Data[c];
+			UInt32 Num = Data[c];
 			Num += 1;
-			unsigned long NumK = EncSt->Key[c];
+			UInt32 NumK = EncSt->Key[c];
 			NumK += 1;
 			Num *= NumK;
 			Num %= 257;
@@ -56,9 +56,9 @@ namespace Utils {
 	}
 	void CipherosDec(MidEncSt *EncSt, Byte *Data) {
 		for (SizeL c = 0; c < EncSt->Key.Length(); ++c) {
-			unsigned long Num = Data[c];
+			UInt32 Num = Data[c];
 			Num += 1;
-			unsigned long NumK = CipherNums[EncSt->Key[c]];
+			UInt32 NumK = CipherNums[EncSt->Key[c]];
 			NumK += 1;
 			Num *= NumK;
 			Num %= 257;
@@ -91,13 +91,13 @@ namespace Utils {
 		delete[] Get;
 		return Rtn;
 	}
-	unsigned long CipheronMasks[4] = { 0x00000001, 0x000001FF, 0x0001FFFF, 0x01FFFFFF };
+	UInt32 CipheronMasks[4] = { 0x00000001, 0x000001FF, 0x0001FFFF, 0x01FFFFFF };
 	void CipheronBase(BigLong &Data, const BigLong &OptKey, SizeL ByteLenKey) {
 		SizeL Lim = Data.GetLongs().Length() * 4;
 		Data <<= 1;
 		Data.GetLongs()[0] |= 1;
 		Data.IMulLim(OptKey, Lim);
-		Array<unsigned long> &Mine = Data.GetLongs();
+		Array<UInt32> &Mine = Data.GetLongs();
 		Mine.AtEnd() &= CipheronMasks[ByteLenKey % 4];
 		Data >>= 1;
 	}

@@ -10,7 +10,7 @@ namespace Utils {
 		FileBase::~FileBase() {}
 		//		FileBase::FileBase() {}
 
-		signed long GetDrvNPath(String &Path, DriveBase *&Drv) {
+		SInt32 GetDrvNPath(String &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;
 			Path.Replace('\\', '/');
 			if (Path[0] == '/')
@@ -47,7 +47,7 @@ namespace Utils {
 				return 0;
 			}
 		}
-		signed long GetDrvNPath(wString &Path, DriveBase *&Drv) {
+		SInt32 GetDrvNPath(wString &Path, DriveBase *&Drv) {
 			ErrorFuncId = FUNC_GETDRVPATH;
 			Path.Replace('\\', '/');
 			if (Path[0] == '/')
@@ -231,7 +231,7 @@ namespace Utils {
 			if (GetDrvNPath(Path, Drv) != 0) return false;
 			return Drv->IsDir(Path);
 		}
-		FileBase *GetFileObj(String Path, unsigned long Mode) {
+		FileBase *GetFileObj(String Path, UInt32 Mode) {
 			DriveBase *Drv = 0;
 			if (GetDrvNPath(Path, Drv) != 0) return 0;
 			ErrorFuncId = FUNC_OPENFILE;
@@ -245,7 +245,7 @@ namespace Utils {
 				return 0;
 			}
 		}
-		FileBase *GetFileObj(wString Path, unsigned long Mode) {
+		FileBase *GetFileObj(wString Path, UInt32 Mode) {
 			DriveBase *Drv = 0;
 			if (GetDrvNPath(Path, Drv) != 0) return 0;
 			ErrorFuncId = FUNC_OPENFILE;
@@ -263,8 +263,8 @@ namespace Utils {
 			Msg = Txt;
 			Type = Cap;
 		}
-		unsigned long ParseModeStr(const String &ModeStr) {
-			unsigned long Rtn = 0;
+		UInt32 ParseModeStr(const String &ModeStr) {
+			UInt32 Rtn = 0;
 			if (ModeStr.Length() == 0 || ModeStr.Length() > 3) return MAX_INT32;
 			char First = ModeStr[0];
 			if (First >= 'A' && First <= 'Z') First += 32;
@@ -297,7 +297,7 @@ namespace Utils {
 			}
 			return Rtn;
 		}
-		String ParseModeLong(unsigned long Md) {
+		String ParseModeLong(UInt32 Md) {
 			String Rtn;
 			if (Md & F_IN && Md && F_OUT)
 			{
@@ -316,7 +316,7 @@ namespace Utils {
 		delete (fs::FileBase *)Fl;
 		return true;
 	}
-	unsigned long fRdBuff::BuffWorker(void *hThread, unsigned long Id, void *Params) {
+	UInt32 fRdBuff::BuffWorker(void *hThread, UInt32 Id, void *Params) {
 		UtilsThread CurThrd(Id);
 		fRdBuff *ThisObj = (fRdBuff *)Params;
 		CondVar *TheCond = ThisObj->TheCond;
@@ -356,7 +356,7 @@ namespace Utils {
 			ThisObj->TheCond->GetInternLock()->Release();
 		}
 	}
-	fRdBuff::fRdBuff(fs::FileBase *Fl, unsigned long Min, unsigned long Max, unsigned long InBlkLen, bool Direct) {
+	fRdBuff::fRdBuff(fs::FileBase *Fl, UInt32 Min, UInt32 Max, UInt32 InBlkLen, bool Direct) {
 		ThrdErr = 0;
 		Pos = Fl->Tell();
 		Fl->Seek(0, fs::SK_END);
@@ -376,7 +376,7 @@ namespace Utils {
 	void fRdBuff::SetFlDelFunc(bool(*DelFunc)(void *)) {
 		FreeFlCb = DelFunc;
 	}
-	bool fRdBuff::Seek(long long SkPos, int From) {
+	bool fRdBuff::Seek(SInt64 SkPos, int From) {
 		if (BlkLen & 0x80000000)
 		{
 			if (!FlObj->Seek(SkPos, From)) return false;
@@ -412,10 +412,10 @@ namespace Utils {
 		TheCond->GetInternLock()->Release();
 		return true;
 	}
-	long long fRdBuff::Tell() {
+	SInt64 fRdBuff::Tell() {
 		return Pos;
 	}
-	unsigned long fRdBuff::Write(const ByteArray &Data) {
+	UInt32 fRdBuff::Write(const ByteArray &Data) {
 		throw fs::FileError("NI", "NotImplemented: Write method is not defined for read only buffer");
 	}
 	void fRdBuff::Close() {
@@ -464,10 +464,10 @@ namespace Utils {
 	wString fRdBuff::GetName() {
 		return FlObj->GetName();
 	}
-	unsigned long fRdBuff::GetMode() {
+	UInt32 fRdBuff::GetMode() {
 		return FlObj->GetMode();
 	}
-	ByteArray fRdBuff::Read(unsigned long Num) {
+	ByteArray fRdBuff::Read(UInt32 Num) {
 		if (BlkLen & 0x80000000)
 		{
 			ByteArray Rtn = FlObj->Read(Num);
@@ -484,14 +484,14 @@ namespace Utils {
 		if (FlLen - Pos <= MAX_INT32) return Read(FlLen - Pos);
 		else throw fs::FileError("DataOverflow", "Too much data to read");
 	}
-	unsigned long fRdBuff::Read(ByteArray &Data) {
+	UInt32 fRdBuff::Read(ByteArray &Data) {
 		if (BlkLen & 0x80000000)
 		{
-			unsigned long Rtn = FlObj->Read(Data);
+			UInt32 Rtn = FlObj->Read(Data);
 			Pos += Rtn;
 			return Rtn;
 		}
-		unsigned long Num = Data.Length();
+		UInt32 Num = Data.Length();
 		if (Pos + Num > FlLen) Num = FlLen - Pos;
 		Buff.GetBytes(Data, Num);
 		return Num;

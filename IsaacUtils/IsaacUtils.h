@@ -30,7 +30,7 @@ extern "C"{
 	// Constructs a new empty wString
 	ISAACUTILS_API void *wStr_new();
 	// Retreive the length of the wString [wStr]
-	ISAACUTILS_API unsigned long wStr_Len(void *wStr);
+	ISAACUTILS_API unsigned int wStr_Len(void *wStr);
 	// Retreives the underlying array pointer for wString [wStr]
 	ISAACUTILS_API void *wStr_DataPtr(void *wStr);
 	// Constructs a new empty ByteArray
@@ -51,12 +51,12 @@ extern "C"{
 	ISAACUTILS_API void *ByteArray_DataPtr(void *bArray);
 	// Retreives the underlying array pointer of native endian 32 bit unsigned integers of BigLong [Bl]
 	ISAACUTILS_API void *BigLong_DataPtr(void *Bl);
-	// Retreives the length of the unsigned long array for [Bl] in Bytes
+	// Retreives the length of the unsigned int array for [Bl] in Bytes
 	ISAACUTILS_API SizeL BigLong_Len(void *Bl);
 	// Constructs a new BigLong set to 0
 	ISAACUTILS_API void *BigLong_new();
-	// Constructs a new BigLong initialized to long [L]
-	ISAACUTILS_API void *BigLong_newLong(long L);
+	// Constructs a new BigLong initialized to int [L]
+	ISAACUTILS_API void *BigLong_newLong(int L);
 	// Constructs a new BigLong from a Big Endian ByteArray [bArray]
 	ISAACUTILS_API void *BigLong_newByteArray(void *bArray);
 	// Constructs a new BigLong from a Big Endian string [Str] of length [Len]
@@ -90,13 +90,13 @@ extern "C"{
 	// Modulos [BlThat] by [BlThis] and returns [BlThis]
 	ISAACUTILS_API void *BigLong_IMod(void *BlThis, void *BlThat);
 	// Left Shifts the bits of a new copy of [BlTHis] by [That] many places and returns that copy
-	ISAACUTILS_API void *BigLong_LShift(void *BlThis, unsigned long That);
+	ISAACUTILS_API void *BigLong_LShift(void *BlThis, unsigned int That);
 	// Left Shifts [BlTHis] by [That] many places and returns [BlThis]
-	ISAACUTILS_API void *BigLong_ILShift(void *BlThis, unsigned long That);
+	ISAACUTILS_API void *BigLong_ILShift(void *BlThis, unsigned int That);
 	// Right Shifts the bits of a new copy of [BlTHis] by [That] many places and returns that copy
-	ISAACUTILS_API void *BigLong_RShift(void *BlThis, unsigned long That);
+	ISAACUTILS_API void *BigLong_RShift(void *BlThis, unsigned int That);
 	// Right Shifts [BlTHis] by [That] many places and returns [BlThis]
-	ISAACUTILS_API void *BigLong_IRShift(void *BlThis, unsigned long That);
+	ISAACUTILS_API void *BigLong_IRShift(void *BlThis, unsigned int That);
 	// Bitwise And result of [BlThis] and [BlThat] as a new BigLong
 	ISAACUTILS_API void *BigLong_And(void *BlThis, void *BlThat);
 	// Bitwise And result of [BlThis] and [BlThat] in [BlThis]
@@ -130,7 +130,7 @@ extern "C"{
 	// Gets the Length of the last error
 	ISAACUTILS_API SizeL LastErrorLenW();
 	// Gets the last error code, or 0 if there was no error
-	ISAACUTILS_API unsigned long UlLastError();
+	ISAACUTILS_API unsigned int UlLastError();
 	// Constructs a new Socket with the address family, type and protocol specified
 	ISAACUTILS_API void *Socket_newAfTpProt(int af, int type, int prot);
 	// Binds [Sock] to the address [Addr], returns true if successful
@@ -162,11 +162,11 @@ extern "C"{
 	// Retreives the timeout in seconds for [Sock]
 	ISAACUTILS_API double Socket_gettimeout(void *Sock);
 	// Initializes the socket for managed mode
-	ISAACUTILS_API bool Socket_InitMngd(void *Sock, unsigned long MidTmOut);
+	ISAACUTILS_API bool Socket_InitMngd(void *Sock, unsigned int MidTmOut);
 	// Constructs a new EncProt from the parameters, If [Key] == nullptr then you can initialize later
-	ISAACUTILS_API void *EncProt_newS(void *Sock, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum);
+	ISAACUTILS_API void *EncProt_newS(void *Sock, void *Key, void *InitVec, unsigned int CipherNum, unsigned int ModeNum);
 	// Initialize the Enc part of EncProt [Prot]
-	ISAACUTILS_API bool EncProt_Init(void *Prot, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum);
+	ISAACUTILS_API bool EncProt_Init(void *Prot, void *Key, void *InitVec, unsigned int CipherNum, unsigned int ModeNum);
 	// Sends Data using [Prot] with [NoEncDat] not encrypted and [EncDat] encrypted
 	ISAACUTILS_API bool EncProt_Send(void *Prot, void *NoEncDat, void *EncDat);
 	// Receives Data using [Prot] with [NoEncDat] to hold non-encrypted and [EncDat] to hold encrypted
@@ -174,7 +174,7 @@ extern "C"{
 	// Constructs a new File given a filename [Str] and a mode [Mode] and a file system lock [FsLock]
 	ISAACUTILS_API void *RfsFile_newA(void *Prot, char *Str, char *Mode, void *FsLock);
 	// Constructs a new File that acts as a read buffer for [Fl], Initially not buffered
-	ISAACUTILS_API void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen = 8192);
+	ISAACUTILS_API void *RdBuffFile_newF(void *Fl, unsigned int Min, unsigned int Max, unsigned int BlkLen = 8192);
 	// Sets the the buffering mode of [FlObj] to (Direct ? Non-Buffered : Buffered)
 	ISAACUTILS_API bool RdBuffFile_SetMode(void *FlObj, bool Direct = false);
 	// Constructs a host file system File object
@@ -188,9 +188,9 @@ extern "C"{
 	// Tells the position the file [FlObj] is writing at or reading from
 	ISAACUTILS_API long long File_tell(void *FlObj);
 	// Reads a max of [Num] Bytes from File [FlObj] and returns it in a bytearray
-	ISAACUTILS_API void *File_read(void *FlObj, unsigned long Num);
+	ISAACUTILS_API void *File_read(void *FlObj, unsigned int Num);
 	// Writes the ByteArray [bArray] to File [FlObj] and returns the number of bytes written
-	ISAACUTILS_API unsigned long File_write(void *FlObj, void *bArray);
+	ISAACUTILS_API unsigned int File_write(void *FlObj, void *bArray);
 	// Closes the File [FlObj]
 	ISAACUTILS_API bool File_close(void *FlObj);
 	// Constructs a new SingleMutex
@@ -206,11 +206,11 @@ extern "C"{
 	// Constructs a new empty Concurrent Queue
 	//ISAACUTILS_API void *ConQueue_new();//NextTime
 	// Constructs a new SockAddr from a human readable address [Str], a port [Port] and, for Ipv6 [FlowInf] and [ScopeId]
-	ISAACUTILS_API void *SockAddr_newA(char *Str, unsigned short Port, unsigned long FlowInf, unsigned long ScopeId);
+	ISAACUTILS_API void *SockAddr_newA(char *Str, unsigned short Port, unsigned int FlowInf, unsigned int ScopeId);
 	// Register a prime modulus for a bit length of operation for MyHash_10 and MyHash_11
-	ISAACUTILS_API void *RegMyHash_10(unsigned long BitLen);
+	ISAACUTILS_API void *RegMyHash_10(unsigned int BitLen);
 	// MyHash_11 from Cryptic
-	ISAACUTILS_API void *MyHash_11(void *StrBytes, unsigned long BitLen);
+	ISAACUTILS_API void *MyHash_11(void *StrBytes, unsigned int BitLen);
 	//ISAACUTILS_API void ByteArray_del(void *ByteArray);
 	//ISAACUTILS_API void wStr_del(void *Str);
 	//ISAACUTILS_API void BigLong_del(void * Bl);

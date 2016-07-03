@@ -109,7 +109,7 @@ namespace Utils {
 		EncDat.PreAlloc(EncLen);
 		double TmRtn = Sock->gettimeout();
 		try {
-			long long PartLen = (NoEncLen / BlkLen).ToLL();
+			SInt64 PartLen = (NoEncLen / BlkLen).ToLL();
 			while (PartLen-- > 0) {
 				NoEnc.Write(Sock->recv(BlkLen));
 			}
@@ -138,7 +138,7 @@ namespace Utils {
 	}
 	void EncProt::Send(const AbsFile NoEnc, const AbsFile EncDat) {
 		ByteArray NoEncHead = NoEnc.GetLen().ToByteArray();
-		if (Enc == 0 && EncDat.GetLen() > (unsigned long)0) throw sock::SockErr(11001);
+		if (Enc == 0 && EncDat.GetLen() > (UInt32)0) throw sock::SockErr(11001);
 		SizeL KeyLen = bool(Enc) ? Enc->Key.Length() : 0;
 		BigLong BlKeyLen = KeyLen;
 		ByteArray EncHead = EncDat.GetLen().ToByteArray();
@@ -226,12 +226,12 @@ namespace Utils {
 	String RfsDrv::GetNameA() {
 		return Name;
 	}
-	fs::FileBase *RfsDrv::OpenFile(const wString &Path, unsigned long Mode) {
+	fs::FileBase *RfsDrv::OpenFile(const wString &Path, UInt32 Mode) {
 		UniStrNi();
 		return 0;
 	}
 	//#GC-CHECK delete
-	fs::FileBase *RfsDrv::OpenFile(const String &Path, unsigned long Mode) {
+	fs::FileBase *RfsDrv::OpenFile(const String &Path, UInt32 Mode) {
 		Lock Lk(FsLock);
 		return new RfsFile(Prot, Path, fs::ParseModeLong(Mode), FsLock);
 	}
@@ -346,7 +346,7 @@ namespace Utils {
 		else InternRead(Rtn, InternGetLen());
 		return Rtn;
 	}
-	ByteArray RfsFile::Read(unsigned long Num) {
+	ByteArray RfsFile::Read(UInt32 Num) {
 		ByteArray Rtn;
 		if (FsLock)
 		{
@@ -356,7 +356,7 @@ namespace Utils {
 		else InternRead(Rtn, Num);
 		return Rtn;
 	}
-	unsigned long RfsFile::Read(ByteArray &Data) {
+	UInt32 RfsFile::Read(ByteArray &Data) {
 		ByteArray Rtn;
 		if (FsLock)
 		{
@@ -367,7 +367,7 @@ namespace Utils {
 		Data.WriteFromAt(Rtn);
 		return Rtn.Length();
 	}
-	bool RfsFile::Seek(long long PosIn, int From) {
+	bool RfsFile::Seek(SInt64 PosIn, int From) {
 		if (FsLock)
 		{
 			Lock Lk(FsLock);
@@ -375,7 +375,7 @@ namespace Utils {
 		}
 		else return InternSeek(PosIn, From);
 	}
-	long long RfsFile::Tell() {
+	SInt64 RfsFile::Tell() {
 		if (FsLock)
 		{
 			Lock Lk(FsLock);
@@ -383,7 +383,7 @@ namespace Utils {
 		}
 		else return InternTell();
 	}
-	unsigned long RfsFile::Write(const ByteArray &Data) {
+	UInt32 RfsFile::Write(const ByteArray &Data) {
 		if (FsLock)
 		{
 			Lock Lk(FsLock);
@@ -403,17 +403,17 @@ namespace Utils {
 	wString RfsFile::GetName() {
 		return ThisfName.wStr();
 	}
-	unsigned long RfsFile::GetMode() {
+	UInt32 RfsFile::GetMode() {
 		return fs::ParseModeStr(Md);
 	}
-	unsigned long long RfsFile::InternGetLen() {
-		long long Prev = InternTell();
+	UInt64 RfsFile::InternGetLen() {
+		SInt64 Prev = InternTell();
 		InternSeek(0, fs::SK_END);
-		long long Rtn = InternTell();
+		SInt64 Rtn = InternTell();
 		InternSeek(Prev, fs::SK_SET);
 		return Rtn;
 	}
-	void RfsFile::InternRead(ByteArray &Data, unsigned long Num) {
+	void RfsFile::InternRead(ByteArray &Data, UInt32 Num) {
 		bool IsEnc = Md[0] >= 'A' && Md[0] <= 'Z';
 		ByteArray NoEnc = IdStr;
 		NoEnc.Insert(0, FL_READ);
@@ -443,7 +443,7 @@ namespace Utils {
 		}
 		if (Pos != -1) Pos += Data.Length();
 	}
-	unsigned long RfsFile::InternWrite(const ByteArray &Data) {
+	UInt32 RfsFile::InternWrite(const ByteArray &Data) {
 		bool IsEnc = Md[0] >= 'A' && Md[0] <= 'Z';
 		ByteArray NoEnc = IdStr;
 		NoEnc.Insert(0, FL_WRITE);
@@ -467,7 +467,7 @@ namespace Utils {
 		if (Pos != -1) Pos += Data.Length();
 		return Data.Length();
 	}
-	bool RfsFile::InternSeek(long long PosIn, int From) {
+	bool RfsFile::InternSeek(SInt64 PosIn, int From) {
 		Pos = -1;
 		if (PosIn < 0)
 		{
@@ -477,7 +477,7 @@ namespace Utils {
 		ByteArray NoEnc = IdStr;
 		NoEnc.Insert(0, FL_SEEK);
 		NoEnc += Byte(From);
-		NoEnc += BigLong((unsigned long long)PosIn).ToByteArray();
+		NoEnc += BigLong((UInt64)PosIn).ToByteArray();
 		Prot->Send(NoEnc, AbsFile());
 		NoEnc.SetLength(0);
 		Prot->Recv(NoEnc, AbsFile());
@@ -485,7 +485,7 @@ namespace Utils {
 			throw fs::FileError(wString("Rfs:") + FromNumber(NoEnc[0], 10), wString((char *)&NoEnc[1], NoEnc.Length() - 1));
 		else if (NoEnc.Length() == 0) throw fs::FileError("Rfs:-1", "Unknown error occured");
 	}
-	long long RfsFile::InternTell() {
+	SInt64 RfsFile::InternTell() {
 		if (Pos != -1) return Pos;
 		ByteArray NoEnc = IdStr;
 		NoEnc.Insert(0, FL_TELL);

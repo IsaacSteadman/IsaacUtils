@@ -8,7 +8,7 @@
 #include "IsaacUtils.h"
 
 struct BitLenNum{
-	unsigned long BitLen;
+	UInt32 BitLen;
 	Utils::BigLong Num;
 	bool operator==(BitLenNum &Cmp);
 	bool operator!=(BitLenNum &Cmp);
@@ -31,24 +31,24 @@ Utils::BigLong FastGcd(Utils::BigLong a, Utils::BigLong b){
 	return a;
 }
 Utils::BigLong Multiplation(Utils::Array<Utils::BigLong> Lst){
-	Utils::BigLong Rtn((unsigned long)1);
+	Utils::BigLong Rtn((UInt32)1);
 	for (Utils::BigLong &Num : Lst){
 		Rtn *= Num;
 	}
 	return Rtn;
 }
 Utils::BigLong Summation(Utils::Array<Utils::BigLong> Lst){
-	Utils::BigLong Rtn((unsigned long)0);
+	Utils::BigLong Rtn((UInt32)0);
 	for (Utils::BigLong &Num : Lst){
 		Rtn += Num;
 	}
 	return Rtn;
 }
 Utils::Array<Utils::BigLong> GenListPrimes(Utils::BigLong UntilNum){
-	Utils::BigLong c((unsigned long)2);
+	Utils::BigLong c((UInt32)2);
 	Utils::Array<Utils::BigLong> Rtn(c.PostInc(1), 1);
 	Rtn += c.PostInc(2);
-	Utils::BigLong Six((unsigned long)6), One((unsigned long)1);
+	Utils::BigLong Six((UInt32)6), One((UInt32)1);
 	while (c <= UntilNum){
 		if (((c - One) % Six).Zero() == 1 || ((c + One) % Six).Zero() == 1)
 		{
@@ -66,8 +66,8 @@ Utils::Array<Utils::BigLong> GenListPrimes(Utils::BigLong UntilNum){
 	}
 	return Rtn;
 }
-const Utils::BigLong Two((unsigned long)2), Six((unsigned long)6), One((unsigned long)1);
-Utils::Array<Utils::BigLong> GenListnPrimes(unsigned long n){
+const Utils::BigLong Two((UInt32)2), Six((UInt32)6), One((UInt32)1);
+Utils::Array<Utils::BigLong> GenListnPrimes(UInt32 n){
 	Utils::BigLong c = Two;
 	Utils::Array<Utils::BigLong> Rtn(c.PostInc(1), 1);
 	Rtn += c.PostInc(2);
@@ -90,11 +90,11 @@ Utils::Array<Utils::BigLong> GenListnPrimes(unsigned long n){
 }
 Utils::Random *SafeRnd = 0;
 
-bool FastNoRepTest(Utils::BigLong Num, unsigned long NumBases){
+bool FastNoRepTest(Utils::BigLong Num, UInt32 NumBases){
 	return Utils::FermatBaseTest(SafeRnd, Num, NumBases);
 }
-Utils::BigLong GetHighestPrime(unsigned long BitLen, unsigned long NumPTest){
-	if (BitLen < 2) return (unsigned long)0;
+Utils::BigLong GetHighestPrime(UInt32 BitLen, UInt32 NumPTest){
+	if (BitLen < 2) return (UInt32)0;
 	Utils::BigLong Rtn = One;
 	Rtn <<= BitLen;
 	Rtn.PreDec(1);
@@ -299,61 +299,15 @@ void *AddObject(Utils::EncProt *Obj) {
 
 
 Utils::wString LastError;
-unsigned long LastErrCode = 0;
+UInt32 LastErrCode = 0;
 bool AssertOn = true;
 
-void SetErrStr(const Utils::wString &TypeName, unsigned long ParamNum, const Utils::wString &FuncName) {
+void SetErrStr(const Utils::wString &TypeName, UInt32 ParamNum, const Utils::wString &FuncName) {
 	LastErrCode = 11000;
 	LastError = FuncName + ": Assertion failed. Expected a " + TypeName + " Object at Parameter Number: " + Utils::FromNumber(ParamNum);
 }
 
-/*template<typename T>
-bool AssertType(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	return false;
-}
-template<>
-bool AssertType<Utils::wString>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || wStrPool.HasObject(Obj)) return true;
-	else SetErrStr("wString", ParamNum, FuncName);
-}
-template<>
-bool AssertType<Utils::BigLong>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || BigLongPool.HasObject(Obj)) return true;
-	else SetErrStr("BigLong", ParamNum, FuncName);
-	return false;
-}
-template<>
-bool AssertType<Utils::ByteArray>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || BArrPool.HasObject(Obj)) return true;
-	else SetErrStr("ByteArray", ParamNum, FuncName);
-	return false;
-}
-template<>
-bool AssertType<Utils::sock::SockAddr>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || SockAddrPool.HasObject(Obj)) return true;
-	else SetErrStr("SockAddr", ParamNum, FuncName);
-	return false;
-}
-template<>
-bool AssertType<Utils::sock::Socket>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || SocketPool.HasObject(Obj)) return true;
-	else SetErrStr("Socket", ParamNum, FuncName);
-	return false;
-}
-template<>
-bool AssertType<Utils::fs::FileBase>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || FlPool.HasObject(Obj)) return true;
-	else SetErrStr("FileObj", ParamNum, FuncName);
-	return false;
-}
-template<>
-bool AssertType<Utils::EncProt>(void *Obj, unsigned long ParamNum, const Utils::wString &FuncName) {
-	if (!AssertOn || EncProtPool.HasObject(Obj)) return true;
-	else SetErrStr("EncProt", ParamNum, FuncName);
-	return false;
-}*/
-
-bool AssertType(void *Obj, AbsObjPool *Type, unsigned long ParamNum, const Utils::wString &FuncName) {//TODO Add Assertions in functions
+bool AssertType(void *Obj, AbsObjPool *Type, UInt32 ParamNum, const Utils::wString &FuncName) {//TODO Add Assertions in functions
 	if (LastErrCode)
 	{
 		LastErrCode = 0;
@@ -398,7 +352,7 @@ extern "C" {
 	void *wStr_new() {
 		return AddObject(new Utils::wString());
 	}
-	unsigned long wStr_Len(void *wStr) {
+	unsigned int wStr_Len(void *wStr) {
 		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
 		return ((Utils::wString *)wStr)->Length();
 	}
@@ -437,7 +391,7 @@ extern "C" {
 		if (!AssertType(BLong, &BigLongPool, 0, __FUNCTION__)) return 0;
 		Utils::BigLong &Bl = *(Utils::BigLong*)BLong;
 		if (Utils::IsBigEnd) return AddObject(new Utils::ByteArray((Utils::Byte *)Bl.GetLongs().GetData(), Bl.GetLongs().Length() * 4));
-		Utils::Array<unsigned long> &Longs = Bl.GetLongs();
+		Utils::Array<UInt32> &Longs = Bl.GetLongs();
 		Utils::ByteArray &Rtn = *new Utils::ByteArray(Utils::Byte(0), Longs.Length() * 4);
 		for (SizeL c = 0; c < Longs.Length(); ++c) {
 			Rtn[c * 4 + 3] = Longs[c] & 0xFF;
@@ -455,8 +409,8 @@ extern "C" {
 		if (!AssertType(bArray, &BArrPool, 0, __FUNCTION__)) return 0;
 		return (void *)((Utils::ByteArray *)bArray)->GetData();
 	}
-	void *BigLong_newLong(long L) {
-		unsigned long Input = 0;
+	void *BigLong_newLong(int L) {
+		UInt32 Input = 0;
 		bool Sign = false;
 		if (L < 0)
 		{
@@ -575,19 +529,19 @@ extern "C" {
 		if (!AssertType(BlThat, &BigLongPool, 1, __FUNCTION__)) return 0;
 		return &((Utils::BigLong *)BlThis)->operator%=(*(Utils::BigLong *)BlThat);
 	}
-	void *BigLong_LShift(void *BlThis, unsigned long That) {
+	void *BigLong_LShift(void *BlThis, unsigned int That) {
 		if (!AssertType(BlThis, &BigLongPool, 0, __FUNCTION__)) return 0;
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator<<(That)));
 	}
-	void *BigLong_ILShift(void *BlThis, unsigned long That) {
+	void *BigLong_ILShift(void *BlThis, unsigned int That) {
 		if (!AssertType(BlThis, &BigLongPool, 0, __FUNCTION__)) return 0;
 		return &((Utils::BigLong *)BlThis)->operator<<=(That);
 	}
-	void *BigLong_RShift(void *BlThis, unsigned long That) {
+	void *BigLong_RShift(void *BlThis, unsigned int That) {
 		if (!AssertType(BlThis, &BigLongPool, 0, __FUNCTION__)) return 0;
 		return AddObject(new Utils::BigLong(((Utils::BigLong *)BlThis)->operator>>(That)));
 	}
-	void *BigLong_IRShift(void *BlThis, unsigned long That) {
+	void *BigLong_IRShift(void *BlThis, unsigned int That) {
 		if (!AssertType(BlThis, &BigLongPool, 0, __FUNCTION__)) return 0;
 		return &((Utils::BigLong *)BlThis)->operator>>=(That);
 	}
@@ -669,7 +623,7 @@ extern "C" {
 		return LastError.Length();
 	}
 
-	unsigned long UlLastError() {
+	unsigned int UlLastError() {
 		return LastErrCode;
 	}
 	void *Socket_newAfTpProt(int af, int type, int prot) {
@@ -862,12 +816,12 @@ extern "C" {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		return ((Utils::sock::Socket *)Sock)->gettimeout();
 	}
-	bool Socket_InitMngd(void *Sock, unsigned long MidTmOut) {
+	bool Socket_InitMngd(void *Sock, unsigned int MidTmOut) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		((Utils::sock::Socket *)Sock)->InitMngd(MidTmOut);
 		return true;
 	}
-	void *SockAddr_newA(char *Str, unsigned short Port, unsigned long FlowInf, unsigned long ScopeId) {
+	void *SockAddr_newA(char *Str, unsigned short Port, unsigned int FlowInf, unsigned int ScopeId) {
 		Utils::String TheStr(Str);
 		Utils::sock::SockAddr *Rtn = new Utils::sock::SockAddr();
 		LastErrCode = 0;
@@ -883,7 +837,7 @@ extern "C" {
 		}
 	}
 
-	void *EncProt_newS(void *Sock, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum) {
+	void *EncProt_newS(void *Sock, void *Key, void *InitVec, unsigned int CipherNum, unsigned int ModeNum) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		if (Key == 0)
 		{
@@ -898,7 +852,7 @@ extern "C" {
 		return AddObject(new Utils::EncProt(EncSt, Tmp));
 	}
 
-	bool EncProt_Init(void *Prot, void *Key, void *InitVec, unsigned long CipherNum, unsigned long ModeNum) {
+	bool EncProt_Init(void *Prot, void *Key, void *InitVec, unsigned int CipherNum, unsigned int ModeNum) {
 		if (!AssertType(Prot, &EncProtPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(Key, &BArrPool, 1, __FUNCTION__)) return 0;
 		if (!AssertType(InitVec, &BArrPool, 2, __FUNCTION__)) return 0;
@@ -992,7 +946,7 @@ extern "C" {
 		}
 	}
 
-	void *RdBuffFile_newF(void *Fl, unsigned long Min, unsigned long Max, unsigned long BlkLen) {
+	void *RdBuffFile_newF(void *Fl, unsigned int Min, unsigned int Max, unsigned int BlkLen) {
 		if (!AssertType(Fl, &FlPool, 0, __FUNCTION__)) return 0;
 		try{
 			Utils::fRdBuff *Rtn = new Utils::fRdBuff((Utils::fs::FileBase *)Fl, Min, Max, BlkLen, true);
@@ -1084,7 +1038,7 @@ extern "C" {
 		}
 	}
 
-	void *File_read(void *FlObj, unsigned long Num) {
+	void *File_read(void *FlObj, unsigned int Num) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
 		try {
 			return AddObject(new Utils::ByteArray(((Utils::fs::FileBase *)FlObj)->Read(Num)));
@@ -1101,7 +1055,7 @@ extern "C" {
 		}
 	}
 
-	unsigned long File_write(void *FlObj, void *bArray) {
+	unsigned int File_write(void *FlObj, void *bArray) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(bArray, &BArrPool, 1, __FUNCTION__)) return 0;
 		try {
@@ -1162,7 +1116,7 @@ extern "C" {
 		return true;
 	}
 
-	void *RegMyHash_10(unsigned long BitLen) {
+	void *RegMyHash_10(unsigned int BitLen) {
 		for (BitLenNum &Elem : HashPrimes1) {
 			if (Elem.BitLen == BitLen) return AddObject(new Utils::BigLong(Elem.Num));
 		}
@@ -1171,14 +1125,14 @@ extern "C" {
 		HashPrimes1 += Add;
 		return AddObject(new Utils::BigLong(Add.Num));
 	}
-	void *MyHash_11(void *StrBytes, unsigned long BitLen) {
+	void *MyHash_11(void *StrBytes, unsigned int BitLen) {
 		Utils::BigLong &MyPrime = *(Utils::BigLong *)RegMyHash_10(BitLen);
 		Utils::BigLong &InLong = *new Utils::BigLong(GetNumStrTestB(*(Utils::Array<Utils::Byte> *)StrBytes) ^ MyPrime);
 		if (((InLong + One) % MyPrime).Zero() == 1)
-			InLong = (unsigned long)0;
+			InLong = (UInt32)0;
 		else
 		{
-			unsigned long PrimeNum = 0;
+			UInt32 PrimeNum = 0;
 			Utils::BigLong Tmp = (InLong / MyPrime) % HashPrimesLst1.Length();
 			if (Tmp.GetLongs().Length() == 0) PrimeNum = 0;
 			else PrimeNum = Tmp.GetLongs()[0];
