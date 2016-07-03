@@ -1372,6 +1372,17 @@ namespace Utils{
 	}
 
 	Random::Random(){}
+	double RandDenom = (1.0 / 0x100000000) / 0x100000000;
+	double Random::GetRand() {
+		UInt64 Rnd = 0;
+		BigLong Tmp = GetRand(8);
+		Utils::Array<UInt32> &Longs = Tmp.GetLongs();
+		for (unsigned char c = 0; c < 2; ++c) {
+			if (c < Longs.Length()) Rnd |= Longs[c];
+			Rnd <<= 32;
+		}
+		return RandDenom * Rnd;
+	}
 	Random::~Random(){}
 	SizeL wStringHash(wString wStr, SizeL Range) {
 		register SizeL len = wStr.Length();

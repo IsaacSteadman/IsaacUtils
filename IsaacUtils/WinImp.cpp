@@ -66,19 +66,6 @@ namespace Utils {
 		Rtn += a;
 		return Rtn;
 	}
-	double CryptRandom::GetRand() {
-		unsigned long long Rnd = 0;
-		BigLong Tmp = GetRand(8);
-		Utils::Array<unsigned long> &Longs = Tmp.GetLongs();
-		for (unsigned char c = 0; c < 2; ++c) {
-			if (c < Longs.Length()) Rnd |= Longs[c];
-			Rnd <<= 32;
-		}
-		unsigned long long Denom = 0xFFFFFFFFFFFFFFFF;
-		double Rtn = Rnd;
-		Rtn /= Denom;
-		return Rtn;
-	}
 	void CryptRandom::Seed(BigLong Val) {}
 	CryptRandom::~CryptRandom() {
 		if (IsValid) CryptReleaseContext(Data, 0);
