@@ -1,10 +1,12 @@
+#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
+#endif
 #include "WinImp.h"
 #include "Utils.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-
 #pragma comment(lib, "Ws2_32.lib")
+
 namespace Utils {
 	//=====================================================BEGIN RANDOM============================================================
 	class CryptRandom : public Random {

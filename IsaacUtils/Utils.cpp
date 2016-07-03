@@ -1,4 +1,6 @@
+#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
+#endif
 #include "Utils.h"
 namespace Utils{
 	Clock *BlMulTm, *BlDivTm, *RandTm;
@@ -911,7 +913,7 @@ namespace Utils{
 	}
 
 
-	
+
 	Clock::Clock(){
 		CurClk = 0;
 		NumTimes = 0;
@@ -1559,6 +1561,11 @@ namespace Utils{
 	SizeL wStrLen(wchar_t *wStr){
 		SizeL c = 0;
 		while (wStr[c] != 0)++c;
+		return c;
+	}
+	SizeL StrLen(char *Str){
+		SizeL c = 0;
+		while (Str[c] != 0)++c;
 		return c;
 	}
 	SizeL BtToL(const ByteArray &Bts, SizeL &Pos, SizeL Sz) {

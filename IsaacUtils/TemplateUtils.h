@@ -1,16 +1,4 @@
-#define MAX_INT64 0xFFFFFFFFFFFFFFFF
-#define MAX_INT32 0xFFFFFFFF
-#if defined(_WIN64)
-typedef unsigned long long SizeL;
-typedef signed long long SnzL; //signed version of SizeL
-#define MAX_INT 0xFFFFFFFFFFFFFFFF
-#define MAX_HEX_DIGIT 16
-#else
-typedef unsigned long SizeL;
-typedef signed long SnzL;
-#define MAX_INT 0xFFFFFFFF
-#define MAX_HEX_DIGIT 8
-#endif
+#include "BaseDef.h"
 namespace Utils{
 	template<typename T>
 	class IterArray;
@@ -683,7 +671,7 @@ namespace Utils{
 		IsValid = false;
 	}
 	template<typename T1, typename T2>
-	HashMap<T1, T2>::DataPair::DataPair(const T1 &KeyVal, const T2 &Value, DataPair *next = 0) {
+	HashMap<T1, T2>::DataPair::DataPair(const T1 &KeyVal, const T2 &Value, DataPair *next) {
 		Key = KeyVal;
 		Val = Value;
 		Next = next;
@@ -706,7 +694,7 @@ namespace Utils{
 		AllocNum = Other.AllocNum;
 		Hasher = Other.Hasher;
 		Other.Datas = 0;
-		Other.AllocNum = 0
+		Other.AllocNum = 0;
 	}
 	template<typename T1, typename T2>
 	HashMap<T1, T2>::HashMap(const HashMap<T1, T2> &Other) {

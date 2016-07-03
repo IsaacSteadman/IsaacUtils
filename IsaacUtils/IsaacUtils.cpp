@@ -1,7 +1,10 @@
 // IsaacUtils.cpp : Defines the exported functions for the DLL application.
 //
 
+#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
+#endif
+//#include "IsaacUtils.h"
 #include "IsaacUtils.h"
 
 struct BitLenNum{
@@ -407,7 +410,7 @@ extern "C" {
 		return AddObject(new Utils::ByteArray());
 	}
 	void *ByteArray_newA(char *Str) {
-		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, strlen(Str)));
+		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, Utils::StrLen(Str)));
 	}
 	void *ByteArray_newALen(char *Str, SizeL Len) {
 		return AddObject(new Utils::Array<Utils::Byte>((unsigned char *)Str, Len));
@@ -906,7 +909,7 @@ extern "C" {
 		MyProt->Enc = EncSt;
 		return true;
 	}
-	
+
 	bool EncProt_Send(void *Prot, void *NoEncDat, void *EncDat) {
 		if (!AssertType(Prot, &EncProtPool, 0, __FUNCTION__)) return 0;
 		bool NoEncFl = false;
@@ -985,7 +988,7 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
-			return false;
+			return 0;
 		}
 	}
 
@@ -1002,7 +1005,7 @@ extern "C" {
 			return 0;
 		}
 	}
-	
+
 	bool RdBuffFile_SetMode(void *FlObj, bool Direct) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
 		/*if (&((Utils::fs::FileBase *)FlObj)->Flush != &Utils::fRdBuff::Flush)
@@ -1046,7 +1049,7 @@ extern "C" {
 			return false;
 		}
 	}
-	
+
 	bool File_seek(void *FlObj, long long Pos, int From) {
 		if (!AssertType(FlObj, &FlPool, 0, __FUNCTION__)) return 0;
 		try {
@@ -1077,7 +1080,7 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
-			return false;
+			return 0;
 		}
 	}
 
@@ -1094,7 +1097,7 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
-			return false;
+			return 0;
 		}
 	}
 
@@ -1112,7 +1115,7 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
-			return false;
+			return 0;
 		}
 	}
 

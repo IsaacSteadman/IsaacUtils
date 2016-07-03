@@ -1,13 +1,4 @@
 #include "TemplateUtils.h"
-
-#ifndef ISAACUTILS_API
-#ifdef ISAACUTILS_EXPORTS
-#define ISAACUTILS_API __declspec(dllexport)
-#else
-#define ISAACUTILS_API __declspec(dllimport)
-#endif
-#endif
-
 namespace Utils{
 	typedef unsigned char Byte;
 	typedef Array<Byte> ISAACUTILS_API ByteArray;
@@ -319,7 +310,7 @@ namespace Utils{
 			unsigned long(*Function)(void *, unsigned long, void *);
 			void *FunctParams;
 		};
-		static unsigned long __stdcall ThreadProc(void *Params);
+		static unsigned long OS_CALL ThreadProc(void *Params);
 	public:
 		UtilsThread();
 		UtilsThread(unsigned long(*ThreadFunc)(void *, unsigned long, void *), void *FunctParams);
@@ -854,6 +845,7 @@ namespace Utils{
 	ISAACUTILS_API void OsDeInit();
 	ISAACUTILS_API void DeInit();
 	ISAACUTILS_API SizeL wStrLen(wchar_t *wStr);
+	ISAACUTILS_API SizeL StrLen(char *Str);
 	ISAACUTILS_API void ShowError(wString Caption, wString Text);
 	extern ISAACUTILS_API const Utils::BigLong Two;
 	extern ISAACUTILS_API const Utils::BigLong Six;
