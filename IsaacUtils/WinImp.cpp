@@ -55,17 +55,6 @@ namespace Utils {
 		if (NoLessBitLen) Rtn.SetBit(BitLen - 1, true);
 		return Rtn;
 	}
-	BigLong CryptRandom::GetRand(BigLong a, BigLong b) {
-		if (a == b) return a;
-		else if (a > b) return (unsigned long)0;
-		BigLong Off = b - a;
-		BigLong Rtn = GetRand((Off.BitLength() + 7) / 8);
-		while (Rtn > Off) {
-			Rtn >>= 1;
-		}
-		Rtn += a;
-		return Rtn;
-	}
 	void CryptRandom::Seed(BigLong Val) {}
 	CryptRandom::~CryptRandom() {
 		if (IsValid) CryptReleaseContext(Data, 0);
