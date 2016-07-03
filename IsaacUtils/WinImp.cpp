@@ -18,8 +18,8 @@ namespace Utils {
 		//NoLessBitLen if true means that no numbers of lesser bit length are produced
 		BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false);
 		BigLong GetRand(SizeL ByteLen);
-		BigLong GetRand(BigLong a, BigLong b);
-		double GetRand();
+		//BigLong GetRand(BigLong a, BigLong b);
+		//double GetRand();
 		void Seed(BigLong Val);
 		~CryptRandom();
 	};

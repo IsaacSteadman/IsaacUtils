@@ -1372,6 +1372,15 @@ namespace Utils{
 	}
 
 	Random::Random(){}
+	BigLong Random::GetRand(BigLong a, BigLong b) {
+		if (a == b) return a;
+		else if (a > b) return (UInt32)0;
+		BigLong Off = b - a;
+		BigLong Rtn = GetRand((Off.BitLength() + 7) / 8);
+		Rtn %= Off;
+		Rtn += a;
+		return Rtn;
+	}
 	double RandDenom = (1.0 / 0x100000000) / 0x100000000;
 	double Random::GetRand() {
 		UInt64 Rnd = 0;

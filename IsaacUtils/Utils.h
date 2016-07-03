@@ -235,7 +235,7 @@ namespace Utils{
 		virtual BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false) = 0;
 		virtual BigLong GetRand(SizeL ByteLen) = 0;
 		virtual double GetRand();
-		virtual BigLong GetRand(BigLong a, BigLong b) = 0;
+		virtual BigLong GetRand(BigLong a, BigLong b);
 		virtual void Seed(BigLong Val) = 0;
 		virtual ~Random();
 	};
