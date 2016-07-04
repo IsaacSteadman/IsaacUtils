@@ -1,25 +1,15 @@
-#if defined(_WIN32) || defined(_WIN64)
-#include "stdafx.h"
-#endif
-#include "WinImp.h"
 #include "Utils.h"
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#pragma comment(lib, "Ws2_32.lib")
-
 namespace Utils {
 	//=====================================================BEGIN RANDOM============================================================
 	class CryptRandom : public Random {
 	protected:
 		bool IsValid;
-		HCRYPTPROV Data;
+		fs::FileBase *Data;
 	public:
 		CryptRandom();
 		//NoLessBitLen if true means that no numbers of lesser bit length are produced
 		BigLong RandBit(SizeL BitLen, bool NoLessBitLen = false);
 		BigLong GetRand(SizeL ByteLen);
-		//BigLong GetRand(BigLong a, BigLong b);
-		//double GetRand();
 		void Seed(BigLong Val);
 		~CryptRandom();
 	};
@@ -32,32 +22,31 @@ namespace Utils {
 	}
 	CryptRandom::CryptRandom() {
 		Data = 0;
-		IsValid = CryptAcquireContextW(&Data, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+		Data = fs::GetFileObj(String("/dev/urandom"), fs::F_IN|fs::F_BIN);
+		IsValid = Data != 0;
 	}
 	BigLong CryptRandom::GetRand(SizeL ByteLen) {
 		if (!IsValid) return (UInt32)0;
-		BigLong Rtn;
-		Rtn.GetLongs() = Array<UInt32>((UInt32)0, (ByteLen + 3) / 4);
-		CryptGenRandom(Data, ByteLen, (Byte*)Rtn.GetLongs().GetData());
-		return Rtn;
+		ByteArray Bytes = Data->Read(ByteLen);
+		return BigLong(Bytes.GetData(), Bytes.Length());
 	}
 	BigLong CryptRandom::RandBit(SizeL BitLen, bool NoLessBitLen) {
-		if (BitLen == 0) return (UInt32)0;
+		if (!IsValid || BitLen == 0) return (UInt32)0;
 		if (NoLessBitLen && (BitLen == 1)) return (UInt32)1;
-		BigLong Rtn;
-		Rtn.GetLongs() = Array<UInt32>((UInt32)0, (BitLen + 31) / 32);
+		if (NoLessBitLen) BitLen -= 1;
 		UInt32 Len = (BitLen + 7) / 8;
-		CryptGenRandom(Data, Len, (Byte*)Rtn.GetLongs().GetData());
-		unsigned char Mask = 1;
-		Mask <<= (BitLen % 8);
-		--Mask;
-		Rtn.GetByte(Len - 1) &= Mask;
-		if (NoLessBitLen) Rtn.SetBit(BitLen - 1, true);
+		ByteArray Bytes = Data->Read(Len);
+		// if (BitLen % 8 != 0) use an inverted mask to keep only the part of
+		//   the byte that is within BitLen
+		if (BitLen % 8 != 0) Bytes.AtEnd() &= (1 << BitLen % 8) - 1;
+		BigLong Rtn(Bytes.GetData(), Bytes.Length());
+		// since the BitLen was -= 1 if NoLessBitLen (Orig BitLen) - 1 == BitLen
+		if (NoLessBitLen) Rtn.SetBit(BitLen, true);
 		return Rtn;
 	}
 	void CryptRandom::Seed(BigLong Val) {}
 	CryptRandom::~CryptRandom() {
-		if (IsValid) CryptReleaseContext(Data, 0);
+		if (IsValid) Data->Close();
 	}
 	//======================================================END RANDOM=============================================================
 

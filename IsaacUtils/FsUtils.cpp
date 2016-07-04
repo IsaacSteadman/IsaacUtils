@@ -376,7 +376,7 @@ namespace Utils {
 	void fRdBuff::SetFlDelFunc(bool(*DelFunc)(void *)) {
 		FreeFlCb = DelFunc;
 	}
-	bool fRdBuff::Seek(SInt64 SkPos, int From) {
+	bool fRdBuff::Seek(SInt64 SkPos, SInt32 From) {
 		if (BlkLen & 0x80000000)
 		{
 			if (!FlObj->Seek(SkPos, From)) return false;

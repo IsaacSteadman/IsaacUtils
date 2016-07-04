@@ -7,7 +7,7 @@ namespace Utils {
 		HashMap<SizeL, String> ErrCodes;
 		bool Usable = false;
 		SockErr::SockErr() {}
-		SockErr::SockErr(int SockErrCode) {
+		SockErr::SockErr(SInt32 SockErrCode) {
 			ErrCode = SockErrCode;
 			if (ErrCodes.HasKey(ErrCode)) Msg = ErrCodes[ErrCode].wStr();
 		}
@@ -15,34 +15,34 @@ namespace Utils {
 			if (IsBlk) settimeout(-1);
 			else settimeout(0);
 		}
-		SizeL Socket::send(const ByteArray &Bytes, int Flags) {
+		SizeL Socket::send(const ByteArray &Bytes, SInt32 Flags) {
 			return sendBase((const char *)Bytes.GetData(), Bytes.Length(), Flags);
 		}
-		SizeL Socket::send(const String &Bytes, int Flags) {
+		SizeL Socket::send(const String &Bytes, SInt32 Flags) {
 			return sendBase(Bytes.GetData(), Bytes.Length(), Flags);
 		}
-		SizeL Socket::sendto(const ByteArray &Bytes, const SockAddr &Addr, int Flags) {
+		SizeL Socket::sendto(const ByteArray &Bytes, const SockAddr &Addr, SInt32 Flags) {
 			return sendtoBase((const char *)Bytes.GetData(), Bytes.Length(), Addr, Flags);
 		}
-		SizeL Socket::sendto(const String &Bytes, const SockAddr &Addr, int Flags) {
+		SizeL Socket::sendto(const String &Bytes, const SockAddr &Addr, SInt32 Flags) {
 			return sendtoBase(Bytes.GetData(), Bytes.Length(), Addr, Flags);
 		}
-		ByteArray Socket::recv(SizeL Num, int Flags) {
+		ByteArray Socket::recv(SizeL Num, SInt32 Flags) {
 			ByteArray Rtn(Byte(0), Num);
 			Rtn.SetLength(recvBase((char *)Rtn.GetData(), Num, Flags));
 			return Rtn;
 		}
-		String Socket::recvS(SizeL Num, int Flags) {
+		String Socket::recvS(SizeL Num, SInt32 Flags) {
 			String Rtn(char(0), Num);
 			Rtn.SetLength(recvBase((char *)Rtn.GetData(), Num, Flags));
 			return Rtn;
 		}
-		ByteArray Socket::recvfrom(SockAddr &Addr, SizeL Num, int Flags) {
+		ByteArray Socket::recvfrom(SockAddr &Addr, SizeL Num, SInt32 Flags) {
 			ByteArray Rtn(Byte(0), Num);
 			Rtn.SetLength(recvfromBase(Addr, (char *)Rtn.GetData(), Num, Flags));
 			return Rtn;
 		}
-		String Socket::recvfromS(SockAddr &Addr, SizeL Num, int Flags) {
+		String Socket::recvfromS(SockAddr &Addr, SizeL Num, SInt32 Flags) {
 			String Rtn(char(0), Num);
 			Rtn.SetLength(recvfromBase(Addr, (char *)Rtn.GetData(), Num, Flags));
 			return Rtn;
@@ -367,7 +367,7 @@ namespace Utils {
 		Data.WriteFromAt(Rtn);
 		return Rtn.Length();
 	}
-	bool RfsFile::Seek(SInt64 PosIn, int From) {
+	bool RfsFile::Seek(SInt64 PosIn, SInt32 From) {
 		if (FsLock)
 		{
 			Lock Lk(FsLock);
@@ -467,7 +467,7 @@ namespace Utils {
 		if (Pos != -1) Pos += Data.Length();
 		return Data.Length();
 	}
-	bool RfsFile::InternSeek(SInt64 PosIn, int From) {
+	bool RfsFile::InternSeek(SInt64 PosIn, SInt32 From) {
 		Pos = -1;
 		if (PosIn < 0)
 		{
