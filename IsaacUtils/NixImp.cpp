@@ -1,3 +1,100 @@
+extern "C" {
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <limits.h>
+
+#ifdef HAVE_ERRNO_H
+#include <errno.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif /* HAVE_SYS_TYPES_H */
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif /* HAVE_SYS_STAT_H */
+
+#ifdef HAVE_SYS_WAIT_H
+#include <sys/wait.h>           /* For WNOHANG */
+#endif
+
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif /* HAVE_FCNTL_H */
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
+#ifdef HAVE_SYSEXITS_H
+#include <sysexits.h>
+#endif /* HAVE_SYSEXITS_H */
+
+#ifdef HAVE_SYS_LOADAVG_H
+#include <sys/loadavg.h>
+#endif
+#if defined(__sgi)&&_COMPILER_VERSION>=700
+/* declare ctermid_r if compiling with MIPSPro 7.x in ANSI C mode
+   (default) */
+extern char        *ctermid_r(char *);
+#endif
+
+#ifndef HAVE_UNISTD_H
+#if ( defined(__WATCOMC__) || defined(_MSC_VER) ) && !defined(__QNX__)
+extern int mkdir(const char *);
+#else
+extern int mkdir(const char *, mode_t);
+#endif
+#if defined(__IBMC__) || defined(__IBMCPP__)
+extern int chdir(char *);
+extern int rmdir(char *);
+#else
+extern int chdir(const char *);
+extern int rmdir(const char *);
+#endif
+#ifdef __BORLANDC__
+extern int chmod(const char *, int);
+#else
+extern int chmod(const char *, mode_t);
+#endif
+/*#ifdef HAVE_FCHMOD
+extern int fchmod(int, mode_t);
+#endif*/
+/*#ifdef HAVE_LCHMOD
+extern int lchmod(const char *, mode_t);
+#endif*/
+extern int chown(const char *, uid_t, gid_t);
+extern char *getcwd(char *, int);
+extern char *strerror(int);
+extern int link(const char *, const char *);
+extern int rename(const char *, const char *);
+extern int stat(const char *, struct stat *);
+extern int unlink(const char *);
+extern int pclose(FILE *);
+#ifdef HAVE_SYMLINK
+extern int symlink(const char *, const char *);
+#endif /* HAVE_SYMLINK */
+#ifdef HAVE_LSTAT
+extern int lstat(const char *, struct stat *);
+#endif /* HAVE_LSTAT */
+#endif /* !HAVE_UNISTD_H */
+}
+
 #include "Utils.h"
 namespace Utils {
 	//=====================================================BEGIN RANDOM============================================================
@@ -56,36 +153,31 @@ namespace Utils {
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
 		String SrchPath = "/*.*";
-		wString Getcwd() {
-			UInt32 Len = GetCurrentDirectoryW(0, NULL);
-			wString Rtn(wchar_t(0), Len);
-			GetCurrentDirectoryW(Len, (wchar_t *)Rtn.GetData());
-			Rtn.Remove(Rtn.Length() - 1);
-			return Rtn;
-		}
-		bool Setcwd(wString Path) {
-			Path.Insert(Path.Length(), 0);
-			return SetCurrentDirectoryW(Path.GetData());
-		}
 		String GetcwdA() {
-			UInt32 Len = GetCurrentDirectoryA(0, NULL);
-			String Rtn(char(0), Len);
-			GetCurrentDirectoryA(Len, (char *)Rtn.GetData());
-			Rtn.Remove(Rtn.Length() - 1);
+			String Rtn(char(0), PATH_MAX+2);
+			SizeL Pos = 0;
+			if (::getcwd((char *)(Rtn.GetData()), (int)Rtn.Length()) == NULL) Rtn.SetLength(0);
+			else if (Rtn.Find(Pos, '\0')) Rtn.SetLength(Pos);
 			return Rtn;
 		}
 		bool Setcwd(String Path) {
 			Path.Insert(Path.Length(), 0);
-			return SetCurrentDirectoryA(Path.GetData());
+			return chdir(Path.GetData());
 		}
-		class WinFile : public FileBase {
+		wString Getcwd() {
+			return GetcwdA().wStr();
+		}
+		bool Setcwd(wString Path) {
+			Setcwd(Path);
+		}
+		class NixFile : public FileBase {
 		private:
 			HFILE hFile;
 			wString fName;
 			UInt32 Md;
 		public:
-			WinFile(wchar_t *fName, UInt32 Mode);
-			WinFile(char *fName, UInt32 Mode);
+			NixFile(wchar_t *fName, UInt32 Mode);
+			NixFile(char *fName, UInt32 Mode);
 			virtual ByteArray Read();
 			virtual ByteArray Read(UInt32 Num);
 			virtual UInt32 Read(ByteArray &Data);
@@ -97,7 +189,7 @@ namespace Utils {
 			virtual wString GetName();
 			virtual UInt32 GetMode();
 		};
-		class WinDrive : public DriveBase {
+		class NixDrive : public DriveBase {
 		private:
 			wString Name;
 			wString PathPart;
@@ -106,7 +198,7 @@ namespace Utils {
 			void AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len);
 			bool AllocPath(const String &Path, char *&Ptr, SizeL &Len);
 		public:
-			WinDrive(wchar_t fLabel, wString Name);
+			NixDrive(wchar_t fLabel, wString Name);
 
 			// Inherited via DriveBase
 			virtual wString GetName();
@@ -129,7 +221,7 @@ namespace Utils {
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Exts, bool Invert = false, bool RtnBegDots = false);
 		};
 		//#GC-CHECK Ptr: delete[]
-		void WinDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
+		void NixDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
 			Len += Path.Length();
 			if (Len + 2 > MAX_PATH)
 			{
@@ -154,7 +246,7 @@ namespace Utils {
 			}
 		}
 		//#GC-CHECK Ptr: delete[]
-		void WinDrive::AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len) {
+		void NixDrive::AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len) {
 			Len += Path.Length();
 			if (Len + 2 > MAX_PATH)
 			{
@@ -179,7 +271,7 @@ namespace Utils {
 			}
 		}
 		//#GC-CHECK Ptr: delete[]
-		bool WinDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
+		bool NixDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
 			if (Path.Length() + 2 > MAX_PATH) return false;
 			Len += Path.Length();
 			Ptr = new char[Len + 3];
@@ -191,47 +283,47 @@ namespace Utils {
 			Len += 2;
 			return true;
 		}
-		WinDrive::WinDrive(wchar_t fLabel, wString FullName) {
+		NixDrive::NixDrive(wchar_t fLabel, wString FullName) {
 			PathPart = wString(fLabel, (SizeL)2);
 			PathPart[1] = ':';
 			Name = FullName;
 			PathPartA = PathPart.Str();
 		}
-		wString WinDrive::GetName() {
+		wString NixDrive::GetName() {
 			return Name;
 		}
-		String WinDrive::GetNameA() {
+		String NixDrive::GetNameA() {
 			return Name.Str();
 		}
 		//#GC-CHECK delete
-		FileBase *WinDrive::OpenFile(const wString &Path, UInt32 Mode) {
+		FileBase *NixDrive::OpenFile(const wString &Path, UInt32 Mode) {
 			SizeL Len = 0;
 			wchar_t *Str = 0;
 			AllocPath(Path, Str, Len);
-			FileBase *Rtn = new WinFile(Str, Mode);
+			FileBase *Rtn = new NixFile(Str, Mode);
 			delete[] Str;
 			return Rtn;
 		}
 		//#GC-CHECK delete
-		FileBase *WinDrive::OpenFile(const String &Path, UInt32 Mode) {
+		FileBase *NixDrive::OpenFile(const String &Path, UInt32 Mode) {
 			SizeL Len = 0;
 			FileBase *Rtn = 0;
 			char *StrA = 0;
 			if (AllocPath(Path, StrA, Len))
 			{
-				Rtn = new WinFile(StrA, Mode);
+				Rtn = new NixFile(StrA, Mode);
 				delete[] StrA;
 			}
 			else
 			{
 				wchar_t *StrW = 0;
 				AllocPath(Path, StrW, Len);
-				Rtn = new WinFile(StrW, Mode);
+				Rtn = new NixFile(StrW, Mode);
 				delete[] StrW;
 			}
 			return Rtn;
 		}
-		bool WinDrive::IsFile(const wString &Path) {
+		bool NixDrive::IsFile(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = 0;
 			AllocPath(Path, cPath, Len);
@@ -239,7 +331,7 @@ namespace Utils {
 			delete[] cPath;
 			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
 		}
-		bool WinDrive::IsFile(const String &Path) {
+		bool NixDrive::IsFile(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
 			UInt32 Tmp = 0;
@@ -257,7 +349,7 @@ namespace Utils {
 			}
 			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
 		}
-		bool WinDrive::Exists(const wString &Path) {
+		bool NixDrive::Exists(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = 0;
 			AllocPath(Path, cPath, Len);
@@ -265,7 +357,7 @@ namespace Utils {
 			delete[] cPath;
 			return Rtn;
 		}
-		bool WinDrive::Exists(const String &Path) {
+		bool NixDrive::Exists(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
 			bool Rtn = false;
@@ -283,7 +375,7 @@ namespace Utils {
 			}
 			return Rtn;
 		}
-		bool WinDrive::IsDir(const wString &Path) {
+		bool NixDrive::IsDir(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = 0;
 			AllocPath(Path, cPath, Len);
@@ -291,7 +383,7 @@ namespace Utils {
 			delete[] cPath;
 			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
 		}
-		bool WinDrive::IsDir(const String &Path) {
+		bool NixDrive::IsDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
 			UInt32 Tmp = 0;
@@ -309,7 +401,7 @@ namespace Utils {
 			}
 			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
 		}
-		Array<wString> WinDrive::ListDir(const wString &Path) {
+		Array<wString> NixDrive::ListDir(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = SrchPath.Length();
 			AllocPath(Path, cPath, Len);
@@ -331,7 +423,7 @@ namespace Utils {
 			delete[] cPath;
 			return Rtn;
 		}
-		Array<String> WinDrive::ListDir(const String &Path) {
+		Array<String> NixDrive::ListDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = SrchPath.Length();
 			Array<String> Rtn;
@@ -373,7 +465,7 @@ namespace Utils {
 			FindClose(hFind);
 			return Rtn;
 		}
-		FileDesc WinDrive::Stat(const wString &Path) {
+		FileDesc NixDrive::Stat(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = 0;
 			AllocPath(Path, cPath, Len);
@@ -397,7 +489,7 @@ namespace Utils {
 			delete[] cPath;
 			return Rtn;
 		}
-		FileDescA WinDrive::Stat(const String &Path) {
+		FileDescA NixDrive::Stat(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
 			FileDescA Rtn;
@@ -434,7 +526,7 @@ namespace Utils {
 			Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
 			return Rtn;
 		}
-		Array<FileDesc> WinDrive::ListDirSt(const wString &Path) {
+		Array<FileDesc> NixDrive::ListDirSt(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = SrchPath.Length();
 			AllocPath(Path, cPath, Len);
@@ -464,7 +556,7 @@ namespace Utils {
 			FindClose(hFind);
 			return Rtn;
 		}
-		Array<FileDescA> WinDrive::ListDirSt(const String &Path) {
+		Array<FileDescA> NixDrive::ListDirSt(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = SrchPath.Length();
 			HANDLE hFind = NULL;
@@ -520,7 +612,7 @@ namespace Utils {
 			FindClose(hFind);
 			return Rtn;
 		}
-		Array<wString> WinDrive::GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert, bool RtnBegDots) {
+		Array<wString> NixDrive::GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert, bool RtnBegDots) {
 			Array<wString> LowExts(Exts);
 			for (wString &Ext : LowExts) {
 				Ext.ToLower();
@@ -561,7 +653,7 @@ namespace Utils {
 			}
 			return Rtn;
 		}
-		Array<String> WinDrive::GetFileExt(const String &Path, const Array<String> &Exts, bool Invert, bool RtnBegDots) {
+		Array<String> NixDrive::GetFileExt(const String &Path, const Array<String> &Exts, bool Invert, bool RtnBegDots) {
 			Array<wString> TmpExts;
 			TmpExts.SetLength(Exts.Length());
 			for (SizeL c = 0; c < Exts.Length(); ++c) TmpExts[c] = Exts[c].wStr();
@@ -571,7 +663,7 @@ namespace Utils {
 			for (SizeL c = 0; c < wStrRtn.Length(); ++c) Rtn[c] = wStrRtn[c].Str();
 			return Rtn;
 		}
-		WinFile::WinFile(wchar_t *Path, UInt32 Mode) {//OLD Version
+		NixFile::NixFile(wchar_t *Path, UInt32 Mode) {//OLD Version
 			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
 			if (ExtPath != wString(Path, ExtPath.Length())) fName = Path;
@@ -613,7 +705,7 @@ namespace Utils {
 			}
 			Md = Mode;
 		}
-		WinFile::WinFile(char *Path, UInt32 Mode) {
+		NixFile::NixFile(char *Path, UInt32 Mode) {
 			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
 			fName = Path;
@@ -654,7 +746,7 @@ namespace Utils {
 			}
 			Md = Mode;
 		}
-		ByteArray WinFile::Read() {
+		ByteArray NixFile::Read() {
 			ByteArray Rtn;
 			SInt64 Sz = 0;
 			GetFileSizeEx((HANDLE)hFile, (PLARGE_INTEGER)Sz);
@@ -670,7 +762,7 @@ namespace Utils {
 			Rtn.SetLength(NumHasRead);
 			return Rtn;
 		}
-		ByteArray WinFile::Read(UInt32 Num) {
+		ByteArray NixFile::Read(UInt32 Num) {
 			ByteArray Rtn;
 			Rtn.SetLength(Num);
 			UInt32 NumHasRead = 0;
@@ -678,25 +770,25 @@ namespace Utils {
 			Rtn.SetLength(NumHasRead);
 			return Rtn;
 		}
-		UInt32 WinFile::Read(ByteArray &Data) {
+		UInt32 NixFile::Read(ByteArray &Data) {
 			UInt32 Rtn = 0;
 			ReadFile((HANDLE)hFile, (LPVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
 			return Rtn;
 		}
-		bool WinFile::Seek(SInt64 Pos, SInt32 From) {
+		bool NixFile::Seek(SInt64 Pos, SInt32 From) {
 			LARGE_INTEGER ToPos;
 			ToPos.QuadPart = Pos;
 			if (From > 2) From = 0;
 			return SetFilePointerEx((HANDLE)hFile, ToPos, NULL, From);
 		}
-		SInt64 WinFile::Tell() {
+		SInt64 NixFile::Tell() {
 			SInt64 Rtn = 0;
 			LARGE_INTEGER Zero;
 			Zero.QuadPart = 0;
 			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Rtn, FILE_CURRENT);
 			return Rtn;
 		}
-		UInt32 WinFile::Write(const ByteArray &Data) {
+		UInt32 NixFile::Write(const ByteArray &Data) {
 			UInt32 Rtn = 0;
 			LARGE_INTEGER Off;
 			Off.QuadPart = 0;
@@ -704,16 +796,16 @@ namespace Utils {
 			WriteFile((HANDLE)hFile, (LPCVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
 			return Rtn;
 		}
-		void WinFile::Close() {
+		void NixFile::Close() {
 			CloseHandle((HANDLE)hFile);
 		}
-		void WinFile::Flush() {
+		void NixFile::Flush() {
 			if (Md & F_OUT) FlushFileBuffers((HANDLE)hFile);
 		}
-		wString WinFile::GetName() {
+		wString NixFile::GetName() {
 			return fName;
 		}
-		UInt32 WinFile::GetMode() {
+		UInt32 NixFile::GetMode() {
 			return Md;
 		}
 		wString GetFullPath(wString Path) {
@@ -778,7 +870,7 @@ namespace Utils {
 			OrigName[1] = ':';
 			OrigName[2] = '\\';
 			GetVolumeInformationA(OrigName.GetData(), (char *)FullName.GetData(), FullName.Length(), NULL, NULL, NULL, NULL, NULL);
-			fs::WinDrive *MyDrv = new fs::WinDrive(Name, FullName.wStr());
+			fs::NixDrive *MyDrv = new fs::NixDrive(Name, FullName.wStr());
 			fs::DriveMap.Put(wString(Name, 1), MyDrv);
 		}
 		WORD VerReq = MAKEWORD(2, 2);
