@@ -83,7 +83,8 @@ extern char *getcwd(char *, int);
 extern char *strerror(int);
 extern int link(const char *, const char *);
 extern int rename(const char *, const char *);
-extern int stat(const char *, struct stat *);
+#include <sys/stat.h>
+//extern int stat(const char *, struct stat *);
 extern int unlink(const char *);
 extern int pclose(FILE *);
 #ifdef HAVE_SYMLINK
@@ -172,7 +173,7 @@ namespace Utils {
 		}
 		class NixFile : public FileBase {
 		private:
-			HFILE hFile;
+			FILE *hFile;
 			wString fName;
 			UInt32 Md;
 		public:
@@ -194,11 +195,10 @@ namespace Utils {
 			wString Name;
 			wString PathPart;
 			String PathPartA;
-			void AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len);
-			void AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len);
+			bool AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len);
 			bool AllocPath(const String &Path, char *&Ptr, SizeL &Len);
 		public:
-			NixDrive(wchar_t fLabel, wString Name);
+			NixDrive(wString Mnt, wString Name);
 
 			// Inherited via DriveBase
 			virtual wString GetName();
@@ -221,71 +221,31 @@ namespace Utils {
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Exts, bool Invert = false, bool RtnBegDots = false);
 		};
 		//#GC-CHECK Ptr: delete[]
-		void NixDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
-			Len += Path.Length();
-			if (Len + 2 > MAX_PATH)
-			{
-				Ptr = new wchar_t[Len + ExtPath.Length() + 3];
-				ExtPath.CopyTo(Ptr, ExtPath.Length());
-				Ptr += ExtPath.Length();
-			}
-			else Ptr = new wchar_t[Len + 3];
-			PathPart.CopyTo(Ptr, 2);
-			Ptr += 2;
+		bool NixDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
+			Len = Path.Length() + PathPart.Length();
+			if (Len > PATH_MAX+1) return false;
+			Ptr = new wchar_t[Len+1];
+			PathPart.CopyTo(Ptr, PathPart.Length());
+			Ptr += PathPart.Length();
 			Path.CopyTo(Ptr, Path.Length());
 			Ptr[Len] = 0;
-			if (Len + 2 > MAX_PATH)
-			{
-				Ptr -= 2 + ExtPath.Length();
-				Len += 2 + ExtPath.Length();
-			}
-			else
-			{
-				Ptr -= 2;
-				Len += 2;
-			}
-		}
-		//#GC-CHECK Ptr: delete[]
-		void NixDrive::AllocPath(const String &Path, wchar_t *&Ptr, SizeL &Len) {
-			Len += Path.Length();
-			if (Len + 2 > MAX_PATH)
-			{
-				Ptr = new wchar_t[Len + ExtPath.Length() + 3];
-				ExtPath.CopyTo(Ptr, ExtPath.Length());
-				Ptr += ExtPath.Length();
-			}
-			else Ptr = new wchar_t[Len + 3];
-			PathPart.CopyTo(Ptr, 2);
-			Ptr += 2;
-			Path.CopyTo(Ptr, Path.Length());
-			Ptr[Len] = 0;
-			if (Len + 2 > MAX_PATH)
-			{
-				Ptr -= 2 + ExtPath.Length();
-				Len += 2 + ExtPath.Length();
-			}
-			else
-			{
-				Ptr -= 2;
-				Len += 2;
-			}
+			Ptr -= PathPart.Length();
+			return true;
 		}
 		//#GC-CHECK Ptr: delete[]
 		bool NixDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
-			if (Path.Length() + 2 > MAX_PATH) return false;
-			Len += Path.Length();
-			Ptr = new char[Len + 3];
-			PathPartA.CopyTo(Ptr, 2);
-			Ptr += 2;
+			Len = Path.Length() + PathPartA.Length();
+			if (Len > PATH_MAX+1) return false;
+			Ptr = new char[Len+1];
+			PathPartA.CopyTo(Ptr, PathPart.Length());
+			Ptr += PathPartA.Length();
 			Path.CopyTo(Ptr, Path.Length());
 			Ptr[Len] = 0;
-			Ptr -= 2;
-			Len += 2;
+			Ptr -= PathPartA.Length();
 			return true;
 		}
-		NixDrive::NixDrive(wchar_t fLabel, wString FullName) {
-			PathPart = wString(fLabel, (SizeL)2);
-			PathPart[1] = ':';
+		NixDrive::NixDrive(wString Mnt, wString FullName) {
+			PathPart = Mnt;
 			Name = FullName;
 			PathPartA = PathPart.Str();
 		}
@@ -299,7 +259,8 @@ namespace Utils {
 		FileBase *NixDrive::OpenFile(const wString &Path, UInt32 Mode) {
 			SizeL Len = 0;
 			wchar_t *Str = 0;
-			AllocPath(Path, Str, Len);
+			if (!AllocPath(Path, Str, Len)) throw FileError(
+				"PATH_MAX exceeded", "The length of the path given exceeded PATH_MAX");
 			FileBase *Rtn = new NixFile(Str, Mode);
 			delete[] Str;
 			return Rtn;
@@ -307,27 +268,18 @@ namespace Utils {
 		//#GC-CHECK delete
 		FileBase *NixDrive::OpenFile(const String &Path, UInt32 Mode) {
 			SizeL Len = 0;
-			FileBase *Rtn = 0;
-			char *StrA = 0;
-			if (AllocPath(Path, StrA, Len))
-			{
-				Rtn = new NixFile(StrA, Mode);
-				delete[] StrA;
-			}
-			else
-			{
-				wchar_t *StrW = 0;
-				AllocPath(Path, StrW, Len);
-				Rtn = new NixFile(StrW, Mode);
-				delete[] StrW;
-			}
+			char *Str = 0;
+			if (!AllocPath(Path, Str, Len)) throw FileError(
+				"PATH_MAX exceeded", "The length of the path given exceeded PATH_MAX");
+			FileBase *Rtn = new NixFile(Str, Mode);
+			delete[] Str;
 			return Rtn;
 		}
 		bool NixDrive::IsFile(const wString &Path) {
 			wchar_t *cPath = 0;
 			SizeL Len = 0;
-			AllocPath(Path, cPath, Len);
-			UInt32 Tmp = GetFileAttributesW(cPath);
+			if (!AllocPath(Path, cPath, Len)) return false;
+			bool Rtn = ::
 			delete[] cPath;
 			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
 		}
@@ -466,18 +418,20 @@ namespace Utils {
 			return Rtn;
 		}
 		FileDesc NixDrive::Stat(const wString &Path) {
-			wchar_t *cPath = 0;
+			char *cPath = 0;
 			SizeL Len = 0;
-			AllocPath(Path, cPath, Len);
+			AllocPath(Path.Str(), cPath, Len);
 			FileDesc Rtn;
 			Rtn.CreateTime = 0;
 			Rtn.LastAccessTime = 0;
 			Rtn.LastWriteTime = 0;
 			Rtn.Attr = 0xFFFFFFFF;
-			WIN32_FILE_ATTRIBUTE_DATA Dat;
-			if (GetFileAttributesExW(cPath, GetFileExInfoStandard, &Dat))
+			struct stat Data;
+			int StOut = ::stat(cPath, &Data);
+			if (StOut)
 			{
-				Rtn.Attr = Dat.dwFileAttributes;
+				Rtn.Attr |= Data.st_mode & S_IFDIR ? FILE_ATTR_DIRECTORY : 0;
+				Rtn.Attr |= Data.st_mode & S_IFDIR ? FILE_ATTR_DIRECTORY : 0;
 				SizeL Pos = 0;
 				if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
 				else Rtn.fName = Path;

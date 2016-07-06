@@ -441,6 +441,7 @@ namespace Utils{
 	namespace fs{
 		struct ISAACUTILS_API FileDesc{
 			wString fName;
+			UInt16 Mode;
 			UInt32 Attr;
 			UInt64 Size;
 			UInt64 CreateTime;
@@ -449,6 +450,7 @@ namespace Utils{
 		};
 		struct ISAACUTILS_API FileDescA{
 			String fName;
+			UInt16 Mode;
 			UInt32 Attr;
 			UInt64 Size;
 			UInt64 CreateTime;
@@ -474,6 +476,15 @@ namespace Utils{
 			FILE_ATTR_VIRTUAL = 0x10000,
 			FILE_ATTR_NO_SCRUB_DATA = 0x20000
 		};
+		enum AttrNix{
+			FTYP_DIR = 0x4000,
+			FTYP_CHR = 0x2000,
+			FTYP_BLK = 0x6000,
+			FTYP_REG = 0x8000,
+			FTYP_QUE = 0x1000, //Queue (FIFO)
+			FTYP_LNK = 0xA000,
+			FTYP_SOK = 0xC000,
+		}
 		ISAACUTILS_API Array<wString> ListDir(wString Path);
 		ISAACUTILS_API bool Exists(wString Path);
 		ISAACUTILS_API bool IsFile(wString Path);
