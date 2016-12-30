@@ -1,10 +1,117 @@
-#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
-#endif
 #include "Utils.h"
 namespace Utils {
 	namespace fs {
 		FileError::FileError() {}
+		FileError::FileError(wString Cap, wString Txt) {
+			Msg = Txt;
+			Type = Cap;
+		}
+		FileErrorN::FileErrorN() {}
+		FileErrorN::FileErrorN(UInt32 Code, wString Txt) {
+			Msg = Txt;
+			ErrCode = Code;
+		}
+		FileTime::FileTime() {
+			tv_sec = 0;
+			tv_nsec = 0;
+		}
+		FileTime::FileTime(SnzL sec, SInt32 nsec) {
+			tv_sec = sec;
+			tv_nsec = nsec;
+			Normalize();
+		}
+		FileTime::FileTime(const FileTime &Other) {
+			tv_sec = Other.tv_sec;
+			tv_nsec = Other.tv_nsec;
+		}
+		FileTime::FileTime(const float Other) {
+			tv_sec = Other;
+			tv_nsec = int(Other * 1e9) % 1000000000;
+		}
+		FileTime::FileTime(const double Other) {
+			tv_sec = Other;
+			tv_nsec = int(Other * 1e9) % 1000000000;
+		}
+		FileTime::FileTime(const SInt32 Other) {
+			tv_sec = Other;
+			tv_nsec = 0;
+		}
+		bool FileTime::operator==(const FileTime &Cmp) const {
+			return tv_sec == Cmp.tv_sec && tv_nsec == Cmp.tv_nsec;
+		}
+		bool FileTime::operator!=(const FileTime &Cmp) const {
+			return tv_sec != Cmp.tv_sec || tv_nsec != Cmp.tv_nsec;
+		}
+		bool FileTime::operator<=(const FileTime &Cmp) const {
+			if (tv_sec > Cmp.tv_sec) return false;
+			else if (tv_sec < Cmp.tv_sec) return true;
+			else if (tv_nsec > Cmp.tv_nsec) return false;
+			return true;
+		}
+		bool FileTime::operator>=(const FileTime &Cmp) const {
+			if (tv_sec < Cmp.tv_sec) return false;
+			else if (tv_sec > Cmp.tv_sec) return true;
+			else if (tv_nsec < Cmp.tv_nsec) return false;
+			return true;
+		}
+		bool FileTime::operator<(const FileTime &Cmp) const {
+			if (tv_sec > Cmp.tv_sec) return false;
+			else if (tv_sec < Cmp.tv_sec) return true;
+			else if (tv_nsec >= Cmp.tv_nsec) return false;
+			return true;
+		}
+		bool FileTime::operator>(const FileTime &Cmp) const {
+			if (tv_sec < Cmp.tv_sec) return false;
+			else if (tv_sec > Cmp.tv_sec) return true;
+			else if (tv_nsec <= Cmp.tv_nsec) return false;
+			return true;
+		}
+		FileTime &FileTime::operator-=(const FileTime &Other) {
+			tv_sec -= Other.tv_sec;
+			tv_nsec -= Other.tv_nsec;
+			Normalize();
+			return *this;
+		}
+		FileTime &FileTime::operator+=(const FileTime &Other) {
+			tv_sec += Other.tv_sec;
+			tv_nsec += Other.tv_nsec;
+			Normalize();
+			return *this;
+		}
+		FileTime FileTime::operator-(const FileTime &Other) const {
+			return FileTime(tv_sec - Other.tv_sec, tv_nsec - Other.tv_nsec);
+		}
+		FileTime FileTime::operator+(const FileTime &Other) const {
+			return FileTime(tv_sec + Other.tv_sec, tv_nsec + Other.tv_nsec);
+		}
+		FileTime &FileTime::operator=(const FileTime &Other) {
+			tv_sec = Other.tv_sec;
+			tv_nsec = Other.tv_nsec;
+			Normalize();
+			return *this;
+		}
+		FileTime::operator float() const {
+			return float(tv_nsec / 1e9) + tv_sec;
+		}
+		FileTime::operator double() const {
+			return double(tv_nsec / 1e9) + tv_sec;
+		}
+		FileTime::operator SnzL() const {
+			return tv_sec;
+		}
+		void FileTime::Normalize() {
+			if (tv_nsec < 0)
+			{
+				tv_nsec += 1000000000;
+				tv_sec -= 1;
+			}
+			else if (tv_nsec >= 1000000000)
+			{
+				tv_nsec -= 1000000000;
+				tv_sec += 1;
+			}
+		}
 		//		DriveBase::DriveBase() {}
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {}
@@ -258,10 +365,6 @@ namespace Utils {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 				return 0;
 			}
-		}
-		FileError::FileError(wString Cap, wString Txt) {
-			Msg = Txt;
-			Type = Cap;
 		}
 		UInt32 ParseModeStr(const String &ModeStr) {
 			UInt32 Rtn = 0;
