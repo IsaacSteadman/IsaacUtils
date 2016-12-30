@@ -502,6 +502,7 @@ namespace Utils{
 			FTYP_QUE = 0x1000, //Queue (FIFO)
 			FTYP_LNK = 0xA000,
 			FTYP_SOK = 0xC000,
+			FTYP_MASK = 0xF000
 		};
 		ISAACUTILS_API Array<wString> ListDir(wString Path);
 		ISAACUTILS_API bool Exists(wString Path);
@@ -598,6 +599,22 @@ namespace Utils{
 			virtual Array<FileDescA> ListDirSt(const String &Path) = 0;
 			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
+		};
+		class ISAACUTILS_API DefUniDrive : public DriveBase{
+			virtual wString GetName();
+			virtual FileBase *OpenFile(const wString &Path, UInt32 Mode);
+			virtual bool IsFile(const wString &Path);
+			virtual bool IsFile(const String &Path);
+			virtual bool Exists(const wString &Path);
+			virtual bool Exists(const String &Path);
+			virtual bool IsDir(const wString &Path);
+			virtual bool IsDir(const String &Path);
+			virtual Array<wString> ListDir(const wString &Path);
+			virtual FileDesc Stat(const wString &Path);
+			virtual Array<FileDesc> ListDirSt(const wString &Path);
+			virtual Array<FileDescA> ListDirSt(const String &Path);
+			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false);
+			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false);
 		};
 		bool ISAACUTILS_API GetIsError(DriveBase *Drv);
 		enum OpenMode {
