@@ -1,101 +1,4 @@
-extern "C" {
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <limits.h>
-
-#ifdef HAVE_ERRNO_H
-#include <errno.h>
-#endif
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef HAVE_STDDEF_H
-#include <stddef.h>
-#endif
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif /* HAVE_SYS_TYPES_H */
-
-#ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif /* HAVE_SYS_STAT_H */
-
-#ifdef HAVE_SYS_WAIT_H
-#include <sys/wait.h>           /* For WNOHANG */
-#endif
-
-#ifdef HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef HAVE_FCNTL_H
-#include <fcntl.h>
-#endif /* HAVE_FCNTL_H */
-
-#ifdef HAVE_GRP_H
-#include <grp.h>
-#endif
-
-#ifdef HAVE_SYSEXITS_H
-#include <sysexits.h>
-#endif /* HAVE_SYSEXITS_H */
-
-#ifdef HAVE_SYS_LOADAVG_H
-#include <sys/loadavg.h>
-#endif
-#if defined(__sgi)&&_COMPILER_VERSION>=700
-/* declare ctermid_r if compiling with MIPSPro 7.x in ANSI C mode
-   (default) */
-extern char        *ctermid_r(char *);
-#endif
-
-#ifndef HAVE_UNISTD_H
-#if ( defined(__WATCOMC__) || defined(_MSC_VER) ) && !defined(__QNX__)
-extern int mkdir(const char *);
-#else
-extern int mkdir(const char *, mode_t);
-#endif
-#if defined(__IBMC__) || defined(__IBMCPP__)
-extern int chdir(char *);
-extern int rmdir(char *);
-#else
-extern int chdir(const char *);
-extern int rmdir(const char *);
-#endif
-#ifdef __BORLANDC__
-extern int chmod(const char *, int);
-#else
-extern int chmod(const char *, mode_t);
-#endif
-/*#ifdef HAVE_FCHMOD
-extern int fchmod(int, mode_t);
-#endif*/
-/*#ifdef HAVE_LCHMOD
-extern int lchmod(const char *, mode_t);
-#endif*/
-extern int chown(const char *, uid_t, gid_t);
-extern char *getcwd(char *, int);
-extern char *strerror(int);
-extern int link(const char *, const char *);
-extern int rename(const char *, const char *);
-#include <sys/stat.h>
-//extern int stat(const char *, struct stat *);
-extern int unlink(const char *);
-extern int pclose(FILE *);
-#ifdef HAVE_SYMLINK
-extern int symlink(const char *, const char *);
-#endif /* HAVE_SYMLINK */
-#ifdef HAVE_LSTAT
-extern int lstat(const char *, struct stat *);
-#endif /* HAVE_LSTAT */
-#endif /* !HAVE_UNISTD_H */
-}
-
+#include "stdafx.h"
 #include "Utils.h"
 namespace Utils {
 	//=====================================================BEGIN RANDOM============================================================
@@ -155,10 +58,17 @@ namespace Utils {
 		String ExtPathA = ExtPath.Str();
 		String SrchPath = "/*.*";
 		String GetcwdA() {
-			String Rtn(char(0), PATH_MAX+2);
+			const SizeL ChunkSz = 1024;
+			String Rtn(char(0), ChunkSz);
+			while (::getcwd((char *)Rtn.GetData(), Rtn.Length()) == NULL) {
+				if (errno != ERANGE) {
+					Rtn.SetLength(0);
+					return Rtn;
+				}
+				Rtn.SetLength(Rtn.Length() + ChunkSz);
+			}
 			SizeL Pos = 0;
-			if (::getcwd((char *)(Rtn.GetData()), (int)Rtn.Length()) == NULL) Rtn.SetLength(0);
-			else if (Rtn.Find(Pos, '\0')) Rtn.SetLength(Pos);
+			if (Rtn.Find(Pos, '\0')) Rtn.SetLength(Pos);
 			return Rtn;
 		}
 		bool Setcwd(String Path) {
@@ -169,11 +79,11 @@ namespace Utils {
 			return GetcwdA().wStr();
 		}
 		bool Setcwd(wString Path) {
-			Setcwd(Path);
+			return Setcwd(Path.Str());
 		}
 		class NixFile : public FileBase {
 		private:
-			FILE *hFile;
+			SInt32 hFile;
 			wString fName;
 			UInt32 Md;
 		public:
@@ -198,7 +108,7 @@ namespace Utils {
 			bool AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len);
 			bool AllocPath(const String &Path, char *&Ptr, SizeL &Len);
 		public:
-			NixDrive(wString Mnt, wString Name);
+			NixDrive(String Mnt, wString Name);
 
 			// Inherited via DriveBase
 			virtual wString GetName();
@@ -223,19 +133,17 @@ namespace Utils {
 		//#GC-CHECK Ptr: delete[]
 		bool NixDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
 			Len = Path.Length() + PathPart.Length();
-			if (Len > PATH_MAX+1) return false;
 			Ptr = new wchar_t[Len+1];
 			PathPart.CopyTo(Ptr, PathPart.Length());
 			Ptr += PathPart.Length();
 			Path.CopyTo(Ptr, Path.Length());
-			Ptr[Len] = 0;
 			Ptr -= PathPart.Length();
+			Ptr[Len] = 0;
 			return true;
 		}
 		//#GC-CHECK Ptr: delete[]
 		bool NixDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
 			Len = Path.Length() + PathPartA.Length();
-			if (Len > PATH_MAX+1) return false;
 			Ptr = new char[Len+1];
 			PathPartA.CopyTo(Ptr, PathPart.Length());
 			Ptr += PathPartA.Length();
@@ -244,10 +152,10 @@ namespace Utils {
 			Ptr -= PathPartA.Length();
 			return true;
 		}
-		NixDrive::NixDrive(wString Mnt, wString FullName) {
-			PathPart = Mnt;
+		NixDrive::NixDrive(String Mnt, wString FullName) {
+			PathPartA = Mnt;
 			Name = FullName;
-			PathPartA = PathPart.Str();
+			PathPart = PathPartA.wStr();
 		}
 		wString NixDrive::GetName() {
 			return Name;
@@ -257,164 +165,104 @@ namespace Utils {
 		}
 		//#GC-CHECK delete
 		FileBase *NixDrive::OpenFile(const wString &Path, UInt32 Mode) {
-			SizeL Len = 0;
-			wchar_t *Str = 0;
-			if (!AllocPath(Path, Str, Len)) throw FileError(
-				"PATH_MAX exceeded", "The length of the path given exceeded PATH_MAX");
-			FileBase *Rtn = new NixFile(Str, Mode);
-			delete[] Str;
-			return Rtn;
+			return OpenFile(Path.Str(), Mode);
 		}
 		//#GC-CHECK delete
 		FileBase *NixDrive::OpenFile(const String &Path, UInt32 Mode) {
 			SizeL Len = 0;
 			char *Str = 0;
-			if (!AllocPath(Path, Str, Len)) throw FileError(
-				"PATH_MAX exceeded", "The length of the path given exceeded PATH_MAX");
+			if (!AllocPath(Path, Str, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
 			FileBase *Rtn = new NixFile(Str, Mode);
 			delete[] Str;
 			return Rtn;
 		}
 		bool NixDrive::IsFile(const wString &Path) {
-			wchar_t *cPath = 0;
-			SizeL Len = 0;
-			if (!AllocPath(Path, cPath, Len)) return false;
-			bool Rtn = ::
-			delete[] cPath;
-			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
+			return IsFile(Path.Str());
 		}
 		bool NixDrive::IsFile(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
-			UInt32 Tmp = 0;
-			if (AllocPath(Path, cPathA, Len))
+			if (!AllocPath(Path, cPathA, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
+			struct stat ResStat;
+			if (::stat(cPathA, &ResStat) != 0)
 			{
-				Tmp = GetFileAttributesA(cPathA);
 				delete[] cPathA;
+				if (errno != ENOENT) throw FileErrorN(errno, "Bad Stat");
+				return false;
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				Tmp = GetFileAttributesW(cPathW);
-				delete[] cPathW;
-			}
-			return Tmp != INVALID_FILE_ATTRIBUTES && (Tmp & FILE_ATTR_DIRECTORY) == 0;
+			delete[] cPathA;
+			return (ResStat.st_mode & S_IFMT) == S_IFREG;
 		}
 		bool NixDrive::Exists(const wString &Path) {
-			wchar_t *cPath = 0;
-			SizeL Len = 0;
-			AllocPath(Path, cPath, Len);
-			bool Rtn = GetFileAttributesW(cPath) != INVALID_FILE_ATTRIBUTES;
-			delete[] cPath;
-			return Rtn;
+			return Exists(Path.Str());
 		}
 		bool NixDrive::Exists(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
-			bool Rtn = false;
-			if (AllocPath(Path, cPathA, Len))
+			if (!AllocPath(Path, cPathA, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
+			struct stat ResStat;
+			if (::stat(cPathA, &ResStat) != 0)
 			{
-				Rtn = GetFileAttributesA(cPathA) != INVALID_FILE_ATTRIBUTES;
 				delete[] cPathA;
+				if (errno != ENOENT) throw FileErrorN(errno, "Bad Stat");
+				return false;
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				Rtn = GetFileAttributesW(cPathW) != INVALID_FILE_ATTRIBUTES;
-				delete[] cPathW;
-			}
-			return Rtn;
+			delete[] cPathA;
+			return true;
 		}
 		bool NixDrive::IsDir(const wString &Path) {
-			wchar_t *cPath = 0;
-			SizeL Len = 0;
-			AllocPath(Path, cPath, Len);
-			UInt32 Tmp = GetFileAttributesW(cPath);
-			delete[] cPath;
-			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
+			return IsDir(Path.Str());
 		}
 		bool NixDrive::IsDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
-			UInt32 Tmp = 0;
-			if (AllocPath(Path, cPathA, Len))
+			if (!AllocPath(Path, cPathA, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
+			struct stat ResStat;
+			if (::stat(cPathA, &ResStat) != 0)
 			{
-				Tmp = GetFileAttributesA(cPathA);
 				delete[] cPathA;
+				if (errno != ENOENT) throw FileErrorN(errno, "Bad Stat");
+				return false;
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				Tmp = GetFileAttributesW(cPathW);
-				delete[] cPathW;
-			}
-			return (Tmp != INVALID_FILE_ATTRIBUTES) && (Tmp & FILE_ATTR_DIRECTORY);
+			delete[] cPathA;
+			return (ResStat.st_mode & S_IFMT) == S_IFDIR;
 		}
 		Array<wString> NixDrive::ListDir(const wString &Path) {
-			wchar_t *cPath = 0;
-			SizeL Len = SrchPath.Length();
-			AllocPath(Path, cPath, Len);
-			SrchPath.CopyTo(cPath + Len - SrchPath.Length(), SrchPath.Length());
-			Array<wString> Rtn;
-			WIN32_FIND_DATAW fdFile;
-			HANDLE hFind = NULL;
-			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-			{
-				delete[] cPath;
-				Rtn += "<INVALID SEARCH PATH>";
-				return Rtn;
+			Array<String> TmpRes = ListDir(Path.Str());
+			Array<wString> Rtn = Array<wString>(wchar_t(0), TmpRes.Length());
+			for (SizeL c = 0; c < TmpRes.Length(); ++c) {
+				Rtn[c] = TmpRes[c].wStr();
 			}
-			do {
-				if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-					Rtn += fdFile.cFileName;
-			} while (FindNextFileW(hFind, &fdFile));
-			FindClose(hFind);
-			delete[] cPath;
 			return Rtn;
 		}
 		Array<String> NixDrive::ListDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = SrchPath.Length();
+			SizeL ChunkSzN = 64;
 			Array<String> Rtn;
-			HANDLE hFind = NULL;
-			if (AllocPath(Path, cPathA, Len))
-			{
-				SrchPath.CopyTo(cPathA + Len - SrchPath.Length(), SrchPath.Length());
-				WIN32_FIND_DATAA fdFile;
-				if ((hFind = FindFirstFileA(cPathA, &fdFile)) == INVALID_HANDLE_VALUE)
-				{
-					delete[] cPathA;
-					Rtn += "<INVALID SEARCH PATH>";
-					return Rtn;
-				}
-				do {
-					if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-						Rtn += fdFile.cFileName;
-				} while (FindNextFileA(hFind, &fdFile));
-				delete[] cPathA;
+			if (!AllocPath(Path, cPathA, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
+			DIR *TheDir = ::opendir(cPathA);
+			delete[] cPathA;
+			if (TheDir == NULL) throw FileErrorN(errno, "Bad Dir");
+			dirent *Cur;
+			SizeL c = 0;
+			while (Cur = ::readdir(TheDir)) {
+				if (Cur->d_name[0] == '.' && (Cur->d_name[1] == '\0' || Cur->d_name[1] == '.' && Cur->d_name[2] == '\0'))
+					continue;
+				if (Rtn.Length() <= c)
+					Rtn.SetLength(Rtn.Length() + ChunkSzN);
+				Rtn[c] = Cur->d_name;
+				++c;
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				SrchPath.CopyTo(cPathW + Len - SrchPath.Length(), SrchPath.Length());
-				WIN32_FIND_DATAW fdFile;
-				if ((hFind = FindFirstFileW(cPathW, &fdFile)) == INVALID_HANDLE_VALUE)
-				{
-					delete[] cPathA;
-					Rtn += "<INVALID SEARCH PATH>";
-					return Rtn;
-				}
-				do {
-					if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-						Rtn += fdFile.cFileName;
-				} while (FindNextFileW(hFind, &fdFile));
-				delete[] cPathW;
-			}
-			FindClose(hFind);
+			int Err = errno;
+			::closedir(TheDir);
+			if (Err) throw FileErrorN(Err, "Bad ReadDir");
+			if (errno) throw FileErrorN(errno, "Bad CloseDir");
 			return Rtn;
 		}
 		FileDesc NixDrive::Stat(const wString &Path) {
@@ -446,124 +294,61 @@ namespace Utils {
 		FileDescA NixDrive::Stat(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
+			if (!AllocPath(Path, cPathA, Len))
+				throw FileErrorN(MAX_INT32, "Max Path exceded");
+			struct stat ResStat;
+			if (::stat(cPathA, &ResStat) != 0)
+			{
+				delete[] cPathA;
+				if (errno) throw FileErrorN(errno, "Bad Stat");
+			}
+			delete[] cPathA;
 			FileDescA Rtn;
-			Rtn.CreateTime = 0;
-			Rtn.LastAccessTime = 0;
-			Rtn.LastWriteTime = 0;
-			Rtn.Attr = 0xFFFFFFFF;
-			WIN32_FILE_ATTRIBUTE_DATA Dat;
-			if (AllocPath(Path, cPathA, Len))
-			{
-				if (GetFileAttributesExA(cPathA, GetFileExInfoStandard, &Dat) == 0)
-				{
-					delete[] cPathA;
-					return Rtn;
-				}
+			switch (ResStat.st_mode & S_IFMT) {
+			case S_IFBLK:
+				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
+				break;
+			case S_IFCHR:
+				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
+				break;
+			case S_IFDIR:
+				Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY;
+				break;
+			case S_IFIFO:
+				Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL;
+				break;
+			case S_IFLNK:
+				Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM;
+				break;
+			case S_IFREG:
+				Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL;
+				break;
+			case S_IFSOCK:
+				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
+				break;
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				if (GetFileAttributesExW(cPathW, GetFileExInfoStandard, &Dat) == 0)
-				{
-					delete[] cPathW;
-					return Rtn;
-				}
-			}
-			Rtn.Attr = Dat.dwFileAttributes;
-			SizeL Pos = 0;
-			if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
-			else Rtn.fName = Path;
-			Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-			Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-			Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-			Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
-			return Rtn;
+			Rtn.Mode = ResStat.st_mode;
+			Rtn.Size = ResStat.st_size;
+			Rtn.CreateTime = FileTime(ResStat.st_ctim.tv_sec, ResStat.st_ctim.tv_nsec);
+			Rtn.LastAccessTime = FileTime(ResStat.st_atim.tv_sec, ResStat.st_atim.tv_nsec);
+			Rtn.LastWriteTime = FileTime(ResStat.st_mtim.tv_sec, ResStat.st_mtim.tv_nsec);
 		}
 		Array<FileDesc> NixDrive::ListDirSt(const wString &Path) {
-			wchar_t *cPath = 0;
-			SizeL Len = SrchPath.Length();
-			AllocPath(Path, cPath, Len);
-			SrchPath.CopyTo(cPath + Len - SrchPath.Length(), SrchPath.Length());
+			Array<wString> Tmp = ListDir(Path);
 			Array<FileDesc> Rtn;
-			WIN32_FIND_DATAW fdFile;
-			HANDLE hFind = NULL;
-			if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-			{
-				delete[] cPath;
-				Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
-				return Rtn;
+			Rtn.SetLength(Tmp.Length());
+			for (SizeL c = 0; c < Rtn.Length(); ++c) {
+				Rtn[c] = Stat(Tmp[c]);
 			}
-			do {
-				if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-				{
-					FileDesc Add;
-					Add.Attr = fdFile.dwFileAttributes;
-					Add.fName = fdFile.cFileName;
-					Add.CreateTime = fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32);
-					Add.LastAccessTime = fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32);
-					Add.LastWriteTime = fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32);
-					Add.Size = fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32);
-					Rtn += Add;
-				}
-			} while (FindNextFileW(hFind, &fdFile));
-			FindClose(hFind);
 			return Rtn;
 		}
 		Array<FileDescA> NixDrive::ListDirSt(const String &Path) {
-			char *cPathA = 0;
-			SizeL Len = SrchPath.Length();
-			HANDLE hFind = NULL;
+			Array<String> Tmp = ListDir(Path);
 			Array<FileDescA> Rtn;
-			if (AllocPath(Path, cPathA, Len))
-			{
-				SrchPath.CopyTo(cPathA + Len - SrchPath.Length(), SrchPath.Length());
-				WIN32_FIND_DATAA fdFile;
-				if ((hFind = FindFirstFileA(cPathA, &fdFile)) == INVALID_HANDLE_VALUE)
-				{
-					delete[] cPathA;
-					Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
-					return Rtn;
-				}
-				do {
-					if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-						Rtn += {
-							fdFile.cFileName,
-							fdFile.dwFileAttributes,
-							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
-							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
-							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
-							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
-						};
-				} while (FindNextFileA(hFind, &fdFile));
-				delete[] cPathA;
+			Rtn.SetLength(Tmp.Length());
+			for (SizeL c = 0; c < Rtn.Length(); ++c) {
+				Rtn[c] = Stat(Tmp[c]);
 			}
-			else
-			{
-				wchar_t *cPathW = 0;
-				AllocPath(Path, cPathW, Len);
-				SrchPath.CopyTo(cPathW + Len - SrchPath.Length(), SrchPath.Length());
-				WIN32_FIND_DATAW fdFile;
-				if ((hFind = FindFirstFileW(cPathW, &fdFile)) == INVALID_HANDLE_VALUE)
-				{
-					delete[] cPathA;
-					Rtn += {"<INVALID SEARCH PATH>", 0, 0, 0, 0, 0};
-					return Rtn;
-				}
-				do {
-					if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-						Rtn += {
-							fdFile.cFileName,
-							fdFile.dwFileAttributes,
-							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
-							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
-							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
-							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
-						};
-				} while (FindNextFileW(hFind, &fdFile));
-				delete[] cPathW;
-			}
-			FindClose(hFind);
 			return Rtn;
 		}
 		Array<wString> NixDrive::GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert, bool RtnBegDots) {
