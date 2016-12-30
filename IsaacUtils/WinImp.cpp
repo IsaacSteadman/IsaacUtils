@@ -1,6 +1,4 @@
-#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
-#endif
 #include "WinImp.h"
 #include "Utils.h"
 #include <WinSock2.h>
@@ -32,7 +30,7 @@ namespace Utils {
 	}
 	CryptRandom::CryptRandom() {
 		Data = 0;
-		IsValid = CryptAcquireContextW(&Data, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+		IsValid = CryptAcquireContextW(&Data, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT) != 0;
 	}
 	BigLong CryptRandom::GetRand(SizeL ByteLen) {
 		if (!IsValid) return (UInt32)0;
@@ -67,6 +65,70 @@ namespace Utils {
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
 		String SrchPath = "/*.*";
+		FileTime FileTimeFromWin(FILETIME Win) {
+			UInt64 Tmp = Win.dwLowDateTime | ((UInt64)Win.dwHighDateTime << 32);
+			return FileTime(Tmp / 10000000, (Tmp % 10000000) * 100);
+		}
+		FileDesc FileDescFromWin(const wString &Path, const WIN32_FILE_ATTRIBUTE_DATA &Data) {
+			UInt16 Mode = 0;
+			return{
+				Path,
+				Mode,
+				Data.dwFileAttributes,
+				Data.nFileSizeLow | ((UInt64)Data.nFileSizeHigh << 32),
+				FileTimeFromWin(Data.ftCreationTime),
+				FileTimeFromWin(Data.ftLastWriteTime),
+				FileTimeFromWin(Data.ftLastAccessTime)
+			};
+		}
+		FileDescA FileDescFromWin(const String &Path, const WIN32_FILE_ATTRIBUTE_DATA &Data) {
+			UInt16 Mode = 0;
+			return{
+				Path,
+				Mode,
+				Data.dwFileAttributes,
+				Data.nFileSizeLow | ((UInt64)Data.nFileSizeHigh << 32),
+				FileTimeFromWin(Data.ftCreationTime),
+				FileTimeFromWin(Data.ftLastWriteTime),
+				FileTimeFromWin(Data.ftLastAccessTime)
+			};
+		}
+		FileDescA FileDescFromWin(const WIN32_FIND_DATAA &Data) {
+			UInt16 Mode = 0;
+			return{
+				Data.cFileName,
+				Mode,
+				Data.dwFileAttributes,
+				Data.nFileSizeLow | ((UInt64)Data.nFileSizeHigh << 32),
+				FileTimeFromWin(Data.ftCreationTime),
+				FileTimeFromWin(Data.ftLastWriteTime),
+				FileTimeFromWin(Data.ftLastAccessTime)
+			};
+		}
+		FileDescA FileDescFromWinA(const WIN32_FIND_DATAW &Data) {
+			UInt16 Mode = 0;
+			return{
+				Data.cFileName,
+				Mode,
+				Data.dwFileAttributes,
+				Data.nFileSizeLow | ((UInt64)Data.nFileSizeHigh << 32),
+				FileTimeFromWin(Data.ftCreationTime),
+				FileTimeFromWin(Data.ftLastWriteTime),
+				FileTimeFromWin(Data.ftLastAccessTime)
+			};
+		}
+		FileDesc FileDescFromWin(const WIN32_FIND_DATAW &Data) {
+			UInt16 Mode = 0;
+			return{
+				Data.cFileName,
+				Mode,
+				Data.dwFileAttributes,
+				Data.nFileSizeLow | ((UInt64)Data.nFileSizeHigh << 32),
+				FileTimeFromWin(Data.ftCreationTime),
+				FileTimeFromWin(Data.ftLastWriteTime),
+				FileTimeFromWin(Data.ftLastAccessTime)
+			};
+		}
 		wString Getcwd() {
 			UInt32 Len = GetCurrentDirectoryW(0, NULL);
 			wString Rtn(wchar_t(0), Len);
@@ -76,7 +138,7 @@ namespace Utils {
 		}
 		bool Setcwd(wString Path) {
 			Path.Insert(Path.Length(), 0);
-			return SetCurrentDirectoryW(Path.GetData());
+			return SetCurrentDirectoryW(Path.GetData()) != 0;
 		}
 		String GetcwdA() {
 			UInt32 Len = GetCurrentDirectoryA(0, NULL);
@@ -87,7 +149,7 @@ namespace Utils {
 		}
 		bool Setcwd(String Path) {
 			Path.Insert(Path.Length(), 0);
-			return SetCurrentDirectoryA(Path.GetData());
+			return SetCurrentDirectoryA(Path.GetData()) != 0;
 		}
 		class WinFile : public FileBase {
 		private:
@@ -396,14 +458,8 @@ namespace Utils {
 			WIN32_FILE_ATTRIBUTE_DATA Dat;
 			if (GetFileAttributesExW(cPath, GetFileExInfoStandard, &Dat))
 			{
-				Rtn.Attr = Dat.dwFileAttributes;
 				SizeL Pos = 0;
-				if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
-				else Rtn.fName = Path;
-				Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-				Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-				Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-				Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
+				Rtn = FileDescFromWin(((wString &)Path).RFind(Pos, '/') ? Path.SubStr(Pos + 1) : Path, Dat);
 			}
 			delete[] cPath;
 			return Rtn;
@@ -435,14 +491,8 @@ namespace Utils {
 					return Rtn;
 				}
 			}
-			Rtn.Attr = Dat.dwFileAttributes;
 			SizeL Pos = 0;
-			if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
-			else Rtn.fName = Path;
-			Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-			Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-			Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-			Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
+			Rtn = FileDescFromWin(((wString &)Path).RFind(Pos, '/') ? Path.SubStr(Pos + 1) : Path, Dat);
 			return Rtn;
 		}
 		Array<FileDesc> WinDrive::ListDirSt(const wString &Path) {
@@ -462,14 +512,7 @@ namespace Utils {
 			do {
 				if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
 				{
-					FileDesc Add;
-					Add.Attr = fdFile.dwFileAttributes;
-					Add.fName = fdFile.cFileName;
-					Add.CreateTime = fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32);
-					Add.LastAccessTime = fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32);
-					Add.LastWriteTime = fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32);
-					Add.Size = fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32);
-					Rtn += Add;
+					Rtn += FileDescFromWin(fdFile);
 				}
 			} while (FindNextFileW(hFind, &fdFile));
 			FindClose(hFind);
@@ -492,14 +535,7 @@ namespace Utils {
 				}
 				do {
 					if ((fdFile.cFileName != ".") && (fdFile.cFileName != ".."))
-						Rtn += {
-							fdFile.cFileName,
-							fdFile.dwFileAttributes,
-							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
-							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
-							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
-							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
-						};
+						Rtn += FileDescFromWin(fdFile);
 				} while (FindNextFileA(hFind, &fdFile));
 				delete[] cPathA;
 			}
@@ -517,14 +553,7 @@ namespace Utils {
 				}
 				do {
 					if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-						Rtn += {
-							fdFile.cFileName,
-							fdFile.dwFileAttributes,
-							fdFile.nFileSizeLow | (fdFile.nFileSizeHigh << 32),
-							fdFile.ftCreationTime.dwLowDateTime | (fdFile.ftCreationTime.dwHighDateTime << 32),
-							fdFile.ftLastWriteTime.dwLowDateTime | (fdFile.ftLastWriteTime.dwHighDateTime << 32),
-							fdFile.ftLastAccessTime.dwLowDateTime | (fdFile.ftLastAccessTime.dwHighDateTime << 32)
-						};
+						Rtn += FileDescFromWinA(fdFile);
 				} while (FindNextFileW(hFind, &fdFile));
 				delete[] cPathW;
 			}
@@ -676,7 +705,7 @@ namespace Utils {
 			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Fp, FILE_CURRENT);
 			if (Sz - Fp > 0xFFFFFFFF) throw FileError("Too much to read", "since one cannot easily read more than 2^32 bytes without running into major memory issues");
 			Rtn.SetLength(Sz - Fp);
-			UInt32 NumHasRead = 0;
+			DWORD NumHasRead = 0;
 			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), (UInt32)(Sz - Fp), &NumHasRead, NULL);
 			Rtn.SetLength(NumHasRead);
 			return Rtn;
@@ -684,13 +713,13 @@ namespace Utils {
 		ByteArray WinFile::Read(UInt32 Num) {
 			ByteArray Rtn;
 			Rtn.SetLength(Num);
-			UInt32 NumHasRead = 0;
+			DWORD NumHasRead = 0;
 			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), Num, &NumHasRead, NULL);
 			Rtn.SetLength(NumHasRead);
 			return Rtn;
 		}
 		UInt32 WinFile::Read(ByteArray &Data) {
-			UInt32 Rtn = 0;
+			DWORD Rtn = 0;
 			ReadFile((HANDLE)hFile, (LPVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
 			return Rtn;
 		}
@@ -698,7 +727,7 @@ namespace Utils {
 			LARGE_INTEGER ToPos;
 			ToPos.QuadPart = Pos;
 			if (From > 2) From = 0;
-			return SetFilePointerEx((HANDLE)hFile, ToPos, NULL, From);
+			return SetFilePointerEx((HANDLE)hFile, ToPos, NULL, From) != 0;
 		}
 		SInt64 WinFile::Tell() {
 			SInt64 Rtn = 0;
@@ -708,7 +737,7 @@ namespace Utils {
 			return Rtn;
 		}
 		UInt32 WinFile::Write(const ByteArray &Data) {
-			UInt32 Rtn = 0;
+			DWORD Rtn = 0;
 			LARGE_INTEGER Off;
 			Off.QuadPart = 0;
 			if (Md & F_APP) SetFilePointerEx((HANDLE)hFile, Off, NULL, FILE_END);
@@ -777,7 +806,7 @@ namespace Utils {
 		Array<bool> DrvAvail(false, (SizeL)26);
 		UInt32 Drvs = GetLogicalDrives();
 		for (bool &Avail : DrvAvail) {
-			Avail = Drvs % 2;
+			Avail = Drvs % 2 > 0;
 			Drvs >>= 1;
 		}
 		char Name = 'A';
@@ -815,7 +844,14 @@ namespace Utils {
 
 	//=====================================================BEGIN THREAD============================================================
 
-	UInt32 __stdcall UtilsThread::ThreadProc(void *Params) {
+	struct ThreadParams {
+		void *hThread;
+		DWORD ThreadId;
+		UInt32(*Function)(void *, UInt32, void *);
+		void *FunctParams;
+	};
+
+	DWORD __stdcall ThreadProc(void *Params) {
 		UInt32 Rtn = 0;
 		{
 			ThreadParams &Parameters = *((ThreadParams *)Params);
@@ -838,10 +874,10 @@ namespace Utils {
 			SecurityAttrib.bInheritHandle = TRUE;
 			SecurityAttrib.lpSecurityDescriptor = NULL;
 			SecurityAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
-			hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &ThreadId);
-			Params.hThread = hThread;
-			Params.ThreadId = ThreadId;
-			ResumeThread(HANDLE(hThread));
+			Params.hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
+			hThread = Params.hThread;
+			ThreadId = Params.ThreadId;
+			ResumeThread(hThread);
 		}
 	}
 	UtilsThread::UtilsThread(UInt32 Id) {
@@ -852,7 +888,7 @@ namespace Utils {
 	void UtilsThread::SetThisToCurr() {
 		HANDLE hThreadTemp = GetCurrentThread();
 		DuplicateHandle(GetCurrentProcess(), hThreadTemp, GetCurrentProcess(),
-			&(HANDLE)hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
+			&hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
 		ThreadId = GetCurrentThreadId();
 	}
 	bool UtilsThread::ExitCurrentThread(UInt32 ExitCode) {
@@ -861,17 +897,17 @@ namespace Utils {
 	}
 	bool UtilsThread::Resume() {
 		if (hThread == 0) return false;
-		ResumeThread(HANDLE(hThread));
+		ResumeThread(hThread);
 		return true;
 	}
 	bool UtilsThread::Suspend() {
 		if (hThread == 0) return false;
-		SuspendThread(HANDLE(hThread));
+		SuspendThread(hThread);
 		return true;
 	}
 	bool UtilsThread::Terminate(UInt32 ExitCode) {
 		if (hThread == 0) return false;
-		TerminateThread(HANDLE(hThread), ExitCode);
+		TerminateThread(hThread, ExitCode);
 		return true;
 	}
 	UtilsThread &UtilsThread::operator=(UtilsThread &&Copy) {
@@ -884,7 +920,7 @@ namespace Utils {
 	UtilsThread &UtilsThread::operator=(const UtilsThread &Copy) {
 		ThreadId = Copy.ThreadId;
 		DuplicateHandle(GetCurrentProcess(), Copy.hThread, GetCurrentProcess(),
-			&(HANDLE)hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
+			&hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
 		return *this;
 	}
 	void UtilsThread::Init(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams) {
@@ -896,20 +932,20 @@ namespace Utils {
 			SecurityAttrib.bInheritHandle = TRUE;
 			SecurityAttrib.lpSecurityDescriptor = NULL;
 			SecurityAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
-			hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &ThreadId);
-			Params.hThread = hThread;
-			Params.ThreadId = ThreadId;
-			ResumeThread(HANDLE(hThread));
+			hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
+			hThread = Params.hThread;
+			ThreadId = Params.ThreadId;
+			ResumeThread(hThread);
 		}
 	}
 	UtilsThread::~UtilsThread() {
-		if (hThread != 0) CloseHandle((HANDLE)hThread);
+		if (hThread != 0) CloseHandle(hThread);
 	}
 	bool UtilsThread::IsCallingThread() {
 		return ThreadId == GetCurrentThreadId();
 	}
 	void UtilsThread::SetThread(UInt32 Id) {
-		if (hThread != 0) CloseHandle((HANDLE)hThread);
+		if (hThread != 0) CloseHandle(hThread);
 		ThreadId = Id;
 		if (Id != 0) hThread = OpenThread(THREAD_ALL_ACCESS, TRUE, Id);
 		else hThread = 0;
@@ -1141,7 +1177,7 @@ namespace Utils {
 #if defined(_WIN64)
 		InterlockedExchangeAdd64((SnzL *)&TotBytes, (SnzL)Amt);
 #else
-		InterlockedExchangeAdd((SnzL *)&TotBytes, (SnzL)Amt);
+		InterlockedExchangeAdd(&TotBytes, Amt);
 #endif
 	}
 	//======================================================END THREAD=============================================================
@@ -1291,7 +1327,7 @@ namespace Utils {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			if (SockLock == 0)
 			{
-				UInt32 IsNoBlk = 1;
+				DWORD IsNoBlk = 1;
 				SockLock = GetSingleMutex();
 				SInt32 Rtn = ioctlsocket(Data.Ptr, FIONBIO, &IsNoBlk);
 				if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
@@ -1596,7 +1632,7 @@ namespace Utils {
 		void Socket::settimeout(double Sec) {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
 			SInt32 Rtn = 0;
-			UInt32 IsNoBlk = 0;
+			DWORD IsNoBlk = 0;
 			if (Sec == -1)
 			{
 				if (SockLock) IsNoBlk = 1;
