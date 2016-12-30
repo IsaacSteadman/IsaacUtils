@@ -304,13 +304,6 @@ namespace Utils{
 	private:
 		void *hThread;
 		UInt32 ThreadId;
-		struct ThreadParams {
-			void *hThread;
-			UInt32 ThreadId;
-			UInt32(*Function)(void *, UInt32, void *);
-			void *FunctParams;
-		};
-		static UInt32 OS_CALL ThreadProc(void *Params);
 	public:
 		UtilsThread();
 		UtilsThread(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams);
@@ -439,23 +432,48 @@ namespace Utils{
 	*   Can be hooked to expose virtual file systems in the same process
 	*/
 	namespace fs{
+		struct ISAACUTILS_API FileTime {
+			SnzL tv_sec;
+			SInt32 tv_nsec;
+			FileTime();
+			FileTime(SnzL sec, SInt32 nsec);
+			FileTime(const FileTime &Other);
+			FileTime(const float Other);
+			FileTime(const double Other);
+			FileTime(const SInt32 Other);
+			bool operator==(const FileTime &Cmp) const;
+			bool operator!=(const FileTime &Cmp) const;
+			bool operator<=(const FileTime &Cmp) const;
+			bool operator>=(const FileTime &Cmp) const;
+			bool operator<(const FileTime &Cmp) const;
+			bool operator>(const FileTime &Cmp) const;
+			FileTime &operator-=(const FileTime &Other);
+			FileTime &operator+=(const FileTime &Other);
+			FileTime operator-(const FileTime &Other) const;
+			FileTime operator+(const FileTime &Other) const;
+			FileTime &operator=(const FileTime &Other);
+			explicit operator float() const;
+			explicit operator double() const;
+			explicit operator SnzL() const;
+			void Normalize();
+		};
 		struct ISAACUTILS_API FileDesc{
 			wString fName;
 			UInt16 Mode;
 			UInt32 Attr;
 			UInt64 Size;
-			UInt64 CreateTime;
-			UInt64 LastWriteTime;
-			UInt64 LastAccessTime;
+			FileTime CreateTime;
+			FileTime LastWriteTime;
+			FileTime LastAccessTime;
 		};
 		struct ISAACUTILS_API FileDescA{
 			String fName;
 			UInt16 Mode;
 			UInt32 Attr;
 			UInt64 Size;
-			UInt64 CreateTime;
-			UInt64 LastWriteTime;
-			UInt64 LastAccessTime;
+			FileTime CreateTime;
+			FileTime LastWriteTime;
+			FileTime LastAccessTime;
 		};
 		enum FileAttr{
 			FILE_ATTR_READONLY = 0x1,
@@ -476,7 +494,7 @@ namespace Utils{
 			FILE_ATTR_VIRTUAL = 0x10000,
 			FILE_ATTR_NO_SCRUB_DATA = 0x20000
 		};
-		enum AttrNix{
+		enum AttrNix {
 			FTYP_DIR = 0x4000,
 			FTYP_CHR = 0x2000,
 			FTYP_BLK = 0x6000,
@@ -484,7 +502,7 @@ namespace Utils{
 			FTYP_QUE = 0x1000, //Queue (FIFO)
 			FTYP_LNK = 0xA000,
 			FTYP_SOK = 0xC000,
-		}
+		};
 		ISAACUTILS_API Array<wString> ListDir(wString Path);
 		ISAACUTILS_API bool Exists(wString Path);
 		ISAACUTILS_API bool IsFile(wString Path);
@@ -532,6 +550,13 @@ namespace Utils{
 			wString Msg;
 			wString Type;
 			FileError(wString Cap, wString Txt);
+		};
+		class ISAACUTILS_API FileErrorN {
+		public:
+			FileErrorN();
+			UInt32 ErrCode;
+			wString Msg;
+			FileErrorN(UInt32 Code, wString Txt);
 		};
 		//abstract file class representing a file from a drive
 		class ISAACUTILS_API FileBase {
