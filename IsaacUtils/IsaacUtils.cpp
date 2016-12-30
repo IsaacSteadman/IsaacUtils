@@ -1,9 +1,7 @@
 // IsaacUtils.cpp : Defines the exported functions for the DLL application.
 //
 
-#if defined(_WIN32) || defined(_WIN64)
 #include "stdafx.h"
-#endif
 //#include "IsaacUtils.h"
 #include "IsaacUtils.h"
 
