@@ -36,6 +36,9 @@
     <ClInclude Include="WinImp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BaseDef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
