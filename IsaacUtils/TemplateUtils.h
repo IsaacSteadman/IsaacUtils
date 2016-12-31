@@ -23,6 +23,7 @@ namespace Utils{
 		void RemBeg(SizeL NumRem);
 		void AddBeg(SizeL NumAdd);
 		void AddBeg(SizeL NumAdd, T Val);
+		void Reverse();
 		void WriteFromAt(const Array<T> &From, SizeL Beg = 0, SizeL End = MAX_INT);
 		Array<T> SubArr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;
 		void SetLength(SizeL Len);
@@ -251,6 +252,14 @@ namespace Utils{
 		}
 		AllocNum += NumAdd;
 		Data = NewData;
+	}
+	template<typename T>
+	void Array<T>::Reverse() {
+		for (SizeL c = 0, c1 = AllocNum - 1; c < AllocNum / 2; ++c, --c1) {
+			T Tmp = (T &&)Data[c];
+			Data[c] = (T &&)Data[c1];
+			Data[c1] = (T &&)Tmp;
+		}
 	}
 	template<typename T>
 	void Array<T>::WriteFromAt(const Array<T> &From, SizeL Beg, SizeL End) {
