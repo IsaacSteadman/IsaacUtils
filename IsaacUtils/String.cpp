@@ -206,6 +206,115 @@ namespace Utils{
 	String::operator ByteArray &() {
 		return *(ByteArray *)this;
 	}
+	Array<String> String::Split(const String &Sep, SizeL MaxSplit) const {
+		if (Sep.Length() == 0)
+		{
+			if (MaxSplit - 1 >= AllocNum) return Array<String>(*this, 1);
+			Array<String> Rtn(String((char)0, 1), MaxSplit+1);
+			SizeL c;
+			for (c = 0; c < MaxSplit; ++c) {
+				Rtn[c][0] = Data[c];
+			}
+			if (c < AllocNum)
+			{
+				Rtn.AtEnd() = String(Data+c, AllocNum-c);
+			}
+			return Rtn;
+		}
+		else if (MaxSplit == 0) return Array<String>(*this, 1);
+		const SizeL ChunkSz = 8;
+		SizeL RtnPos = 0;
+		Array<String> Rtn;
+		SizeL Prev = 0;
+		SizeL c;
+		for (c = 0; c < AllocNum; ++c) {
+			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			{
+				c = AllocNum;
+				break;
+			}
+			bool IsEq = true;
+			for (SizeL c1 = 0; c1 < Sep.AllocNum; ++c1) {
+				IsEq = IsEq && Data[c + c1] == Sep.Data[c1];
+				if (!IsEq) break;
+			}
+			if (IsEq)
+			{
+				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
+				Rtn[RtnPos++] = String(Data + Prev, c - Prev);
+				c += Sep.AllocNum;
+				Prev = c + 1;
+			}
+		}
+		Rtn.SetLength(RtnPos+1);
+		Rtn[RtnPos++] = String(Data + Prev, c - Prev);
+		return Rtn;
+	}
+	Array<String> String::RSplit(const String &Sep, SizeL MaxSplit) const {
+		if (Sep.Length() == 0)
+		{
+			if (MaxSplit - 1 >= AllocNum) return Array<String>(*this, 1);
+			Array<String> Rtn(String((char)0, 1), MaxSplit + 1);
+			SizeL c, c1 = AllocNum;
+			for (c = 0; c < MaxSplit; ++c) {
+				--c1;
+				Rtn[c1][0] = Data[c1];
+			}
+			if (c < AllocNum)
+			{
+				Rtn[0] = String(Data, c);
+			}
+			return Rtn;
+		}
+		else if (MaxSplit == 0) return Array<String>(*this, 1);
+		const SizeL ChunkSz = 8;
+		SizeL RtnPos = 0;
+		Array<String> Rtn;
+		SizeL Prev = AllocNum;
+		SizeL c = AllocNum;
+		while (c-- > 0) {
+			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			{
+				c = 0;
+				break;
+			}
+			bool IsEq = true;
+			for (SizeL c1 = 0, c2 = Sep.AllocNum - 1; c1 < Sep.AllocNum; ++c1, --c2) {
+				IsEq = IsEq && Data[c - c1] == Sep.Data[c2];
+				if (!IsEq) break;
+			}
+			if (IsEq)
+			{
+				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
+				Rtn[RtnPos++] = String(Data + c + 1, Prev - (c + 1));
+				c -= Sep.AllocNum;
+				Prev = c;
+			}
+		}
+		Rtn.SetLength(RtnPos+1);
+		Rtn[RtnPos++] = String(Data + Prev, c - Prev);
+		Rtn.Reverse();
+		return Rtn;
+	}
+	String String::Join(const Array<String> &Lst) const {
+		if (Lst.Length() == 0) return "";
+		SizeL Sum = Lst[0].Length() + (Lst.Length() - 1)*AllocNum;
+		for (SizeL c = 1; c < Lst.Length(); ++c) {
+			Sum += Lst[c].Length();
+		}
+		String Rtn((char)0, Sum);
+		char *Data = Rtn.Data;
+		Lst[0].CopyTo(Data, Lst[0].Length());
+		Data += Lst[0].Length();
+		for (SizeL c = 1; c < Lst.Length(); ++c) {
+			const String &Str = Lst[c];
+			CopyTo(Data, AllocNum);
+			Data += AllocNum;
+			Str.CopyTo(Data, Str.Length());
+			Data += Str.Length();
+		}
+		return Rtn;
+	}
 	char String::operator[](const SizeL Pos) const{
 		if (Pos < AllocNum) return Data[Pos];
 		else return 0;
@@ -835,6 +944,115 @@ namespace Utils{
 		++AllocNum;
 		Data = NewData;
 		return (*this);
+	}
+	Array<wString> wString::Split(const wString &Sep, SizeL MaxSplit) const {
+		if (Sep.Length() == 0)
+		{
+			if (MaxSplit - 1 >= AllocNum) return Array<wString>(*this, 1);
+			Array<wString> Rtn(wString((wchar_t)0, 1), MaxSplit + 1);
+			SizeL c;
+			for (c = 0; c < MaxSplit; ++c) {
+				Rtn[c][0] = Data[c];
+			}
+			if (c < AllocNum)
+			{
+				Rtn.AtEnd() = wString(Data + c, AllocNum - c);
+			}
+			return Rtn;
+		}
+		else if (MaxSplit == 0) return Array<wString>(*this, 1);
+		const SizeL ChunkSz = 8;
+		SizeL RtnPos = 0;
+		Array<wString> Rtn;
+		SizeL Prev = 0;
+		SizeL c;
+		for (c = 0; c < AllocNum; ++c) {
+			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			{
+				c = AllocNum;
+				break;
+			}
+			bool IsEq = true;
+			for (SizeL c1 = 0; c1 < Sep.AllocNum; ++c1) {
+				IsEq = IsEq && Data[c + c1] == Sep.Data[c1];
+				if (!IsEq) break;
+			}
+			if (IsEq)
+			{
+				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
+				Rtn[RtnPos++] = wString(Data + Prev, c - Prev);
+				c += Sep.AllocNum;
+				Prev = c + 1;
+			}
+		}
+		Rtn.SetLength(RtnPos + 1);
+		Rtn[RtnPos++] = wString(Data + Prev, c - Prev);
+		return Rtn;
+	}
+	Array<wString> wString::RSplit(const wString &Sep, SizeL MaxSplit) const {
+		if (Sep.Length() == 0)
+		{
+			if (MaxSplit - 1 >= AllocNum) return Array<wString>(*this, 1);
+			Array<wString> Rtn(wString((wchar_t)0, 1), MaxSplit + 1);
+			SizeL c, c1 = AllocNum;
+			for (c = 0; c < MaxSplit; ++c) {
+				--c1;
+				Rtn[c1][0] = Data[c1];
+			}
+			if (c < AllocNum)
+			{
+				Rtn[0] = wString(Data, c);
+			}
+			return Rtn;
+		}
+		else if (MaxSplit == 0) return Array<wString>(*this, 1);
+		const SizeL ChunkSz = 8;
+		SizeL RtnPos = 0;
+		Array<wString> Rtn;
+		SizeL Prev = AllocNum;
+		SizeL c = AllocNum;
+		while (c-- > 0) {
+			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			{
+				c = 0;
+				break;
+			}
+			bool IsEq = true;
+			for (SizeL c1 = 0, c2 = Sep.AllocNum - 1; c1 < Sep.AllocNum; ++c1, --c2) {
+				IsEq = IsEq && Data[c - c1] == Sep.Data[c2];
+				if (!IsEq) break;
+			}
+			if (IsEq)
+			{
+				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
+				Rtn[RtnPos++] = wString(Data + c + 1, Prev - (c + 1));
+				c -= Sep.AllocNum;
+				Prev = c;
+			}
+		}
+		Rtn.SetLength(RtnPos + 1);
+		Rtn[RtnPos++] = wString(Data + Prev, c - Prev);
+		Rtn.Reverse();
+		return Rtn;
+	}
+	wString wString::Join(const Array<wString> &Lst) const {
+		if (Lst.Length() == 0) return "";
+		SizeL Sum = Lst[0].Length() + (Lst.Length() - 1)*AllocNum;
+		for (SizeL c = 1; c < Lst.Length(); ++c) {
+			Sum += Lst[c].Length();
+		}
+		wString Rtn((wchar_t)0, Sum);
+		wchar_t *Data = Rtn.Data;
+		Lst[0].CopyTo(Data, Lst[0].Length());
+		Data += Lst[0].Length();
+		for (SizeL c = 1; c < Lst.Length(); ++c) {
+			const wString &Str = Lst[c];
+			CopyTo(Data, AllocNum);
+			Data += AllocNum;
+			Str.CopyTo(Data, Str.Length());
+			Data += Str.Length();
+		}
+		return Rtn;
 	}
 	wchar_t &wString::operator[](const SizeL Pos){
 		return Data[Pos];

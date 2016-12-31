@@ -42,6 +42,9 @@ namespace Utils{
 		String &operator+=(const String &Add);
 		String &operator+=(const char Add);
 		explicit operator ByteArray &();
+		Array<String> Split(const String &Sep, SizeL MaxSplit = MAX_INT) const;
+		Array<String> RSplit(const String &Sep, SizeL MaxSplit = MAX_INT) const;
+		String Join(const Array<String> &Lst) const;
 		void CopyTo(char *To, SizeL LenTo) const;
 		void CopyTo(wchar_t *To, SizeL LenTo) const;
 		bool Contains(const char Val) const;
@@ -117,6 +120,9 @@ namespace Utils{
 		wString &operator=(wString &&Cp);
 		wString &operator+=(const wString &Add);
 		wString &operator+=(const wchar_t Add);
+		Array<wString> Split(const wString &Sep, SizeL MaxSplit = MAX_INT) const;
+		Array<wString> RSplit(const wString &Sep, SizeL MaxSplit = MAX_INT) const;
+		wString Join(const Array<wString> &Lst) const;
 		void CopyTo(wchar_t *To, SizeL LenTo) const;
 		bool Contains(const wchar_t Val) const;
 		SizeL GetNumCh(const wchar_t Val) const;
@@ -602,7 +608,9 @@ namespace Utils{
 		};
 		class ISAACUTILS_API DefUniDrive : public DriveBase{
 			virtual wString GetName();
+			virtual String GetNameA() = 0;
 			virtual FileBase *OpenFile(const wString &Path, UInt32 Mode);
+			virtual FileBase *OpenFile(const String &Path, UInt32 Mode) = 0;
 			virtual bool IsFile(const wString &Path);
 			virtual bool IsFile(const String &Path);
 			virtual bool Exists(const wString &Path);
@@ -610,7 +618,9 @@ namespace Utils{
 			virtual bool IsDir(const wString &Path);
 			virtual bool IsDir(const String &Path);
 			virtual Array<wString> ListDir(const wString &Path);
+			virtual Array<String> ListDir(const String &Path) = 0;
 			virtual FileDesc Stat(const wString &Path);
+			virtual FileDescA Stat(const String &Path) = 0;
 			virtual Array<FileDesc> ListDirSt(const wString &Path);
 			virtual Array<FileDescA> ListDirSt(const String &Path);
 			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false);
