@@ -414,6 +414,120 @@ namespace Utils {
 			if (Md & F_BIN) Rtn += 'b';
 			return Rtn;
 		}
+		wString DefUniDrive::GetName() {
+			return GetNameA().wStr();
+		}
+		FileBase *DefUniDrive::OpenFile(const wString &Path, UInt32 Mode) {
+			return OpenFile(Path.Str(), Mode);
+		}
+		bool DefUniDrive::IsFile(const wString &Path) {
+			return IsFile(Path.Str());
+		}
+		bool DefUniDrive::IsFile(const String &Path) {
+			try {
+				return Stat(Path).Mode & FTYP_MASK == FTYP_REG;
+			} catch (...) {
+				return false;
+			}
+		}
+		bool DefUniDrive::Exists(const wString &Path) {
+			return Exists(Path.Str());
+		}
+		bool DefUniDrive::Exists(const String &Path) {
+			try {
+				Stat(Path);
+			} catch (...) {
+				return false;
+			}
+		}
+		bool DefUniDrive::IsDir(const wString &Path) {
+			return IsDir(Path.Str());
+		}
+		bool DefUniDrive::IsDir(const String &Path) {
+			try {
+				return Stat(Path).Mode & FTYP_MASK == FTYP_DIR;
+			} catch (...) {
+				return false;
+			}
+		}
+		Array<wString> DefUniDrive::ListDir(const wString &Path) {
+			Array<String> Tmp = ListDir(Path.Str());
+			Array<wString> Rtn;
+			Rtn.SetLength(Tmp.Length());
+			for (SizeL c = 0; c < Tmp.Length(); ++c) {
+				Rtn[c] = Tmp[c].wStr();
+			}
+			return Rtn;
+		}
+		FileDesc DefUniDrive::Stat(const wString &Path) {
+			FileDescA Tmp = Stat(Path.Str());
+			return{
+				Tmp.fName.wStr(), Tmp.Mode, Tmp.Attr, Tmp.Size,
+				Tmp.CreateTime, Tmp.LastWriteTime, Tmp.LastAccessTime };
+		}
+		Array<FileDesc> DefUniDrive::ListDirSt(const wString &Path) {
+			Array<FileDescA> Tmp = ListDirSt(Path.Str());
+			Array<FileDesc> Rtn;
+			Rtn.SetLength(Tmp.Length());
+			for (SizeL c = 0; c < Tmp.Length(); ++c) {
+				FileDescA &Cur = Tmp[c];
+				Rtn[c] = {
+					Cur.fName.wStr(), Cur.Mode, Cur.Attr, Cur.Size,
+					Cur.CreateTime, Cur.LastWriteTime, Cur.LastAccessTime };
+			}
+			return Rtn;
+		}
+		Array<FileDescA> DefUniDrive::ListDirSt(const String &Path) {
+			Array<FileDescA> Rtn;
+			Array<String> Names = ListDir(Path);
+			Rtn.SetLength(Names.Length());
+			for (SizeL c = 0; c < Names.Length(); ++c) {
+				Rtn[c] = Stat(Names[c]);
+			}
+			return Rtn;
+		}
+		Array<wString> DefUniDrive::GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert, bool RtnBegDots) {
+			Array<wString> Cur;
+			Array<wString> NextDir("/", 1);
+			Array<wString> Rtn;
+			SizeL ChunkSz = 64;
+			SizeL RtnPos = 0;
+			while (NextDir.Length() > 0) {
+				Cur.SetLength(0);
+				Cur = (Array<wString> &&)NextDir;
+				for (wString &Dir : Cur) {
+					if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
+					for (FileDesc &Comp : ListDirSt(Path+Dir)) {
+						wString CompName = Dir + "/" + Comp.fName;
+						switch (Comp.Mode & FTYP_MASK) {
+						case FTYP_REG:
+							Rtn[RtnPos++] = CompName;
+							break;
+						case FTYP_DIR:
+							NextDir += CompName;
+							break;
+						}
+					}
+				}
+			}
+			Rtn.SetLength(RtnPos);
+			return Rtn;
+		}
+		Array<String> DefUniDrive::GetFileExt(const String &Path, const Array<String> &Ext, bool Invert, bool RtnBegDots) {
+			Array<wString> TmpExt;
+			TmpExt.SetLength(Ext.Length());
+			for (SizeL c = 0; c < Ext.Length(); ++c) {
+				TmpExt[c] = Ext[c].wStr();
+			}
+			Array<wString> Tmp = GetFileExt(Path.wStr(), TmpExt, Invert, RtnBegDots);
+			Array<String> Rtn;
+			Rtn.SetLength(Tmp.Length());
+			for (SizeL c = 0; c < Tmp.Length(); ++c) {
+				Rtn[c] = Tmp[c].Str();
+			}
+			return Rtn;
+		}
+		
 	}
 	bool DefDelFl(void *Fl) {
 		delete (fs::FileBase *)Fl;
