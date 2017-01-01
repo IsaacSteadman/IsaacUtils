@@ -210,14 +210,14 @@ namespace Utils{
 		if (Sep.Length() == 0)
 		{
 			if (MaxSplit - 1 >= AllocNum) return Array<String>(*this, 1);
-			Array<String> Rtn(String((char)0, 1), MaxSplit+1);
+			Array<String> Rtn(String((char)0, 1), MaxSplit + 1);
 			SizeL c;
 			for (c = 0; c < MaxSplit; ++c) {
 				Rtn[c][0] = Data[c];
 			}
 			if (c < AllocNum)
 			{
-				Rtn.AtEnd() = String(Data+c, AllocNum-c);
+				Rtn.AtEnd() = String(Data + c, AllocNum - c);
 			}
 			return Rtn;
 		}
@@ -228,7 +228,7 @@ namespace Utils{
 		SizeL Prev = 0;
 		SizeL c;
 		for (c = 0; c < AllocNum; ++c) {
-			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			if (Sep.AllocNum + c > AllocNum || RtnPos >= MaxSplit)
 			{
 				c = AllocNum;
 				break;
@@ -242,11 +242,11 @@ namespace Utils{
 			{
 				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
 				Rtn[RtnPos++] = String(Data + Prev, c - Prev);
-				c += Sep.AllocNum;
+				c += Sep.AllocNum - 1;
 				Prev = c + 1;
 			}
 		}
-		Rtn.SetLength(RtnPos+1);
+		Rtn.SetLength(RtnPos + 1);
 		Rtn[RtnPos++] = String(Data + Prev, c - Prev);
 		return Rtn;
 	}
@@ -273,7 +273,7 @@ namespace Utils{
 		SizeL Prev = AllocNum;
 		SizeL c = AllocNum;
 		while (c-- > 0) {
-			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			if (c < Sep.AllocNum || RtnPos >= MaxSplit)
 			{
 				c = 0;
 				break;
@@ -287,12 +287,12 @@ namespace Utils{
 			{
 				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
 				Rtn[RtnPos++] = String(Data + c + 1, Prev - (c + 1));
-				c -= Sep.AllocNum;
+				c -= Sep.AllocNum - 1;
 				Prev = c;
 			}
 		}
-		Rtn.SetLength(RtnPos+1);
-		Rtn[RtnPos++] = String(Data + Prev, c - Prev);
+		Rtn.SetLength(RtnPos + 1);
+		Rtn[RtnPos++] = String(Data, Prev);
 		Rtn.Reverse();
 		return Rtn;
 	}
@@ -449,17 +449,18 @@ namespace Utils{
 	bool String::Find(SizeL &Pos, String Str, bool PosIsStart) const{
 		if (Str.AllocNum == 0) return false;
 		SizeL MidPos = 0;
-		for (SizeL c = PosIsStart ? Pos : 0; c < AllocNum; ++c){
+		SizeL End = AllocNum + 1 - Str.Length();
+		for (SizeL c = PosIsStart ? Pos : 0; c < End; ++c) {
+			if (Data[c] != Str.Data[MidPos]) MidPos = 0;
 			if (Data[c] == Str.Data[MidPos])
 			{
 				++MidPos;
 				if (MidPos == Str.AllocNum)
 				{
-					Pos = c;
+					Pos = c + 1 - MidPos;
 					return true;
 				}
 			}
-			else MidPos = 0;
 		}
 		return false;
 	}
@@ -488,12 +489,37 @@ namespace Utils{
 		return false;
 	}
 	SizeL String::Replace(const String &FindStr, const String &Write) {
-		if (FindStr.Length() == 0) return 0;
 		if (FindStr.Length() == 1 && Write.Length() == 1) return Replace(FindStr[0], Write[0]);
+		else if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		else if (Write.Length() == 1) return Replace(FindStr, Write[0]);
+		else if (FindStr.Length() == 0) {
+			if (Write.Length() == 0) return AllocNum + 1;
+			SizeL NewLen = AllocNum + (AllocNum + 1) * Write.Length();
+			char *NewData = new char[NewLen];
+			SizeL CurOff = Write.Length();
+			NewData += (NewLen - CurOff);
+			for (SizeL c = 0; c < CurOff; ++c) {
+				NewData[c] = Write.Data[c];
+			}
+			NewData -= (NewLen - CurOff);
+			CurOff = 0;
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				for (SizeL c1 = c + CurOff, c2 = 0; c2 < Write.Length(); ++c2, ++c1) {
+					NewData[c1] = Write.Data[c2];
+				}
+				CurOff += Write.Length();
+				NewData[c + CurOff] = Data[c];
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return AllocNum + 1;
+		}
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
 			PosFinds += Pos;
+			Pos += FindStr.Length();
 		}
 		if (PosFinds.Length() == 0) return 0;
 		char *NewData = 0;
@@ -516,6 +542,16 @@ namespace Utils{
 				NewData[c - CurOff] = Data[c];
 			}
 		}
+		else if (FindStr.Length() == Write.Length())
+		{
+			NewLen = AllocNum;
+			NewData = Data;
+			for (SizeL &Pos : PosFinds) {
+				for (SizeL c = Pos, c1 = 0; c1 < Write.Length(); ++c, ++c1) {
+					Data[c] = Write.Data[c1];
+				}
+			}
+		}
 		else
 		{
 			SizeL DifLen = Write.Length() - FindStr.Length();
@@ -535,44 +571,86 @@ namespace Utils{
 				NewData[c + CurOff] = Data[c];
 			}
 		}
-		if (AllocNum > 0) delete[] Data;
+		if (AllocNum > 0 && Data != NewData) delete[] Data;
 		Data = NewData;
 		AllocNum = NewLen;
 		return PosFinds.Length();// return the number of replacements we did
 	}
 	SizeL String::Replace(const char FindStr, const String &Write) {
+		if (Write.Length() == 0)
+		{
+			Array<SizeL> PosFinds;
+			SizeL Pos = 0;
+			while (Find(Pos, FindStr, true)) {
+				PosFinds += Pos++;
+			}
+			SizeL NewLen = AllocNum - PosFinds.Length();
+			SizeL CurOff = 0;
+			SizeL CurPosFind = 0;
+			char *NewData = new char[NewLen];
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind]) {
+					++CurOff;
+					continue;
+				}
+				NewData[c - CurOff] = Data[c];
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return PosFinds.Length();
+		}
 		if (Write.Length() == 1) return Replace(FindStr, Write[0]);
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
-			PosFinds += Pos;
+			PosFinds += Pos++;
 		}
 		if (PosFinds.Length() == 0) return 0;
 		SizeL DifLen = Write.Length() - 1;
-		SizeL NewLen = AllocNum + PosFinds.Length() * DifLen;
+		SizeL NewLen = AllocNum;
+		if (DifLen != MAX_INT) NewLen += PosFinds.Length() * DifLen;
+		else NewLen -= PosFinds.Length();
 		char *NewData = new char[NewLen];
 		SizeL CurPosFind = 0;
 		SizeL CurOff = 0;
 		for (SizeL c = 0; c < AllocNum; ++c) {
-			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind])
 			{
 				for (SizeL c0 = 0; c0 < Write.Length(); ++c0) {
 					NewData[c + CurOff + c0] = Write[c0];
 				}
 				CurOff += DifLen;
 				++CurPosFind;
+				continue;
 			}
 			NewData[c + CurOff] = Data[c];
 		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewLen;
 		return PosFinds.Length();
 	}
 	SizeL String::Replace(const String &FindStr, const char Write) {
-		if (FindStr.Length() == 0) return 0;
-		if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		if (FindStr.Length() == 0) {
+			SizeL NewLen = AllocNum * 2 + 1;
+			char *NewData = new char[NewLen];
+			NewData[NewLen - 1] = Write;
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				NewData[c * 2 + 1] = Data[c];
+				NewData[c * 2] = Write;
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return AllocNum / 2 + 1;
+		}
+		else if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
 			PosFinds += Pos;
+			Pos += FindStr.Length();
 		}
 		if (PosFinds.Length() == 0) return 0;
 		//length of FindStr is always greater than 1 (length of Write) at this point
@@ -582,11 +660,13 @@ namespace Utils{
 		SizeL CurPosFind = 0;
 		SizeL CurOff = 0;
 		for (SizeL c = 0; c < AllocNum; ++c) {
-			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind])
 			{
 				NewData[c - CurOff] = Write;
 				CurOff += DifLen;
+				c += DifLen;
 				++CurPosFind;
+				continue;
 			}
 			NewData[c - CurOff] = Data[c];
 		}
@@ -967,7 +1047,7 @@ namespace Utils{
 		SizeL Prev = 0;
 		SizeL c;
 		for (c = 0; c < AllocNum; ++c) {
-			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			if (Sep.AllocNum + c > AllocNum || RtnPos >= MaxSplit)
 			{
 				c = AllocNum;
 				break;
@@ -981,7 +1061,7 @@ namespace Utils{
 			{
 				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
 				Rtn[RtnPos++] = wString(Data + Prev, c - Prev);
-				c += Sep.AllocNum;
+				c += Sep.AllocNum - 1;
 				Prev = c + 1;
 			}
 		}
@@ -1012,7 +1092,7 @@ namespace Utils{
 		SizeL Prev = AllocNum;
 		SizeL c = AllocNum;
 		while (c-- > 0) {
-			if (Sep.AllocNum + c < AllocNum || RtnPos >= MaxSplit)
+			if (c < Sep.AllocNum || RtnPos >= MaxSplit)
 			{
 				c = 0;
 				break;
@@ -1026,12 +1106,12 @@ namespace Utils{
 			{
 				if (RtnPos >= Rtn.Length()) Rtn.SetLength(Rtn.Length() + ChunkSz);
 				Rtn[RtnPos++] = wString(Data + c + 1, Prev - (c + 1));
-				c -= Sep.AllocNum;
+				c -= Sep.AllocNum - 1;
 				Prev = c;
 			}
 		}
 		Rtn.SetLength(RtnPos + 1);
-		Rtn[RtnPos++] = wString(Data + Prev, c - Prev);
+		Rtn[RtnPos++] = wString(Data, Prev);
 		Rtn.Reverse();
 		return Rtn;
 	}
@@ -1175,54 +1255,80 @@ namespace Utils{
 		++Data;
 		return false;
 	}
-	bool wString::Find(SizeL &Pos, wString Ch, bool PosIsStart) const{
-		if (Ch.AllocNum == 0) return false;
+	bool wString::Find(SizeL &Pos, wString Str, bool PosIsStart) const{
+		if (Str.AllocNum == 0) return false;
 		SizeL MidPos = 0;
-		for (SizeL c = PosIsStart ? Pos : 0; c < AllocNum; ++c){
-			if (Data[c] == Ch.Data[MidPos])
+		SizeL End = AllocNum + 1 - Str.Length();
+		for (SizeL c = PosIsStart ? Pos : 0; c < End; ++c){
+			if (Data[c] != Str.Data[MidPos]) MidPos = 0;
+			if (Data[c] == Str.Data[MidPos])
 			{
 				++MidPos;
-				if (MidPos == Ch.AllocNum)
+				if (MidPos == Str.AllocNum)
 				{
-					Pos = c;
+					Pos = c + 1 - MidPos;
 					return true;
 				}
 			}
-			else MidPos = 0;
 		}
 		return false;
 	}
-	bool wString::RFind(SizeL &Pos, wString Ch, bool PosIsStart){
-		if (Ch.AllocNum == 0) return false;
+	bool wString::RFind(SizeL &Pos, wString Str, bool PosIsStart){
+		if (Str.AllocNum == 0) return false;
 		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		--Ch.Data;
-		SizeL MidPos = Ch.AllocNum;
+		--Str.Data;
+		SizeL MidPos = Str.AllocNum;
 		SizeL Until = PosIsStart ? Pos : 0;
 		for (SizeL c = AllocNum; c > Until; --c){
-			if (Data[c] == Ch.Data[MidPos])
+			if (Data[c] == Str.Data[MidPos])
 			{
 				--MidPos;
 				if (MidPos == 0)
 				{
 					++Data;
-					++Ch.Data;
+					++Str.Data;
 					Pos = c;
 					return true;
 				}
 			}
-			else MidPos = Ch.AllocNum;
+			else MidPos = Str.AllocNum;
 		}
 		++Data;
-		++Ch.Data;
+		++Str.Data;
 		return false;
 	}
 	SizeL wString::Replace(const wString &FindStr, const wString &Write) {
-		if (FindStr.Length() == 0) return 0;
 		if (FindStr.Length() == 1 && Write.Length() == 1) return Replace(FindStr[0], Write[0]);
+		else if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		else if (Write.Length() == 1) return Replace(FindStr, Write[0]);
+		else if (FindStr.Length() == 0) {
+			if (Write.Length() == 0) return AllocNum + 1;
+			SizeL NewLen = AllocNum + (AllocNum + 1) * Write.Length();
+			wchar_t *NewData = new wchar_t[NewLen];
+			SizeL CurOff = Write.Length();
+			NewData += (NewLen - CurOff);
+			for (SizeL c = 0; c < CurOff; ++c) {
+				NewData[c] = Write.Data[c];
+			}
+			NewData -= (NewLen - CurOff);
+			CurOff = 0;
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				for (SizeL c1 = c + CurOff, c2 = 0; c2 < Write.Length(); ++c2, ++c1) {
+					NewData[c1] = Write.Data[c2];
+				}
+				CurOff += Write.Length();
+				NewData[c + CurOff] = Data[c];
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return AllocNum + 1;
+		}
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
 			PosFinds += Pos;
+			Pos += FindStr.Length();
 		}
 		if (PosFinds.Length() == 0) return 0;
 		wchar_t *NewData = 0;
@@ -1245,6 +1351,16 @@ namespace Utils{
 				NewData[c - CurOff] = Data[c];
 			}
 		}
+		else if (FindStr.Length() == Write.Length())
+		{
+			NewLen = AllocNum;
+			NewData = Data;
+			for (SizeL &Pos : PosFinds) {
+				for (SizeL c = Pos, c1 = 0; c1 < Write.Length(); ++c, ++c1) {
+					Data[c] = Write.Data[c1];
+				}
+			}
+		}
 		else
 		{
 			SizeL DifLen = Write.Length() - FindStr.Length();
@@ -1264,44 +1380,86 @@ namespace Utils{
 				NewData[c + CurOff] = Data[c];
 			}
 		}
-		if (AllocNum > 0) delete [] Data;
+		if (AllocNum > 0 && Data != NewData) delete[] Data;
 		Data = NewData;
 		AllocNum = NewLen;
 		return PosFinds.Length();// return the number of replacements we did
 	}
 	SizeL wString::Replace(const wchar_t FindStr, const wString &Write) {
-		if (Write.Length() == 1) return Replace(FindStr, Write[0]);
+		if (Write.Length() == 0)
+		{
+			Array<SizeL> PosFinds;
+			SizeL Pos = 0;
+			while (Find(Pos, FindStr, true)) {
+				PosFinds += Pos++;
+			}
+			SizeL NewLen = AllocNum - PosFinds.Length();
+			SizeL CurOff = 0;
+			SizeL CurPosFind = 0;
+			wchar_t *NewData = new wchar_t[NewLen];
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind]) {
+					++CurOff;
+					continue;
+				}
+				NewData[c - CurOff] = Data[c];
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return PosFinds.Length();
+		}
+		else if (Write.Length() == 1) return Replace(FindStr, Write[0]);
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
-			PosFinds += Pos;
+			PosFinds += Pos++;
 		}
 		if (PosFinds.Length() == 0) return 0;
 		SizeL DifLen = Write.Length() - 1;
-		SizeL NewLen = AllocNum + PosFinds.Length() * DifLen;
+		SizeL NewLen = AllocNum;
+		if (DifLen != MAX_INT) NewLen += PosFinds.Length() * DifLen;
+		else NewLen -= PosFinds.Length();
 		wchar_t *NewData = new wchar_t[NewLen];
 		SizeL CurPosFind = 0;
 		SizeL CurOff = 0;
 		for (SizeL c = 0; c < AllocNum; ++c) {
-			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind])
 			{
 				for (SizeL c0 = 0; c0 < Write.Length(); ++c0) {
 					NewData[c + CurOff + c0] = Write[c0];
 				}
 				CurOff += DifLen;
 				++CurPosFind;
+				continue;
 			}
 			NewData[c + CurOff] = Data[c];
 		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewLen;
 		return PosFinds.Length();
 	}
 	SizeL wString::Replace(const wString &FindStr, const wchar_t Write) {
-		if (FindStr.Length() == 0) return 0;
-		if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
+		if (FindStr.Length() == 0) {
+			SizeL NewLen = AllocNum * 2 + 1;
+			wchar_t *NewData = new wchar_t[NewLen];
+			NewData[NewLen - 1] = Write;
+			for (SizeL c = 0; c < AllocNum; ++c) {
+				NewData[c * 2 + 1] = Data[c];
+				NewData[c * 2] = Write;
+			}
+			if (AllocNum > 0) delete[] Data;
+			Data = NewData;
+			AllocNum = NewLen;
+			return AllocNum / 2 + 1;
+		}
+		else if (FindStr.Length() == 1) return Replace(FindStr[0], Write);
 		Array<SizeL> PosFinds;
 		SizeL Pos = 0;
 		while (Find(Pos, FindStr, true)) {
 			PosFinds += Pos;
+			Pos += FindStr.Length();
 		}
 		if (PosFinds.Length() == 0) return 0;
 		//length of FindStr is always greater than 1 (length of Write) at this point
@@ -1311,11 +1469,13 @@ namespace Utils{
 		SizeL CurPosFind = 0;
 		SizeL CurOff = 0;
 		for (SizeL c = 0; c < AllocNum; ++c) {
-			if (c < PosFinds.Length() && c == PosFinds[CurPosFind])
+			if (CurPosFind < PosFinds.Length() && c == PosFinds[CurPosFind])
 			{
 				NewData[c - CurOff] = Write;
 				CurOff += DifLen;
+				c += DifLen;
 				++CurPosFind;
+				continue;
 			}
 			NewData[c - CurOff] = Data[c];
 		}
