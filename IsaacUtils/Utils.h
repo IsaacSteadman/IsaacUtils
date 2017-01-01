@@ -135,8 +135,8 @@ namespace Utils{
 		bool Remove(SizeL Pos, SizeL Num = 1);
 		bool Find(SizeL &Pos, wchar_t Ch, bool PosIsStart = false) const;
 		bool RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart = false);
-		bool Find(SizeL &Pos, wString Ch, bool PosIsStart = false) const;
-		bool RFind(SizeL &Pos, wString Ch, bool PosIsStart = false);
+		bool Find(SizeL &Pos, wString Str, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, wString Str, bool PosIsStart = false);
 		SizeL Replace(const wString &FindStr, const wString &Write);
 		SizeL Replace(const wchar_t FindStr, const wString &Write);
 		SizeL Replace(const wString &FindStr, const wchar_t Write);
