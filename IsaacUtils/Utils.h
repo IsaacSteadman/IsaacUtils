@@ -64,7 +64,8 @@ namespace Utils{
 		SizeL Replace(const char FindStr, const String &Write);
 		SizeL Replace(const String &FindStr, const char Write);
 		SizeL Replace(const char FindStr, const char Write);
-		const String SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		//if actual step is positive then set Step to (actual step) - 1
+		const String SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;
 		char &AtEnd();
 		void ToLower();
 		void ToUpper();
@@ -141,7 +142,8 @@ namespace Utils{
 		SizeL Replace(const wchar_t FindStr, const wString &Write);
 		SizeL Replace(const wString &FindStr, const wchar_t Write);
 		SizeL Replace(const wchar_t FindStr, const wchar_t Write);
-		const wString SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;//if actual step is positive then set Step to (actual step) - 1
+		//if actual step is positive then set Step to (actual step) - 1
+		const wString SubStr(SizeL Start, SizeL Stop = MAX_INT, SnzL Step = 0) const;
 		wchar_t &AtEnd();
 		void ToLower();
 		void ToUpper();
