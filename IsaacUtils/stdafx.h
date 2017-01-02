@@ -23,5 +23,7 @@ extern "C" {
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <limits.h>
+#include <stdlib.h>
 }
 #endif
