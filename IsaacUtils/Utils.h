@@ -57,9 +57,9 @@ namespace Utils{
 		bool Insert(SizeL Pos, String &Str);
 		bool Remove(SizeL Pos, SizeL Num = 1);
 		bool Find(SizeL &Pos, char Ch, bool PosIsStart = false) const;
-		bool RFind(SizeL &Pos, char Ch, bool PosIsStart = false);
-		bool Find(SizeL &Pos, String Ch, bool PosIsStart = false) const;
-		bool RFind(SizeL &Pos, String Ch, bool PosIsStart = false);
+		bool RFind(SizeL &Pos, char Ch, bool PosIsStart = false) const;
+		bool Find(SizeL &Pos, const String &Ch, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, const String &Ch, bool PosIsStart = false) const;
 		SizeL Replace(const String &FindStr, const String &Write);
 		SizeL Replace(const char FindStr, const String &Write);
 		SizeL Replace(const String &FindStr, const char Write);
@@ -134,9 +134,9 @@ namespace Utils{
 		bool Insert(SizeL Pos, wString &Str);
 		bool Remove(SizeL Pos, SizeL Num = 1);
 		bool Find(SizeL &Pos, wchar_t Ch, bool PosIsStart = false) const;
-		bool RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart = false);
-		bool Find(SizeL &Pos, wString Str, bool PosIsStart = false) const;
-		bool RFind(SizeL &Pos, wString Str, bool PosIsStart = false);
+		bool RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart = false) const;
+		bool Find(SizeL &Pos, const wString &Str, bool PosIsStart = false) const;
+		bool RFind(SizeL &Pos, const wString &Str, bool PosIsStart = false) const;
 		SizeL Replace(const wString &FindStr, const wString &Write);
 		SizeL Replace(const wchar_t FindStr, const wString &Write);
 		SizeL Replace(const wString &FindStr, const wchar_t Write);
