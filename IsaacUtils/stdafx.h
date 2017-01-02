@@ -25,5 +25,6 @@ extern "C" {
 #include <dirent.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <time.h>
 }
 #endif
