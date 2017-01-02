@@ -506,6 +506,7 @@ namespace Utils {
 							SizeL Pos = 0;
 							if (Comp.fName.RFind(Pos, '.')) CurExt = Comp.fName.SubStr(Pos + 1);
 							if (!(Ext.Contains(CurExt) ^ Invert)) break;
+							if (!RtnBegDots && Comp.fName[0] == '.') break;
 						}
 							Rtn[RtnPos++] = CompName;
 							break;
