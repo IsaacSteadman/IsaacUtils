@@ -57,6 +57,48 @@ namespace Utils {
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
 		String SrchPath = "/*.*";
+		FileDesc FileDescFromStat(const wString &Path, const struct stat &Stat) {
+			FileDesc Rtn = {
+				Path,
+				Stat.st_mode,
+				0,
+				Stat.st_size,
+				FileTime(Stat.st_ctim.tv_sec, Stat.st_ctim.tv_nsec),
+				FileTime(Stat.st_mtim.tv_sec, Stat.st_mtim.tv_nsec),
+				FileTime(Stat.st_atim.tv_sec, Stat.st_atim.tv_nsec)
+			};
+			switch (Stat.st_mode & S_IFMT) {
+			case S_IFBLK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			case S_IFCHR: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			case S_IFDIR: Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY; break;
+			case S_IFIFO: Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL; break;
+			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM; break;
+			case S_IFREG: Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL; break;
+			case S_IFSOCK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			}
+			return Rtn;
+		}
+		FileDescA FileDescFromStat(const String &Path, const struct stat &Stat) {
+			FileDescA Rtn = {
+				Path,
+				Stat.st_mode,
+				0,
+				Stat.st_size,
+				FileTime(Stat.st_ctim.tv_sec, Stat.st_ctim.tv_nsec),
+				FileTime(Stat.st_mtim.tv_sec, Stat.st_mtim.tv_nsec),
+				FileTime(Stat.st_atim.tv_sec, Stat.st_atim.tv_nsec)
+			};
+			switch (Stat.st_mode & S_IFMT) {
+			case S_IFBLK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			case S_IFCHR: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			case S_IFDIR: Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY; break;
+			case S_IFIFO: Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL; break;
+			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM; break;
+			case S_IFREG: Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL; break;
+			case S_IFSOCK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
+			}
+			return Rtn;
+		}
 		String GetcwdA() {
 			const SizeL ChunkSz = 1024;
 			String Rtn(char(0), ChunkSz);
@@ -100,52 +142,25 @@ namespace Utils {
 			virtual wString GetName();
 			virtual UInt32 GetMode();
 		};
-		class NixDrive : public DriveBase {
+		class NixDrive : public DefUniDrive {
 		private:
 			wString Name;
-			wString PathPart;
 			String PathPartA;
-			bool AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len);
 			bool AllocPath(const String &Path, char *&Ptr, SizeL &Len);
 		public:
 			NixDrive(String Mnt, wString Name);
 
-			// Inherited via DriveBase
 			virtual wString GetName();
 			virtual String GetNameA();
-			virtual FileBase * OpenFile(const wString &Path, UInt32 Mode);
 			virtual FileBase * OpenFile(const String &Path, UInt32 Mode);
-			virtual bool IsFile(const wString &Path);
-			virtual bool IsFile(const String &Path);
-			virtual bool Exists(const wString &Path);
-			virtual bool Exists(const String &Path);
-			virtual bool IsDir(const wString &Path);
-			virtual bool IsDir(const String &Path);
-			virtual Array<wString> ListDir(const wString &Path);
 			virtual Array<String> ListDir(const String &Path);
-			virtual FileDesc Stat(const wString &Path);
 			virtual FileDescA Stat(const String &Path);
-			virtual Array<FileDesc> ListDirSt(const wString &Path);
-			virtual Array<FileDescA> ListDirSt(const String &Path);
-			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert = false, bool RtnBegDots = false);
-			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Exts, bool Invert = false, bool RtnBegDots = false);
 		};
-		//#GC-CHECK Ptr: delete[]
-		bool NixDrive::AllocPath(const wString &Path, wchar_t *&Ptr, SizeL &Len) {
-			Len = Path.Length() + PathPart.Length();
-			Ptr = new wchar_t[Len+1];
-			PathPart.CopyTo(Ptr, PathPart.Length());
-			Ptr += PathPart.Length();
-			Path.CopyTo(Ptr, Path.Length());
-			Ptr -= PathPart.Length();
-			Ptr[Len] = 0;
-			return true;
-		}
 		//#GC-CHECK Ptr: delete[]
 		bool NixDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
 			Len = Path.Length() + PathPartA.Length();
 			Ptr = new char[Len+1];
-			PathPartA.CopyTo(Ptr, PathPart.Length());
+			PathPartA.CopyTo(Ptr, PathPartA.Length());
 			Ptr += PathPartA.Length();
 			Path.CopyTo(Ptr, Path.Length());
 			Ptr[Len] = 0;
@@ -155,17 +170,12 @@ namespace Utils {
 		NixDrive::NixDrive(String Mnt, wString FullName) {
 			PathPartA = Mnt;
 			Name = FullName;
-			PathPart = PathPartA.wStr();
 		}
 		wString NixDrive::GetName() {
 			return Name;
 		}
 		String NixDrive::GetNameA() {
 			return Name.Str();
-		}
-		//#GC-CHECK delete
-		FileBase *NixDrive::OpenFile(const wString &Path, UInt32 Mode) {
-			return OpenFile(Path.Str(), Mode);
 		}
 		//#GC-CHECK delete
 		FileBase *NixDrive::OpenFile(const String &Path, UInt32 Mode) {
@@ -177,10 +187,7 @@ namespace Utils {
 			delete[] Str;
 			return Rtn;
 		}
-		bool NixDrive::IsFile(const wString &Path) {
-			return IsFile(Path.Str());
-		}
-		bool NixDrive::IsFile(const String &Path) {
+		/*bool NixDrive::IsFile(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
 			if (!AllocPath(Path, cPathA, Len))
@@ -194,9 +201,6 @@ namespace Utils {
 			}
 			delete[] cPathA;
 			return (ResStat.st_mode & S_IFMT) == S_IFREG;
-		}
-		bool NixDrive::Exists(const wString &Path) {
-			return Exists(Path.Str());
 		}
 		bool NixDrive::Exists(const String &Path) {
 			char *cPathA = 0;
@@ -213,9 +217,6 @@ namespace Utils {
 			delete[] cPathA;
 			return true;
 		}
-		bool NixDrive::IsDir(const wString &Path) {
-			return IsDir(Path.Str());
-		}
 		bool NixDrive::IsDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = 0;
@@ -230,15 +231,8 @@ namespace Utils {
 			}
 			delete[] cPathA;
 			return (ResStat.st_mode & S_IFMT) == S_IFDIR;
-		}
-		Array<wString> NixDrive::ListDir(const wString &Path) {
-			Array<String> TmpRes = ListDir(Path.Str());
-			Array<wString> Rtn = Array<wString>(wchar_t(0), TmpRes.Length());
-			for (SizeL c = 0; c < TmpRes.Length(); ++c) {
-				Rtn[c] = TmpRes[c].wStr();
-			}
-			return Rtn;
-		}
+		}*/
+
 		Array<String> NixDrive::ListDir(const String &Path) {
 			char *cPathA = 0;
 			SizeL Len = SrchPath.Length();
@@ -265,281 +259,105 @@ namespace Utils {
 			if (errno) throw FileErrorN(errno, "Bad CloseDir");
 			return Rtn;
 		}
-		FileDesc NixDrive::Stat(const wString &Path) {
+		FileDescA NixDrive::Stat(const String &Path) {
 			char *cPath = 0;
 			SizeL Len = 0;
-			AllocPath(Path.Str(), cPath, Len);
-			FileDesc Rtn;
+			AllocPath(Path, cPath, Len);
+			FileDescA Rtn;
+			Rtn.Mode = 0;
 			Rtn.CreateTime = 0;
 			Rtn.LastAccessTime = 0;
 			Rtn.LastWriteTime = 0;
 			Rtn.Attr = 0xFFFFFFFF;
 			struct stat Data;
-			int StOut = ::stat(cPath, &Data);
-			if (StOut)
+			if (::stat(cPath, &Data))
 			{
-				Rtn.Attr |= Data.st_mode & S_IFDIR ? FILE_ATTR_DIRECTORY : 0;
-				Rtn.Attr |= Data.st_mode & S_IFDIR ? FILE_ATTR_DIRECTORY : 0;
-				SizeL Pos = 0;
-				if (((wString &)Path).RFind(Pos, '/')) Rtn.fName = Path.SubStr(Pos + 1);
-				else Rtn.fName = Path;
-				Rtn.CreateTime = Dat.ftCreationTime.dwLowDateTime | (Dat.ftCreationTime.dwHighDateTime << 32);
-				Rtn.LastAccessTime = Dat.ftLastAccessTime.dwLowDateTime | (Dat.ftLastAccessTime.dwHighDateTime << 32);
-				Rtn.LastWriteTime = Dat.ftLastWriteTime.dwLowDateTime | (Dat.ftLastWriteTime.dwHighDateTime << 32);
-				Rtn.Size = Dat.nFileSizeLow | (Dat.nFileSizeHigh << 32);
+				delete[] cPath;
+				throw FileErrorN(errno, "Bad Stat");
 			}
 			delete[] cPath;
-			return Rtn;
-		}
-		FileDescA NixDrive::Stat(const String &Path) {
-			char *cPathA = 0;
-			SizeL Len = 0;
-			if (!AllocPath(Path, cPathA, Len))
-				throw FileErrorN(MAX_INT32, "Max Path exceded");
-			struct stat ResStat;
-			if (::stat(cPathA, &ResStat) != 0)
-			{
-				delete[] cPathA;
-				if (errno) throw FileErrorN(errno, "Bad Stat");
-			}
-			delete[] cPathA;
-			FileDescA Rtn;
-			switch (ResStat.st_mode & S_IFMT) {
-			case S_IFBLK:
-				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
-				break;
-			case S_IFCHR:
-				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
-				break;
-			case S_IFDIR:
-				Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY;
-				break;
-			case S_IFIFO:
-				Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL;
-				break;
-			case S_IFLNK:
-				Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM;
-				break;
-			case S_IFREG:
-				Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL;
-				break;
-			case S_IFSOCK:
-				Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE;
-				break;
-			}
-			Rtn.Mode = ResStat.st_mode;
-			Rtn.Size = ResStat.st_size;
-			Rtn.CreateTime = FileTime(ResStat.st_ctim.tv_sec, ResStat.st_ctim.tv_nsec);
-			Rtn.LastAccessTime = FileTime(ResStat.st_atim.tv_sec, ResStat.st_atim.tv_nsec);
-			Rtn.LastWriteTime = FileTime(ResStat.st_mtim.tv_sec, ResStat.st_mtim.tv_nsec);
-		}
-		Array<FileDesc> NixDrive::ListDirSt(const wString &Path) {
-			Array<wString> Tmp = ListDir(Path);
-			Array<FileDesc> Rtn;
-			Rtn.SetLength(Tmp.Length());
-			for (SizeL c = 0; c < Rtn.Length(); ++c) {
-				Rtn[c] = Stat(Tmp[c]);
-			}
-			return Rtn;
-		}
-		Array<FileDescA> NixDrive::ListDirSt(const String &Path) {
-			Array<String> Tmp = ListDir(Path);
-			Array<FileDescA> Rtn;
-			Rtn.SetLength(Tmp.Length());
-			for (SizeL c = 0; c < Rtn.Length(); ++c) {
-				Rtn[c] = Stat(Tmp[c]);
-			}
-			return Rtn;
-		}
-		Array<wString> NixDrive::GetFileExt(const wString &Path, const Array<wString> &Exts, bool Invert, bool RtnBegDots) {
-			Array<wString> LowExts(Exts);
-			for (wString &Ext : LowExts) {
-				Ext.ToLower();
-			}
-			Array<wString> Rtn;
-			Array<wString> CurrSearchDir("", 1);//blank so that all that happens is it becomes Path
-			Array<wString> NewSearchDir;
-			while (CurrSearchDir.Length() > 0) {
-				for (wString CurPath : CurrSearchDir) {
-					WIN32_FIND_DATAW fdFile;
-					HANDLE hFind = NULL;
-					wchar_t *cPath = 0;
-					SizeL Len = CurPath.Length() + SrchPath.Length();
-					AllocPath(Path, cPath, Len);
-					cPath += Len - (CurPath.Length() + SrchPath.Length());
-					CurPath.CopyTo(cPath, CurPath.Length());
-					cPath += CurPath.Length();
-					SrchPath.CopyTo(cPath, SrchPath.Length());
-					cPath -= Len;
-					if ((hFind = FindFirstFileW(cPath, &fdFile)) == INVALID_HANDLE_VALUE)
-					{
-						delete[] cPath;
-						Rtn += "<INVALID SEARCH PATH>";
-						return Rtn;
-					}
-					delete[] cPath;
-					do {
-						if ((fdFile.cFileName != L".") && (fdFile.cFileName != L".."))
-						{
-							wString Tmp = fdFile.cFileName;
-							UInt32 Pos = 0;
-							if (fdFile.dwFileAttributes & FILE_ATTR_DIRECTORY) NewSearchDir += CurPath + "/" + fdFile.cFileName;
-							else Rtn += CurPath + "/" + fdFile.cFileName;
-						}
-					} while (FindNextFileW(hFind, &fdFile));
-					FindClose(hFind);
-				}
-			}
-			return Rtn;
-		}
-		Array<String> NixDrive::GetFileExt(const String &Path, const Array<String> &Exts, bool Invert, bool RtnBegDots) {
-			Array<wString> TmpExts;
-			TmpExts.SetLength(Exts.Length());
-			for (SizeL c = 0; c < Exts.Length(); ++c) TmpExts[c] = Exts[c].wStr();
-			Array<wString> wStrRtn = GetFileExt(Path.wStr(), TmpExts);
-			Array<String> Rtn;
-			Rtn.SetLength(wStrRtn.Length());
-			for (SizeL c = 0; c < wStrRtn.Length(); ++c) Rtn[c] = wStrRtn[c].Str();
+			SizeL Pos = 0;
+			Rtn = FileDescFromStat(((wString &)Path).RFind(Pos, '/') ? Path.SubStr(Pos + 1) : Path, Data);
 			return Rtn;
 		}
 		NixFile::NixFile(wchar_t *Path, UInt32 Mode) {//OLD Version
-			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
-				throw FileError("OpenModeError", "Cannot open file with append and truncate");
-			if (ExtPath != wString(Path, ExtPath.Length())) fName = Path;
-			else fName = wString(Path + ExtPath.Length());
-			UInt32 Generic = 0;
-			if (Mode & F_IN) Generic |= GENERIC_READ;
-			if (Mode & F_OUT) Generic |= GENERIC_WRITE;
-			SECURITY_ATTRIBUTES SecAttr;
-			SecAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-			SecAttr.lpSecurityDescriptor = NULL;
-			SecAttr.bInheritHandle = FALSE;
-			UInt32 Create = 0;
-			if (Mode & F_OUT)
-			{
-				if (Mode & F_TRUNC)
-				{
-					if (Mode & F_NOREPLACE) Create |= TRUNCATE_EXISTING;
-					else Create |= CREATE_ALWAYS;
-				}
-				else if (Mode & F_APP)
-				{
-					Create |= OPEN_EXISTING;
-				}
-				else
-				{
-					if (Mode & F_NOREPLACE) Create |= OPEN_EXISTING;
-					else Create |= OPEN_ALWAYS;
-				}
-			}
-			else Create |= OPEN_EXISTING;
-			hFile = (HFILE)CreateFileW(Path, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (hFile == NULL)
-			{
-				wchar_t *BuffErr = 0;
-				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
-				FileError Err("OpenFileFailed", wString(BuffErr));
-				LocalFree(BuffErr);
-				throw Err;
-			}
-			Md = Mode;
+			void;
 		}
 		NixFile::NixFile(char *Path, UInt32 Mode) {
 			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
 				throw FileError("OpenModeError", "Cannot open file with append and truncate");
 			fName = Path;
-			UInt32 Generic = 0;
-			if (Mode & F_IN) Generic |= GENERIC_READ;
-			if (Mode & F_OUT) Generic |= GENERIC_WRITE;
-			SECURITY_ATTRIBUTES SecAttr;
-			SecAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-			SecAttr.lpSecurityDescriptor = NULL;
-			SecAttr.bInheritHandle = FALSE;
-			UInt32 Create = 0;
-			if (Mode & F_OUT)
-			{
-				if (Mode & F_TRUNC)
-				{
-					if (Mode & F_NOREPLACE) Create |= TRUNCATE_EXISTING;
-					else Create |= CREATE_ALWAYS;
-				}
-				else if (Mode & F_APP)
-				{
-					Create |= OPEN_EXISTING;
-				}
-				else
-				{
-					if (Mode & F_NOREPLACE) Create |= OPEN_EXISTING;
-					else Create |= OPEN_ALWAYS;
-				}
-			}
-			else Create |= OPEN_EXISTING;
-			hFile = (HFILE)CreateFileA(Path, Generic, FILE_SHARE_READ, &SecAttr, Create, FILE_ATTRIBUTE_NORMAL, NULL);
-			if ((HANDLE)hFile == INVALID_HANDLE_VALUE)
-			{
-				wchar_t *BuffErr = 0;
-				FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), NULL, (LPWSTR)&BuffErr, 2, NULL);
-				FileError Err("OpenFileFailed", wString(BuffErr));
-				LocalFree(BuffErr);
-				throw Err;
-			}
 			Md = Mode;
+			SInt32 Flags = 0;
+			if (Mode & F_APP) Flags |= O_APPEND;
+			switch (Mode & (F_IN | F_OUT)) {
+			case 0:
+				throw FileErrorN(EINVAL, "Bad Open: Mode must specify reading and/or writing");
+				break;
+			case F_IN:
+				Flags = O_RDONLY;
+				break;
+			case F_OUT:
+				Flags = O_WRONLY;
+				break;
+			default:
+				Flags = O_RDWR;
+				break;
+			}
+			if (Mode & F_APP) Flags |= O_APPEND;
+			if (Mode & F_TRUNC) Flags |= O_TRUNC;
+			if (Mode & F_NOREPLACE == 0) Flags |= O_CREAT;
+			if ((hFile = ::open(Path, Flags)) == -1)
+				throw FileErrorN(errno, "Bad Open");
+			if (Mode & F_ATE) ::lseek(hFile, 0, SEEK_END);
 		}
 		ByteArray NixFile::Read() {
 			ByteArray Rtn;
-			SInt64 Sz = 0;
-			GetFileSizeEx((HANDLE)hFile, (PLARGE_INTEGER)Sz);
-			SInt64 Fp = 0;
-			LARGE_INTEGER Zero;
-			Zero.u.HighPart = 0;
-			Zero.u.LowPart = 0;
-			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Fp, FILE_CURRENT);
-			if (Sz - Fp > 0xFFFFFFFF) throw FileError("Too much to read", "since one cannot easily read more than 2^32 bytes without running into major memory issues");
-			Rtn.SetLength(Sz - Fp);
-			UInt32 NumHasRead = 0;
-			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), (UInt32)(Sz - Fp), &NumHasRead, NULL);
-			Rtn.SetLength(NumHasRead);
+			struct stat Inf;
+			if (::fstat(hFile, &Inf))
+				throw FileErrorN(errno, "Bad Read: Bad Stat");
+			UInt64 LenToEnd = Inf.st_size - Tell();
+			if (LenToEnd > MAX_INT)
+				throw FileErrorN(ENOMEM, "Bad Read: Not Enough Memory");
+			Rtn.SetLength(LenToEnd);
+			SizeL Sz = ::read(hFile, (void *)Rtn.GetData(), Rtn.Length());
+			if (Sz == MAX_INT) throw FileErrorN(errno, "Bad Read");
+			else if (Sz < Rtn.Length()) Rtn.SetLength(Sz);
 			return Rtn;
 		}
 		ByteArray NixFile::Read(UInt32 Num) {
 			ByteArray Rtn;
 			Rtn.SetLength(Num);
-			UInt32 NumHasRead = 0;
-			ReadFile((HANDLE)hFile, (LPVOID)Rtn.GetData(), Num, &NumHasRead, NULL);
-			Rtn.SetLength(NumHasRead);
+			SizeL Sz = ::read(hFile, (void *)Rtn.GetData(), Rtn.Length());
+			if (Sz == MAX_INT) throw FileErrorN(errno, "Bad Read");
+			Rtn.SetLength(Sz);
 			return Rtn;
 		}
 		UInt32 NixFile::Read(ByteArray &Data) {
-			UInt32 Rtn = 0;
-			ReadFile((HANDLE)hFile, (LPVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
-			return Rtn;
+			SizeL Sz = ::read(hFile, (void *)Data.GetData(), Data.Length());
+			if (Sz == MAX_INT) throw FileErrorN(errno, "Bad Read");
+			return Sz;
 		}
 		bool NixFile::Seek(SInt64 Pos, SInt32 From) {
-			LARGE_INTEGER ToPos;
-			ToPos.QuadPart = Pos;
-			if (From > 2) From = 0;
-			return SetFilePointerEx((HANDLE)hFile, ToPos, NULL, From);
+			switch (From) {
+			case SK_SET: From = SEEK_SET; break;
+			case SK_CUR: From = SEEK_CUR; break;
+			case SK_END: From = SEEK_END; break;
+			default: throw FileErrorN(EINVAL, "Bad Seek: Invalid From");
+			}
+			return ::lseek(hFile, Pos, From) != (off_t)-1;
 		}
 		SInt64 NixFile::Tell() {
-			SInt64 Rtn = 0;
-			LARGE_INTEGER Zero;
-			Zero.QuadPart = 0;
-			SetFilePointerEx((HANDLE)hFile, Zero, (PLARGE_INTEGER)&Rtn, FILE_CURRENT);
-			return Rtn;
+			return ::lseek(hFile, 0, SEEK_CUR);
 		}
 		UInt32 NixFile::Write(const ByteArray &Data) {
-			UInt32 Rtn = 0;
-			LARGE_INTEGER Off;
-			Off.QuadPart = 0;
-			if (Md & F_APP) SetFilePointerEx((HANDLE)hFile, Off, NULL, FILE_END);
-			WriteFile((HANDLE)hFile, (LPCVOID)Data.GetData(), Data.Length(), &Rtn, NULL);
-			return Rtn;
+			return ::write(hFile, Data.GetData(), Data.Length());
 		}
 		void NixFile::Close() {
-			CloseHandle((HANDLE)hFile);
+			::close(hFile);
 		}
 		void NixFile::Flush() {
-			if (Md & F_OUT) FlushFileBuffers((HANDLE)hFile);
+			::fsync(hFile);
 		}
 		wString NixFile::GetName() {
 			return fName;
@@ -548,18 +366,13 @@ namespace Utils {
 			return Md;
 		}
 		wString GetFullPath(wString Path) {
-			if (Path.Length() > MAX_PATH) Path.Insert(0, ExtPath);
-			wchar_t *cPath = Path.GetCString();
-			wString Rtn = Path;
-			UInt32 Len = 0;
-			if ((Len = GetFullPathNameW(cPath, Rtn.Length(), (LPWSTR)Rtn.GetData(), NULL)) > Rtn.Length())
-			{
-				Rtn = wString(wchar_t(0), SizeL(Len));
-				GetFullPathNameW(cPath, Rtn.Length(), (LPWSTR)Rtn.GetData(), NULL);
-				Rtn.Remove(Rtn.Length() - 1);
-			}
-			if (Rtn.SubStr(0, ExtPath.Length()) == ExtPath) return Rtn.SubStr(ExtPath.Length());
-			else return Rtn;
+			String PathA = Path.Str();
+			char *cPathA = PathA.GetCString();
+			char *Rtn = realpath(cPathA, NULL);
+			delete[] cPathA;
+			PathA = Rtn;
+			free(Rtn);
+			return PathA.wStr();
 		}
 	}
 	//========================================================END FS===============================================================
