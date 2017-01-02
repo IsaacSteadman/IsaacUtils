@@ -378,13 +378,12 @@ namespace Utils {
 	//========================================================END FS===============================================================
 
 	void ShowError(wString Caption, wString Text) {
-		wchar_t *Cap = Caption.GetCString(), *Txt = Text.GetCString();
-		MessageBoxW(NULL, Txt, Cap, MB_ICONERROR | MB_OK);
-		delete[]Cap;
-		delete[]Txt;
+		String Disp = (wString("echo ") + Caption + "\necho " + Text + "\npython2 -c 'raw_input(\"press Enter to continue\"'").Str();
+		char *Cmd = Disp.GetCString();
+		::system(Cmd);
+		delete[] Cmd;
 	}
 	SInt64 Clock::Tps = 0;
-	WSADATA WinSockData;
 //	extern fs::FileBase *DbgLog;
 	void OsInit() {
 		sock::ErrCodes.SetHashFunc(NumHash);
@@ -406,40 +405,32 @@ namespace Utils {
 		sock::ErrCodes.Put(10064, "The host is down.");
 		sock::ErrCodes.Put(10065, "The host is unreachable.");
 		sock::ErrCodes.Put(11001, "Encryption state not provided for encrypted data.");
-		QueryPerformanceFrequency((LARGE_INTEGER *)&Clock::Tps);
-		Array<bool> DrvAvail(false, (SizeL)26);
-		UInt32 Drvs = GetLogicalDrives();
-		for (bool &Avail : DrvAvail) {
-			Avail = Drvs % 2;
-			Drvs >>= 1;
-		}
-		char Name = 'A';
-		for (SizeL c = 0; c < DrvAvail.Length(); ++c, ++Name) {
-			if (!DrvAvail[c]) continue;
-			String FullName(char(0), MAX_PATH + 1);
-			String OrigName(char(0), 4);
-			OrigName[0] = Name;
-			OrigName[1] = ':';
-			OrigName[2] = '\\';
-			GetVolumeInformationA(OrigName.GetData(), (char *)FullName.GetData(), FullName.Length(), NULL, NULL, NULL, NULL, NULL);
-			fs::NixDrive *MyDrv = new fs::NixDrive(Name, FullName.wStr());
-			fs::DriveMap.Put(wString(Name, 1), MyDrv);
-		}
-		WORD VerReq = MAKEWORD(2, 2);
-		sock::Usable = WSAStartup(VerReq, &WinSockData) == 0 && WinSockData.wVersion == VerReq;
+		timespec Tmp;
+		clock_getres(CLOCK_MONOTONIC, &Tmp);
+		if (Tmp.tv_sec != 0) Clock::Tps = 1e9 / (Tmp.tv_sec * 1e9 + Tmp.tv_nsec);
+		else Clock::Tps = 1000000000 / Tmp.tv_nsec;
+		fs::DriveMap.Put("/", new fs::NixDrive("", ""));
+		fs::DriveMap.Put("C", new fs::NixDrive("", "C"));
 //		DbgLog = fs::GetFileObj(String("C:/Users/UserName/Documents/ReFiSyS/KCltSockLog.txt"), fs::F_BIN|fs::F_OUT|fs::F_TRUNC);
 	}
 	void OsDeInit() {
-		if (sock::Usable) WSACleanup();
 //		DbgLog->Close();
 	}
 	void Clock::StartTime() {
 		++NumTimes;
-		QueryPerformanceCounter((LARGE_INTEGER *)&CurClk);
+		timespec Numer, Denom;
+		clock_gettime(CLOCK_MONOTONIC, &Numer);
+		clock_getres(CLOCK_MONOTONIC, &Denom);
+		if (Denom.tv_sec == 0) CurClk = double(Numer.tv_nsec) / Denom.tv_nsec + double(Numer.tv_sec) * 1e9 / Denom.tv_nsec;
+		else CurClk = (Numer.tv_sec * 1e9 + Numer.tv_nsec) / (Denom.tv_sec * 1e9 + Denom.tv_nsec);
 	}
 	void Clock::EndTime() {
 		SInt64 Later = 0;
-		QueryPerformanceCounter((LARGE_INTEGER *)&Later);
+		timespec Numer, Denom;
+		clock_gettime(CLOCK_MONOTONIC, &Numer);
+		clock_getres(CLOCK_MONOTONIC, &Denom);
+		if (Denom.tv_sec == 0) Later = double(Numer.tv_nsec) / Denom.tv_nsec + double(Numer.tv_sec) * 1e9 / Denom.tv_nsec;
+		else Later = (Numer.tv_sec * 1e9 + Numer.tv_nsec) / (Denom.tv_sec * 1e9 + Denom.tv_nsec);
 		Later -= CurClk;
 		double Add = Later;
 		Add /= Tps;
