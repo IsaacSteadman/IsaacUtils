@@ -432,26 +432,24 @@ namespace Utils{
 		}
 		return false;
 	}
-	bool String::RFind(SizeL &Pos, char Ch, bool PosIsStart){
-		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		SizeL Until = PosIsStart ? Pos : 0;
-		for (SizeL c = AllocNum; c > Until; --c){
-			if (Data[c] == Ch)
-			{
-				Pos = c;
-				++Data;
-				return true;
-			}
+	bool String::RFind(SizeL &Pos, char Ch, bool PosIsStart) const{
+		if (AllocNum == 0) return false;
+		Pos = PosIsStart ? Pos + 1 : AllocNum;
+		while (Pos-- > 0) {
+			if (Data[Pos] == Ch) return true;
 		}
-		++Data;
 		return false;
 	}
-	bool String::Find(SizeL &Pos, String Str, bool PosIsStart) const{
-		if (Str.AllocNum == 0) return false;
+	bool String::Find(SizeL &Pos, const String &Str, bool PosIsStart) const{
+		if (AllocNum == 0 || Str.AllocNum == 0) return false;
 		SizeL MidPos = 0;
-		SizeL End = AllocNum + 1 - Str.Length();
-		for (SizeL c = PosIsStart ? Pos : 0; c < End; ++c) {
-			if (Data[c] != Str.Data[MidPos]) MidPos = 0;
+		SizeL End = AllocNum + 1 - Str.AllocNum;
+		for (SizeL c = PosIsStart ? Pos : 0; c < End + MidPos; ++c) {
+			if (Data[c] != Str.Data[MidPos])
+			{
+				c -= MidPos - 1;
+				MidPos = 0;
+			}
 			if (Data[c] == Str.Data[MidPos])
 			{
 				++MidPos;
@@ -464,28 +462,18 @@ namespace Utils{
 		}
 		return false;
 	}
-	bool String::RFind(SizeL &Pos, String Str, bool PosIsStart){
-		if (Str.AllocNum == 0) return false;
-		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		--Str.Data;
+	bool String::RFind(SizeL &Pos, const String &Str, bool PosIsStart) const{
+		if (AllocNum == 0 || Str.AllocNum == 0) return false;
+		Pos = PosIsStart ? Pos + 1 : AllocNum;
 		SizeL MidPos = Str.AllocNum;
-		SizeL Until = PosIsStart ? Pos : 0;
-		for (SizeL c = AllocNum; c > Until; --c){
-			if (Data[c] == Str.Data[MidPos])
+		while (Pos-- > 0) {
+			if (Data[Pos] != Str.Data[--MidPos])
 			{
-				--MidPos;
-				if (MidPos == 0)
-				{
-					++Data;
-					++Str.Data;
-					Pos = c;
-					return true;
-				}
+				Pos += (Str.AllocNum - MidPos) - 1;
+				MidPos = Str.AllocNum;
 			}
-			else MidPos = Str.AllocNum;
+			if (MidPos == 0) return true;
 		}
-		++Data;
-		++Str.Data;
 		return false;
 	}
 	SizeL String::Replace(const String &FindStr, const String &Write) {
@@ -1232,6 +1220,7 @@ namespace Utils{
 		return true;
 	}
 	bool wString::Find(SizeL &Pos, wchar_t Ch, bool PosIsStart) const{
+		if (AllocNum == 0) return false;
 		for (SizeL c = PosIsStart ? Pos : 0; c < AllocNum; ++c){
 			if (Data[c] == Ch)
 			{
@@ -1241,26 +1230,24 @@ namespace Utils{
 		}
 		return false;
 	}
-	bool wString::RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart){
-		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		SizeL Until = PosIsStart ? Pos : 0;
-		for (SizeL c = AllocNum; c > Until; --c){
-			if (Data[c] == Ch)
-			{
-				Pos = c;
-				++Data;
-				return true;
-			}
+	bool wString::RFind(SizeL &Pos, wchar_t Ch, bool PosIsStart) const{
+		if (AllocNum == 0) return false;
+		Pos = PosIsStart ? Pos + 1 : AllocNum;
+		while (Pos-- > 0) {
+			if (Data[Pos] == Ch) return true;
 		}
-		++Data;
 		return false;
 	}
-	bool wString::Find(SizeL &Pos, wString Str, bool PosIsStart) const{
-		if (Str.AllocNum == 0) return false;
+	bool wString::Find(SizeL &Pos, const wString &Str, bool PosIsStart) const{
+		if (AllocNum == 0 || Str.AllocNum == 0) return false;
 		SizeL MidPos = 0;
-		SizeL End = AllocNum + 1 - Str.Length();
-		for (SizeL c = PosIsStart ? Pos : 0; c < End; ++c){
-			if (Data[c] != Str.Data[MidPos]) MidPos = 0;
+		SizeL End = AllocNum + 1 - Str.AllocNum;
+		for (SizeL c = PosIsStart ? Pos : 0; c < End + MidPos; ++c){
+			if (Data[c] != Str.Data[MidPos])
+			{
+				c -= MidPos - 1;
+				MidPos = 0;
+			}
 			if (Data[c] == Str.Data[MidPos])
 			{
 				++MidPos;
@@ -1273,28 +1260,18 @@ namespace Utils{
 		}
 		return false;
 	}
-	bool wString::RFind(SizeL &Pos, wString Str, bool PosIsStart){
-		if (Str.AllocNum == 0) return false;
-		--Data;//to shift Data so that (Old)Data[0] is the same as (New)Data[1]
-		--Str.Data;
+	bool wString::RFind(SizeL &Pos, const wString &Str, bool PosIsStart) const{
+		if (AllocNum == 0 || Str.AllocNum == 0) return false;
+		Pos = PosIsStart ? Pos + 1 : AllocNum;
 		SizeL MidPos = Str.AllocNum;
-		SizeL Until = PosIsStart ? Pos : 0;
-		for (SizeL c = AllocNum; c > Until; --c){
-			if (Data[c] == Str.Data[MidPos])
+		while (Pos-- > 0) {
+			if (Data[Pos] != Str.Data[--MidPos])
 			{
-				--MidPos;
-				if (MidPos == 0)
-				{
-					++Data;
-					++Str.Data;
-					Pos = c;
-					return true;
-				}
+				Pos += (Str.AllocNum - MidPos)-1;
+				MidPos = Str.AllocNum;
 			}
-			else MidPos = Str.AllocNum;
+			if (MidPos == 0) return true;
 		}
-		++Data;
-		++Str.Data;
 		return false;
 	}
 	SizeL wString::Replace(const wString &FindStr, const wString &Write) {
