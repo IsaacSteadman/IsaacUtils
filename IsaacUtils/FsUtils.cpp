@@ -501,6 +501,12 @@ namespace Utils {
 						wString CompName = Dir + "/" + Comp.fName;
 						switch (Comp.Mode & FTYP_MASK) {
 						case FTYP_REG:
+						{
+							wString CurExt;
+							SizeL Pos = 0;
+							if (Comp.fName.RFind(Pos, '.')) CurExt = Comp.fName.SubStr(Pos + 1);
+							if (!(Ext.Contains(CurExt) ^ Invert)) break;
+						}
 							Rtn[RtnPos++] = CompName;
 							break;
 						case FTYP_DIR:
