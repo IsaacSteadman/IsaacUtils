@@ -220,7 +220,7 @@ void Test_wString_Replace_Str_Ch(TestInst &self) {
 }
 
 void Test_wString_Find_Ch(TestInst &self) {
-	wString a = "__Hello there";
+	wString a = "__Hello there Hellish";
 	{
 		SizeL Pos = 0;
 		bool Rtn = a.Find(Pos, 'H');
@@ -255,10 +255,16 @@ void Test_wString_Find_Ch(TestInst &self) {
 		bool Rtn = a.Find(Pos, 'z', true);
 		self.assertFalse(Rtn, "6th Find_Ch Failed Return");
 	}
+	{
+		SizeL Pos = 3;
+		bool Rtn = a.Find(Pos, 'H', true);
+		self.assertTrue(Pos == 14, "7th Find_Ch !!Failed!!");
+		self.assertTrue(Rtn, "7th Find_Ch Failed Return");
+	}
 }
 
 void Test_wString_Find_Str(TestInst &self) {
-	wString a = "__Hello there";
+	wString a = "__Hello there Hellish";
 	{
 		SizeL Pos = 0;
 		bool Rtn = a.Find(Pos, "He");
@@ -292,6 +298,113 @@ void Test_wString_Find_Str(TestInst &self) {
 		SizeL Pos = 4;
 		bool Rtn = a.Find(Pos, "_H", true);
 		self.assertFalse(Rtn, "6th Find_Str Failed Return");
+	}
+	{
+		SizeL Pos = 3;
+		bool Rtn = a.Find(Pos, "Hell", true);
+		self.assertTrue(Pos == 14, "7th Find_Str !!Failed!!");
+		self.assertTrue(Rtn, "7th Find_Str Failed Return");
+	}
+	{
+		a = "elhelhelf";
+		SizeL Pos = 0;
+		bool Rtn = a.Find(Pos, "elhelf");
+		self.assertTrue(Pos == 3, "8th Find_Str !!Failed!!");
+		self.assertTrue(Rtn, "8th Find_Str Failed Return");
+	}
+}
+
+void Test_wString_RFind_Ch(TestInst &self) {
+	wString a = "__Hello there Hellish";
+	{
+		SizeL Pos = 0;
+		bool Rtn = a.RFind(Pos, 'H');
+		self.assertTrue(Pos == 14, "1st RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "1st RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, 'l');
+		self.assertTrue(Pos == 17, "2nd RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "2nd RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, 'l', true);
+		self.assertTrue(Pos == 4, "3rd RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "3rd RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 11;
+		bool Rtn = a.RFind(Pos, 'e', true);
+		self.assertTrue(Pos == 10, "4th RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "4th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, 'z');
+		self.assertFalse(Rtn, "5th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, 'o', true);
+		self.assertFalse(Rtn, "6th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 5;
+		bool Rtn = a.RFind(Pos, 'H', true);
+		self.assertTrue(Pos == 2, "7th RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "7th RFind_Ch Failed Return");
+	}
+}
+
+void Test_wString_RFind_Str(TestInst &self) {
+	wString a = "__Hello there Hellish";
+	{
+		SizeL Pos = 0;
+		bool Rtn = a.RFind(Pos, "He");
+		self.assertTrue(Pos == 14, "1st RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "1st RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, "_He");
+		self.assertTrue(Pos == 1, "2nd RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "2nd RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, "llo", true);
+		self.assertFalse(Rtn, "3rd RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, "he", true);
+		self.assertTrue(Pos == 9, "4th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "4th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, " tH");
+		self.assertFalse(Rtn, "5th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, "there", true);
+		self.assertFalse(Rtn, "6th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 15;
+		bool Rtn = a.RFind(Pos, "Hell", true);
+		self.assertTrue(Pos == 2, "7th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "7th RFind_Str Failed Return");
+	}
+	{
+		a = "flehlehle";
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, "flehle");
+		self.assertTrue(Pos == 0, "8th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "8th RFind_Str Failed Return");
 	}
 }
 
@@ -437,7 +550,7 @@ void Test_String_Replace_Str_Ch(TestInst &self) {
 }
 
 void Test_String_Find_Ch(TestInst &self) {
-	String a = "__Hello there";
+	String a = "__Hello there Hellish";
 	{
 		SizeL Pos = 0;
 		bool Rtn = a.Find(Pos, 'H');
@@ -472,10 +585,16 @@ void Test_String_Find_Ch(TestInst &self) {
 		bool Rtn = a.Find(Pos, 'z', true);
 		self.assertFalse(Rtn, "6th Find_Ch Failed Return");
 	}
+	{
+		SizeL Pos = 3;
+		bool Rtn = a.Find(Pos, 'H', true);
+		self.assertTrue(Pos == 14, "7th Find_Ch !!Failed!!");
+		self.assertTrue(Rtn, "7th Find_Ch Failed Return");
+	}
 }
 
 void Test_String_Find_Str(TestInst &self) {
-	String a = "__Hello there";
+	String a = "__Hello there Hellish";
 	{
 		SizeL Pos = 0;
 		bool Rtn = a.Find(Pos, "He");
@@ -510,6 +629,113 @@ void Test_String_Find_Str(TestInst &self) {
 		bool Rtn = a.Find(Pos, "_H", true);
 		self.assertFalse(Rtn, "6th Find_Str Failed Return");
 	}
+	{
+		SizeL Pos = 3;
+		bool Rtn = a.Find(Pos, "Hell", true);
+		self.assertTrue(Pos == 14, "7th Find_Str !!Failed!!");
+		self.assertTrue(Rtn, "7th Find_Str Failed Return");
+	}
+	{
+		a = "elhelhelf";
+		SizeL Pos = 0;
+		bool Rtn = a.Find(Pos, "elhelf");
+		self.assertTrue(Pos == 3, "8th Find_Str !!Failed!!");
+		self.assertTrue(Rtn, "8th Find_Str Failed Return");
+	}
+}
+
+void Test_String_RFind_Ch(TestInst &self) {
+	String a = "__Hello there Hellish";
+	{
+		SizeL Pos = 0;
+		bool Rtn = a.RFind(Pos, 'H');
+		self.assertTrue(Pos == 14, "1st RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "1st RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, 'l');
+		self.assertTrue(Pos == 17, "2nd RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "2nd RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, 'l', true);
+		self.assertTrue(Pos == 4, "3rd RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "3rd RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 11;
+		bool Rtn = a.RFind(Pos, 'e', true);
+		self.assertTrue(Pos == 10, "4th RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "4th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, 'z');
+		self.assertFalse(Rtn, "5th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, 'o', true);
+		self.assertFalse(Rtn, "6th RFind_Ch Failed Return");
+	}
+	{
+		SizeL Pos = 5;
+		bool Rtn = a.RFind(Pos, 'H', true);
+		self.assertTrue(Pos == 2, "7th RFind_Ch !!Failed!!");
+		self.assertTrue(Rtn, "7th RFind_Ch Failed Return");
+	}
+}
+
+void Test_String_RFind_Str(TestInst &self) {
+	String a = "__Hello there Hellish";
+	{
+		SizeL Pos = 0;
+		bool Rtn = a.RFind(Pos, "He");
+		self.assertTrue(Pos == 14, "1st RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "1st RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, "_He");
+		self.assertTrue(Pos == 1, "2nd RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "2nd RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, "llo", true);
+		self.assertFalse(Rtn, "3rd RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 12;
+		bool Rtn = a.RFind(Pos, "he", true);
+		self.assertTrue(Pos == 9, "4th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "4th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, " tH");
+		self.assertFalse(Rtn, "5th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 4;
+		bool Rtn = a.RFind(Pos, "there", true);
+		self.assertFalse(Rtn, "6th RFind_Str Failed Return");
+	}
+	{
+		SizeL Pos = 15;
+		bool Rtn = a.RFind(Pos, "Hell", true);
+		self.assertTrue(Pos == 2, "7th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "7th RFind_Str Failed Return");
+	}
+	{
+		a = "flehlehle";
+		SizeL Pos = 2;
+		bool Rtn = a.RFind(Pos, "flehle");
+		self.assertTrue(Pos == 0, "8th RFind_Str !!Failed!!");
+		self.assertTrue(Rtn, "8th RFind_Str Failed Return");
+	}
 }
 
 TestData Tests[] = {
@@ -521,6 +747,8 @@ TestData Tests[] = {
 	{ "Test_wString_Replace_Str_Ch", Test_wString_Replace_Str_Ch },
 	{ "Test_wString_Find_Ch", Test_wString_Find_Ch },
 	{ "Test_wString_Find_Str", Test_wString_Find_Str },
+	{ "Test_wString_RFind_Ch", Test_wString_RFind_Ch },
+	{ "Test_wString_RFind_Str", Test_wString_RFind_Str },
 	{ "Test_String_Split", Test_String_Split },
 	{ "Test_String_RSplit", Test_String_RSplit },
 	{ "Test_String_Join", Test_String_Join },
@@ -529,6 +757,8 @@ TestData Tests[] = {
 	{ "Test_String_Replace_Str_Ch", Test_String_Replace_Str_Ch },
 	{ "Test_String_Find_Ch", Test_String_Find_Ch },
 	{ "Test_String_Find_Str", Test_String_Find_Str },
+	{ "Test_String_RFind_Ch", Test_String_RFind_Ch },
+	{ "Test_String_RFind_Str", Test_String_RFind_Str },
 };
 SizeL NumTests = sizeof(Tests) / sizeof(TestData);
 struct NameRes {
