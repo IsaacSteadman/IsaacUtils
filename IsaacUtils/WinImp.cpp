@@ -845,9 +845,8 @@ namespace Utils {
 	//=====================================================BEGIN THREAD============================================================
 
 	struct ThreadParams {
-		void *hThread;
 		DWORD ThreadId;
-		UInt32(*Function)(void *, UInt32, void *);
+		UInt32(*Function)(SizeL, void *);
 		void *FunctParams;
 	};
 
@@ -855,17 +854,16 @@ namespace Utils {
 		UInt32 Rtn = 0;
 		{
 			ThreadParams &Parameters = *((ThreadParams *)Params);
-			Rtn = Parameters.Function(Parameters.hThread, Parameters.ThreadId, Parameters.FunctParams);
+			Rtn = Parameters.Function(Parameters.ThreadId, Parameters.FunctParams);
 		}
 		delete Params;
 		return Rtn;
 	}
 
 	UtilsThread::UtilsThread() {
-		hThread = 0;
-		ThreadId = 0;
+		Dat.hThread = 0;
 	}
-	UtilsThread::UtilsThread(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams) {
+	UtilsThread::UtilsThread(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams) {
 		ThreadParams &Params = *(new ThreadParams);
 		Params.Function = ThreadFunc;
 		Params.FunctParams = FunctParams;
@@ -874,56 +872,49 @@ namespace Utils {
 			SecurityAttrib.bInheritHandle = TRUE;
 			SecurityAttrib.lpSecurityDescriptor = NULL;
 			SecurityAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
-			Params.hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
-			hThread = Params.hThread;
-			ThreadId = Params.ThreadId;
-			ResumeThread(hThread);
+			Dat.hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
+			ResumeThread(Dat.hThread);
 		}
 	}
-	UtilsThread::UtilsThread(UInt32 Id) {
-		ThreadId = Id;
-		if (Id != 0) hThread = OpenThread(THREAD_ALL_ACCESS, TRUE, Id);
-		else hThread = 0;
+	UtilsThread::UtilsThread(SizeL Id) {
+		if (Id != 0) Dat.hThread = OpenThread(THREAD_ALL_ACCESS, TRUE, Id);
+		else Dat.hThread = 0;
 	}
 	void UtilsThread::SetThisToCurr() {
 		HANDLE hThreadTemp = GetCurrentThread();
 		DuplicateHandle(GetCurrentProcess(), hThreadTemp, GetCurrentProcess(),
-			&hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
-		ThreadId = GetCurrentThreadId();
+			&Dat.hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
 	}
 	bool UtilsThread::ExitCurrentThread(UInt32 ExitCode) {
-		if (hThread == 0) return false;
+		if (Dat.hThread == 0) return false;
 		ExitThread(ExitCode);
 	}
 	bool UtilsThread::Resume() {
-		if (hThread == 0) return false;
-		ResumeThread(hThread);
+		if (Dat.hThread == 0) return false;
+		ResumeThread(Dat.hThread);
 		return true;
 	}
 	bool UtilsThread::Suspend() {
-		if (hThread == 0) return false;
-		SuspendThread(hThread);
+		if (Dat.hThread == 0) return false;
+		SuspendThread(Dat.hThread);
 		return true;
 	}
 	bool UtilsThread::Terminate(UInt32 ExitCode) {
-		if (hThread == 0) return false;
-		TerminateThread(hThread, ExitCode);
+		if (Dat.hThread == 0) return false;
+		TerminateThread(Dat.hThread, ExitCode);
 		return true;
 	}
 	UtilsThread &UtilsThread::operator=(UtilsThread &&Copy) {
-		hThread = Copy.hThread;
-		ThreadId = Copy.ThreadId;
-		Copy.hThread = 0;
-		Copy.ThreadId = 0;
+		Dat.hThread = Copy.Dat.hThread;
+		Copy.Dat.hThread = 0;
 		return (*this);
 	}
 	UtilsThread &UtilsThread::operator=(const UtilsThread &Copy) {
-		ThreadId = Copy.ThreadId;
-		DuplicateHandle(GetCurrentProcess(), Copy.hThread, GetCurrentProcess(),
-			&hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
+		DuplicateHandle(GetCurrentProcess(), Copy.Dat.hThread, GetCurrentProcess(),
+			&Dat.hThread, THREAD_ALL_ACCESS, TRUE, DUPLICATE_SAME_ACCESS);
 		return *this;
 	}
-	void UtilsThread::Init(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams) {
+	void UtilsThread::Init(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams) {
 		ThreadParams &Params = *(new ThreadParams);
 		Params.Function = ThreadFunc;
 		Params.FunctParams = FunctParams;
@@ -932,27 +923,28 @@ namespace Utils {
 			SecurityAttrib.bInheritHandle = TRUE;
 			SecurityAttrib.lpSecurityDescriptor = NULL;
 			SecurityAttrib.nLength = sizeof(SECURITY_ATTRIBUTES);
-			hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
-			hThread = Params.hThread;
-			ThreadId = Params.ThreadId;
-			ResumeThread(hThread);
+			Dat.hThread = CreateThread(&SecurityAttrib, NULL, ThreadProc, &Params, CREATE_SUSPENDED, &Params.ThreadId);
+			ResumeThread(Dat.hThread);
 		}
 	}
 	UtilsThread::~UtilsThread() {
-		if (hThread != 0) CloseHandle(hThread);
+		if (Dat.hThread != 0) CloseHandle(Dat.hThread);
 	}
 	bool UtilsThread::IsCallingThread() {
-		return ThreadId == GetCurrentThreadId();
+		return GetThreadId(Dat.hThread) == GetCurrentThreadId();
 	}
-	void UtilsThread::SetThread(UInt32 Id) {
-		if (hThread != 0) CloseHandle(hThread);
-		ThreadId = Id;
-		if (Id != 0) hThread = OpenThread(THREAD_ALL_ACCESS, TRUE, Id);
-		else hThread = 0;
+	void UtilsThread::SetThread(SizeL Id) {
+		if (Dat.hThread != 0) CloseHandle(Dat.hThread);
+		if (Id != 0) Dat.hThread = OpenThread(THREAD_ALL_ACCESS, TRUE, Id);
+		else Dat.hThread = 0;
+	}
+	SizeL UtilsThread::GetId() {
+		if (Dat.hThread == 0) return 0;
+		return GetThreadId(Dat.hThread);
 	}
 	bool UtilsThread::Join() {
-		if (GetCurrentThreadId() == ThreadId) return false;
-		return WaitForSingleObject(hThread, INFINITE) != 0xFFFFFFFF;
+		if (IsCallingThread()) return false;
+		return WaitForSingleObject(Dat.hThread, INFINITE) != 0xFFFFFFFF;
 	}
 	void AtomicInc(UInt32 &Num) {
 		InterlockedIncrement(&Num);

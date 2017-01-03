@@ -540,7 +540,7 @@ namespace Utils {
 		delete (fs::FileBase *)Fl;
 		return true;
 	}
-	UInt32 fRdBuff::BuffWorker(void *hThread, UInt32 Id, void *Params) {
+	UInt32 fRdBuff::BuffWorker(SizeL Id, void *Params) {
 		UtilsThread CurThrd(Id);
 		fRdBuff *ThisObj = (fRdBuff *)Params;
 		CondVar *TheCond = ThisObj->TheCond;

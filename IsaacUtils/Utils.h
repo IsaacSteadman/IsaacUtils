@@ -310,16 +310,19 @@ namespace Utils{
 
 	class ISAACUTILS_API UtilsThread {
 	private:
-		void *hThread;
-		UInt32 ThreadId;
+		union {
+			void *hThread;
+			SizeL Id;
+		} Dat;
 	public:
 		UtilsThread();
-		UtilsThread(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams);
-		UtilsThread(UInt32 ThreadId);
+		UtilsThread(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams);
+		UtilsThread(SizeL ThreadId);
 		UtilsThread &operator=(UtilsThread &&Copy);
 		UtilsThread &operator=(const UtilsThread &Copy);
-		void Init(UInt32(*ThreadFunc)(void *, UInt32, void *), void *FunctParams);
-		void SetThread(UInt32 Id);
+		void Init(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams);
+		void SetThread(SizeL Id);
+		SizeL GetId();
 		void SetThisToCurr();
 		bool Suspend();
 		bool Resume();
@@ -776,7 +779,7 @@ namespace Utils{
 		fs::FileError *ThrdErr;
 		bool(*FreeFlCb)(void *);
 	public:
-		static UInt32 BuffWorker(void *hThread, UInt32 Id, void *Params);
+		static UInt32 BuffWorker(SizeL Id, void *Params);
 		static void BuffGetFunc(void *Obj, SizeL NumBytes);
 		fRdBuff(fs::FileBase *Fl, UInt32 Min, UInt32 Max, UInt32 BlkLen, bool Direct = false);
 		void SetFlDelFunc(bool(*DelFunc)(void *));
