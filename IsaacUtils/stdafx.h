@@ -26,5 +26,6 @@ extern "C" {
 #include <limits.h>
 #include <stdlib.h>
 #include <time.h>
+#include <pthread.h>
 }
 #endif
