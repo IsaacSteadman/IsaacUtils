@@ -310,10 +310,7 @@ namespace Utils{
 
 	class ISAACUTILS_API UtilsThread {
 	private:
-		union {
-			void *hThread;
-			SizeL Id;
-		} Dat;
+		void *Data;
 	public:
 		UtilsThread();
 		UtilsThread(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams);
