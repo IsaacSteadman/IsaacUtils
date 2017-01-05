@@ -18,6 +18,7 @@
 //#include <stdlib.h>
 #elif defined(__linux__)
 extern "C" {
+#include <sys/types.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -27,5 +28,9 @@ extern "C" {
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 }
 #endif
