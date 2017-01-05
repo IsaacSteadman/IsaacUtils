@@ -913,6 +913,10 @@ namespace Utils {
 			DBGINF_OKKYSEND = 11,
 			DBGINF_DHXCHG = 12
 		};
+		enum SockConsts {
+			SOCKET_ERROR = -1,
+			INVALID_SOCKET = -1
+		};
 		Socket::Socket() {
 			Data.Ptr = INVALID_SOCKET;
 			TmOuts[0] = MAX_INT32;
@@ -922,74 +926,74 @@ namespace Utils {
 			MngdTmOut[1] = 0;
 		}
 		Socket::~Socket() {
-			if (Data.Ptr != INVALID_SOCKET) close();
+			if (Data.Fd != INVALID_SOCKET) close();
 			if (SockLock) DestroyMutex(SockLock);
 			SockLock = 0;
 		}
 		void Socket::Init(SInt32 af, SInt32 Type, SInt32 Prot) {
-			if ((Data.Ptr = socket(af, Type, Prot)) == INVALID_SOCKET)
-				throw SockErr(WSAGetLastError());
+			if ((Data.Fd = socket(af, Type, Prot)) == INVALID_SOCKET)
+				throw SockErr(errno);
 		}
 		void Socket::bind(const SockAddr &Addr) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (::bind(Data.Ptr, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
+			if (::bind(Data.Fd, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
+				throw SockErr(errno);
 			SockName = Addr;
 		}
 		void Socket::connect(const SockAddr &Addr) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			if (::connect(Data.Ptr, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
-			SOCKADDR_STORAGE Mine;
-			SInt32 MineLen = sizeof(Mine);
-			if (::getsockname(Data.Ptr, (sockaddr *)&Mine, &MineLen) == 0) SockName.Init(&Mine);
+			if (::connect(Data.Fd, (sockaddr *)Addr.GetData(), Addr.GetSize()) == SOCKET_ERROR)
+				throw SockErr(errno);
+			sockaddr_storage Mine;
+			socklen_t MineLen = sizeof(Mine);
+			if (::getsockname(Data.Fd, (sockaddr *)&Mine, &MineLen) == 0) SockName.Init(&Mine);
 			PeerName = Addr;
 		}
 		void Socket::setsockopt(SInt32 Lvl, SInt32 OptName, void *OptData, UInt32 DataLen) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (::setsockopt(Data.Ptr, Lvl, OptName, (char*)OptData, DataLen) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
+			if (::setsockopt(Data.Fd, Lvl, OptName, (char*)OptData, DataLen) == SOCKET_ERROR)
+				throw SockErr(errno);
 		}
 		void Socket::accept(Socket &Sock) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (TmOuts[0] != MAX_INT32)
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, &Tmp, 0, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			SOCKADDR_STORAGE Tmp;
-			SInt32 AddrLen = sizeof(Tmp);
-			if ((Sock.Data.Ptr = ::accept(Data.Ptr, (sockaddr *)&Tmp, &AddrLen)) == INVALID_SOCKET)
-				throw SockErr(WSAGetLastError());
+			sockaddr_storage Tmp;
+			socklen_t AddrLen = sizeof(Tmp);
+			if ((Sock.Data.Fd = ::accept(Data.Fd, (sockaddr *)&Tmp, &AddrLen)) == INVALID_SOCKET)
+				throw SockErr(errno);
 			Sock.SockName = SockName;
 			Sock.PeerName.Init(&Tmp);
 		}
 		void Socket::listen(SInt32 AllowBuff) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			if (::listen(Data.Ptr, AllowBuff) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
+			if (::listen(Data.Fd, AllowBuff) == SOCKET_ERROR)
+				throw SockErr(errno);
 		}
 		void Socket::close() {
-			if (Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if (Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (SockLock)
 			{
 				if (SockLock->TryAcquire()) MngdTmOut[1] |= 0x40000000;
@@ -1000,23 +1004,27 @@ namespace Utils {
 				}
 				SockLock->Release();
 			}
-			if (::closesocket(Data.Ptr) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
-			Data.Ptr = INVALID_SOCKET;
+			if (::close(Data.Fd) == SOCKET_ERROR)
+				throw SockErr(errno);
+			Data.Fd = INVALID_SOCKET;
 		}
 		void Socket::InitMngd(UInt32 MidTmOut) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (SockLock == 0)
 			{
 				UInt32 IsNoBlk = 1;
 				SockLock = GetSingleMutex();
-				SInt32 Rtn = ioctlsocket(Data.Ptr, FIONBIO, &IsNoBlk);
-				if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				int Opts = fcntl(Data.Fd, F_GETFL);
+				if (Opts == SOCKET_ERROR) throw SockErr(errno);
+				Opts &= ~O_NONBLOCK;
+				if (IsNoBlk) Opts |= O_NONBLOCK;
+				Opts = fcntl(Data.Fd, F_SETFL, Opts);
+				if (Opts == SOCKET_ERROR) throw SockErr(errno);
 			}
 			MngdTmOut[0] = MidTmOut;
 		}
 		SizeL Socket::sendBase(const char *SendDat, SizeL LenDat, SInt32 Flags) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (LenDat == 0) return LenDat;
 			if (SockLock)
 			{
@@ -1038,13 +1046,13 @@ namespace Utils {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
-					FD_SET(Data.Ptr, &Tmp);
+					FD_SET(Data.Fd, &Tmp);
 					SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
 					{
-						SockErr Exc(WSAGetLastError());
+						SockErr Exc(errno);
 //						DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
 //						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 						throw Exc;
@@ -1052,9 +1060,9 @@ namespace Utils {
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::send(Data.Ptr, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						if ((Rtn = ::send(Data.Fd, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
-							SockErr Exc(WSAGetLastError());
+							SockErr Exc(errno);
 //							DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
 //							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 							throw Exc;
@@ -1082,21 +1090,21 @@ namespace Utils {
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
 			SizeL Rtn = 0;
-			if ((Rtn = ::send(Data.Ptr, SendDat, LenDat, Flags)) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((Rtn = ::send(Data.Fd, SendDat, LenDat, Flags)) == SOCKET_ERROR)
+				throw SockErr(errno);
 			return Rtn;
 		}
 		SizeL Socket::sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, SInt32 Flags) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (LenDat == 0) return LenDat;
 			if (SockLock)
 			{
@@ -1117,17 +1125,17 @@ namespace Utils {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
-					FD_SET(Data.Ptr, &Tmp);
+					FD_SET(Data.Fd, &Tmp);
 					SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
-						throw SockErr(WSAGetLastError());
+						throw SockErr(errno);
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::sendto(Data.Ptr, SendDat, CurLenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
-							throw SockErr(WSAGetLastError());
+						if ((Rtn = ::sendto(Data.Fd, SendDat, CurLenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
+							throw SockErr(errno);
 						if (Rtn != 0)
 						{
 							TmLeft = OrigTmOut;
@@ -1143,21 +1151,21 @@ namespace Utils {
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
 			SizeL Rtn = 0;
-			if ((Rtn = ::sendto(Data.Ptr, SendDat, LenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((Rtn = ::sendto(Data.Fd, SendDat, LenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
+				throw SockErr(errno);
 			return Rtn;
 		}
 		SizeL Socket::recvBase(char *RecvDat, SizeL LenDat, SInt32 Flags) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (SockLock)
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
@@ -1186,13 +1194,13 @@ namespace Utils {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
-					FD_SET(Data.Ptr, &Tmp);
+					FD_SET(Data.Fd, &Tmp);
 					SInt32 Rtn = select(0, &Tmp, 0, 0, &TimeOut);
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
 					{
-						SockErr Exc(WSAGetLastError());
+						SockErr Exc(errno);
 //						DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
 //						DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 						throw Exc;
@@ -1200,9 +1208,9 @@ namespace Utils {
 					else
 					{
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::recv(Data.Ptr, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						if ((Rtn = ::recv(Data.Fd, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
-							SockErr Exc(WSAGetLastError());
+							SockErr Exc(errno);
 //							DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
 //							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 							throw Exc;
@@ -1231,21 +1239,21 @@ namespace Utils {
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, &Tmp, 0, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
 			SizeL Rtn = 0;
-			if ((Rtn = ::recv(Data.Ptr, RecvDat, LenDat, Flags)) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			if ((Rtn = ::recv(Data.Fd, RecvDat, LenDat, Flags)) == SOCKET_ERROR)
+				throw SockErr(errno);
 			return Rtn;
 		}
 		SizeL Socket::recvfromBase(SockAddr &Addr, char *RecvDat, SizeL LenDat, SInt32 Flags) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			if (SockLock)
 			{
 				Lock Lk(SockLock);//Released upon exiting this scope(like when throw or return)
@@ -1266,19 +1274,19 @@ namespace Utils {
 					if (TmOuts[0] != MAX_INT32) TmLeft -= MyTmOut;
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
-					FD_SET(Data.Ptr, &Tmp);
+					FD_SET(Data.Fd, &Tmp);
 					SInt32 Rtn = select(0, &Tmp, 0, 0, &TimeOut);
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
-						throw SockErr(WSAGetLastError());
+						throw SockErr(errno);
 					else
 					{
-						SOCKADDR_STORAGE Tmp;
-						SInt32 TmpLen = sizeof(Tmp);
+						sockaddr_storage Tmp;
+						socklen_t TmpLen = sizeof(Tmp);
 						SizeL TmpRtn = 0;
-						if ((Rtn = ::recvfrom(Data.Ptr, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
-							throw SockErr(WSAGetLastError());
+						if ((Rtn = ::recvfrom(Data.Fd, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+							throw SockErr(errno);
 						if (Rtn != 0)
 						{
 							NumZeroLeft = 16;
@@ -1295,24 +1303,23 @@ namespace Utils {
 			{
 				fd_set Tmp;
 				FD_ZERO(&Tmp);
-				FD_SET(Data.Ptr, &Tmp);
+				FD_SET(Data.Fd, &Tmp);
 				timeval TimeOut;
 				TimeOut.tv_sec = TmOuts[0];
 				TimeOut.tv_usec = TmOuts[1];
 				SInt32 Rtn = select(0, &Tmp, 0, 0, &TimeOut);
 				if (Rtn == 0) throw SockErr(10060);
-				else if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
 			SizeL Rtn = 0;
-			SOCKADDR_STORAGE Tmp;
-			SInt32 TmpLen = sizeof(Tmp);
-			if ((Rtn = ::recvfrom(Data.Ptr, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
-				throw SockErr(WSAGetLastError());
+			sockaddr_storage Tmp;
+			socklen_t TmpLen = sizeof(Tmp);
+			if ((Rtn = ::recvfrom(Data.Fd, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+				throw SockErr(errno);
 			return Rtn;
 		}
 		void Socket::settimeout(double Sec) {
-			if ((MngdTmOut[1] & 0xC0000000) || Data.Ptr == INVALID_SOCKET) throw SockErr(10038);
-			SInt32 Rtn = 0;
+			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
 			UInt32 IsNoBlk = 0;
 			if (Sec == -1)
 			{
@@ -1327,8 +1334,11 @@ namespace Utils {
 				TmOuts[1] = Sec * 100000;
 				TmOuts[1] %= 1000000;
 			}
-			Rtn = ioctlsocket(Data.Ptr, FIONBIO, &IsNoBlk);
-			if (Rtn == SOCKET_ERROR) throw SockErr(WSAGetLastError());
+			int Opts = fcntl(Data.Fd, F_GETFL);
+			if (Opts == SOCKET_ERROR) throw SockErr(errno);
+			Opts &= ~O_NONBLOCK;
+			if (IsNoBlk) Opts |= O_NONBLOCK;
+			if (fcntl(Data.Fd, F_SETFL, Opts) == SOCKET_ERROR) throw SockErr(errno);
 		}
 		SockAddr::SockAddr(void *Bytes) {
 			Data = 0;
@@ -1452,45 +1462,7 @@ namespace Utils {
 			}
 		}
 		void SockAddr::Init(const wString &AddrStr, unsigned short Port, UInt32 FlowInf, UInt32 ScopeId) {
-			DeInitData();
-			if (AddrStr.Contains('.'))// we are going to say it is AF_INET (IPV4)
-			{
-				sockaddr_in *Tmp = new sockaddr_in;
-				wchar_t *TheStr = AddrStr.GetCString();
-				SInt32 Rtn = InetPtonW(AF_INET, TheStr, &Tmp->sin_addr);
-				delete TheStr;
-				if (Rtn != 1)
-					delete Tmp;
-				if (Rtn == 0) throw SockErr(10014);
-				if (Rtn == -1) throw SockErr(WSAGetLastError());
-				Data = Tmp;
-				Tmp->sin_family = AF_INET;
-				Tmp->sin_port = htons(Port);
-				Tmp->sin_zero[0] = 0;
-				Tmp->sin_zero[1] = 0;
-				Tmp->sin_zero[2] = 0;
-				Tmp->sin_zero[3] = 0;
-				Tmp->sin_zero[4] = 0;
-				Tmp->sin_zero[5] = 0;
-				Tmp->sin_zero[6] = 0;
-				Tmp->sin_zero[7] = 0;
-			}
-			else // AF_INET6 (IPV6)
-			{
-				sockaddr_in6 *Tmp = new sockaddr_in6;
-				wchar_t *TheStr = AddrStr.GetCString();
-				SInt32 Rtn = InetPtonW(AF_INET6, TheStr, &Tmp->sin6_addr);
-				delete TheStr;
-				if (Rtn != 1)
-					delete Tmp;
-				if (Rtn == 0) throw SockErr(10014);
-				if (Rtn == -1) throw SockErr(WSAGetLastError());
-				Data = Tmp;
-				Tmp->sin6_family = AF_INET6;
-				Tmp->sin6_port = htons(Port);
-				Tmp->sin6_flowinfo = FlowInf;
-				Tmp->sin6_scope_id = ScopeId;
-			}
+			Init(AddrStr.Str(), Port, FlowInf, ScopeId);
 		}
 		void SockAddr::Init(const String &AddrStr, unsigned short Port, UInt32 FlowInf, UInt32 ScopeId) {
 			DeInitData();
@@ -1498,12 +1470,12 @@ namespace Utils {
 			{
 				sockaddr_in *Tmp = new sockaddr_in;
 				char *TheStr = AddrStr.GetCString();
-				SInt32 Rtn = InetPtonA(AF_INET, TheStr, &Tmp->sin_addr);
+				SInt32 Rtn = inet_pton(AF_INET, TheStr, &Tmp->sin_addr);
 				delete TheStr;
 				if (Rtn != 1)
 					delete Tmp;
 				if (Rtn == 0) throw SockErr(21);
-				if (Rtn == -1) throw SockErr(WSAGetLastError());
+				if (Rtn == -1) throw SockErr(errno);
 				Data = Tmp;
 				Tmp->sin_family = AF_INET;
 				Tmp->sin_port = htons(Port);
@@ -1520,12 +1492,12 @@ namespace Utils {
 			{
 				sockaddr_in6 *Tmp = new sockaddr_in6;
 				char *TheStr = AddrStr.GetCString();
-				SInt32 Rtn = InetPtonA(AF_INET6, TheStr, &Tmp->sin6_addr);
+				SInt32 Rtn = inet_pton(AF_INET6, TheStr, &Tmp->sin6_addr);
 				delete TheStr;
 				if (Rtn != 1)
 					delete Tmp;
 				if (Rtn == 0) throw SockErr(21);
-				if (Rtn == -1) throw SockErr(WSAGetLastError());
+				if (Rtn == -1) throw SockErr(errno);
 				Data = Tmp;
 				Tmp->sin6_family = AF_INET6;
 				Tmp->sin6_port = htons(Port);
