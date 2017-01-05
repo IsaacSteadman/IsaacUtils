@@ -379,8 +379,12 @@ namespace Utils{
 	ISAACUTILS_API void AtomicDec(UInt64 &Num);
 	ISAACUTILS_API void AtomicAdd(UInt32 &Num, UInt32 Add);
 	ISAACUTILS_API void AtomicAdd(UInt64 &Num, UInt64 Add);
-	ISAACUTILS_API void AtomicSub(UInt32 &Num, UInt32 Add);
-	ISAACUTILS_API void AtomicSub(UInt64 &Num, UInt64 Add);
+	ISAACUTILS_API void AtomicSub(UInt32 &Num, UInt32 Sub);
+	ISAACUTILS_API void AtomicSub(UInt64 &Num, UInt64 Sub);
+	ISAACUTILS_API void AtomicSet(UInt32 &Num, UInt32 With);
+	ISAACUTILS_API void AtomicSet(UInt64 &Num, UInt64 With);
+	ISAACUTILS_API UInt32 AtomicXchg(UInt32 &Num, UInt32 With);
+	ISAACUTILS_API UInt64 AtomicXchg(UInt64 &Num, UInt64 With);
 	//Concurrent Queue: allows one to insert stuff at the end while simultaneously retreiving from the beginning
 	class ISAACUTILS_API ConQueue {//Not Tested
 	public:
