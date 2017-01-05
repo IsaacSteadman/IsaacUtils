@@ -141,6 +141,7 @@ namespace Utils {
 			virtual void Flush();
 			virtual wString GetName();
 			virtual UInt32 GetMode();
+			virtual ~NixFile();
 		};
 		class NixDrive : public DefUniDrive {
 		private:
@@ -355,6 +356,10 @@ namespace Utils {
 		}
 		void NixFile::Close() {
 			::close(hFile);
+			hFile = -1;
+		}
+		NixFile::~NixFile() {
+			if (hFile != -1) Close();
 		}
 		void NixFile::Flush() {
 			::fsync(hFile);
@@ -438,40 +443,165 @@ namespace Utils {
 	}
 
 	//=====================================================BEGIN THREAD============================================================
-	struct ThreadParams {
+	enum tStates {
+		TSTATE_LIMBO = 0,
+		TSTATE_STARTED = 1,
+		TSTATE_STOPPED = 2,
+		TSTATE_READY = 3
+	};
+	struct PosixThreadInfo {
+		SizeL RefCount;
 		pthread_t ThreadId;
+		Mutex *Lk;
+		CondVar *Cond;
+		SizeL tState;
+		PosixThreadInfo(pthread_t Id, bool Support=true) {
+			ThreadId = Id;
+			RefCount = 0;
+			tState = 0;
+			Lk = 0;
+			Cond = 0;
+			if (Support)
+			{
+				Lk = GetSingleMutex();
+				Cond = GetCondVar(Lk);
+			}
+		}
+		PosixThreadInfo() {
+			ThreadId = 0;
+			RefCount = 0;
+			tState = 0;
+			Lk = GetSingleMutex();
+			Cond = GetCondVar(Lk);
+		}
+		void SetState(SizeL State) {
+			if (Lk == 0) return;
+			Lock Tmp(Lk);
+			tState = State;
+			Cond->notifyAll();
+		}
+		SizeL GetState() {
+			if (Lk == 0) return MAX_INT;
+			SizeL Rtn = 0;
+			{
+				Lock Tmp(Lk);
+				Rtn = tState;
+			}
+			return Rtn;
+		}
+		bool WaitForState(SizeL State, SizeL StateMask = MAX_INT, UInt32 Millis = MAX_INT32) {
+			if (Lk == 0) return false;
+			State &= StateMask;
+			Lock Tmp(Lk);
+			if (Millis != MAX_INT32)
+			{
+				Clock Timer;
+				while (tState & StateMask != State) {
+					UInt32 DiffTime = Timer.GetTotalTime() * 1e3;
+					if (DiffTime >= Millis) return false;
+					Millis -= DiffTime;
+					Timer.StartTime();
+					Cond->wait(Millis);
+					Timer.EndTime();
+				}
+			}
+			else
+			{
+				while (tState & StateMask != State)
+					Cond->wait();
+			}
+			return true;
+		}
+		~PosixThreadInfo() {
+			if (Lk)
+			{
+				pthread_detach(ThreadId);
+				DestroyCond(Cond);
+				DestroyMutex(Lk);
+			}
+		}
+	};
+	struct ThreadParams {
+		PosixThreadInfo *Data;
 		void *FunctParams;
 		UInt32(*Function)(SizeL, void *);
 	};
+	SizeL GetThreadId(void *hThread) {
+		return ((PosixThreadInfo *)hThread)->ThreadId;
+	}
+	bool DuplicateThreadHandle(void *hThread, void **Cpy) {
+		if (((PosixThreadInfo *)hThread)->Lk)
+		{
+			{
+				Lock Tmp(((PosixThreadInfo *)hThread)->Lk);
+				++((PosixThreadInfo *)hThread)->RefCount;
+			}
+			*Cpy = hThread;
+			return true;
+		}
+		else
+		{
+			*Cpy = new PosixThreadInfo(GetThreadId(hThread), false);
+		}
+		return true;
+	}
+	bool CloseThreadHandle(void *hThread) {
+		if (((PosixThreadInfo *)hThread)->Lk == 0)
+		{
+			delete (PosixThreadInfo *)hThread;
+			return true;
+		}
+		SizeL EndRefCount = 0;
+		{
+			Lock Tmp(((PosixThreadInfo *)hThread)->Lk);
+			EndRefCount = --((PosixThreadInfo *)hThread)->RefCount;
+		}
+		if (EndRefCount == 0) delete (PosixThreadInfo *)hThread;
+		return true;
+	}
 	void *ThreadProc(void *Params) {
-		UInt32 Rtn = 0;
+		void *FunctParams = 0;
+		UInt32(*Function)(SizeL, void *);
+		PosixThreadInfo *Data = 0;
 		{
 			ThreadParams &Parameters = *((ThreadParams *)Params);
-			Rtn = Parameters.Function(Parameters.ThreadId, Parameters.FunctParams);
+			// this has already been duplicated by the creator
+			Data = Parameters.Data;
+			Data->WaitForState(TSTATE_READY, 3);
+			FunctParams = Parameters.FunctParams;
+			Function = Parameters.Function;
+			delete &Parameters;
 		}
-		delete Params;
-		return (void*)Rtn;
+		Data->SetState(TSTATE_STARTED);
+		void *Rtn = (void*)Function((SizeL)Data, FunctParams);
+		Data->SetState(TSTATE_STOPPED);
+		return Rtn;
 	}
 
 	UtilsThread::UtilsThread() {
-		Dat.hThread = 0;
+		Data = 0;
 	}
 	UtilsThread::UtilsThread(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams) {
-		pthread_t s = 0;
+		PosixThreadInfo *Info = new PosixThreadInfo();
+		DuplicateThreadHandle(Info, &Data);
 		pthread_attr_t Attr;
 		pthread_attr_init(&Attr);
+		pthread_attr_setdetachstate(&Attr, PTHREAD_CREATE_JOINABLE);
 		ThreadParams &Params = *(new ThreadParams);
 		Params.Function = ThreadFunc;
 		Params.FunctParams = FunctParams;
-		pthread_create(&Params.ThreadId, &Attr, ThreadProc, &Params);
-		Dat.Id = Params.ThreadId;
+		DuplicateThreadHandle(Info, (void **)&Params.Data);
+		pthread_create(&Info->ThreadId, &Attr, ThreadProc, &Params);
 		pthread_attr_destroy(&Attr);
+		Info->SetState(TSTATE_READY);
 	}
 	UtilsThread::UtilsThread(SizeL Id) {
-		Dat.Id = Id;
+		DuplicateThreadHandle((void *)Id, &Data);
 	}
 	void UtilsThread::SetThisToCurr() {
-		SetThread(pthread_self());
+		if (Data) CloseThreadHandle(Data);
+		Data = 0;
+		Data = new PosixThreadInfo(pthread_self(), false);
 	}
 	bool UtilsThread::ExitCurrentThread(UInt32 ExitCode) {
 		pthread_exit((void*)ExitCode);
@@ -483,70 +613,95 @@ namespace Utils {
 		return false;
 	}
 	bool UtilsThread::Terminate(UInt32 ExitCode) {
-		return pthread_cancel(Dat.Id) == 0;
+		return pthread_cancel(((PosixThreadInfo*)Data)->ThreadId) == 0;
 	}
 	UtilsThread &UtilsThread::operator=(UtilsThread &&Copy) {
-		Dat.Id = Copy.Dat.Id;
+		Data = Copy.Data;
+		Copy.Data = 0;
 		return (*this);
 	}
 	UtilsThread &UtilsThread::operator=(const UtilsThread &Copy) {
-		Dat.Id = Copy.Dat.Id;
+		if (Data) CloseThreadHandle(Data);
+		Data = 0;
+		if (Copy.Data) DuplicateThreadHandle(Copy.Data, &Data);
 		return *this;
 	}
 	void UtilsThread::Init(UInt32(*ThreadFunc)(SizeL, void *), void *FunctParams) {
-		pthread_t s = 0;
+		if (Data) CloseThreadHandle(Data);
+		Data = 0;
+		PosixThreadInfo *Info = new PosixThreadInfo();
+		DuplicateThreadHandle(Info, &Data);
 		pthread_attr_t Attr;
 		pthread_attr_init(&Attr);
+		pthread_attr_setdetachstate(&Attr, PTHREAD_CREATE_JOINABLE);
 		ThreadParams &Params = *(new ThreadParams);
 		Params.Function = ThreadFunc;
 		Params.FunctParams = FunctParams;
-		pthread_create(&Params.ThreadId, &Attr, ThreadProc, &Params);
-		Dat.Id = Params.ThreadId;
+		DuplicateThreadHandle(Info, (void **)&Params.Data);
+		pthread_create(&Info->ThreadId, &Attr, ThreadProc, &Params);
 		pthread_attr_destroy(&Attr);
+		Info->SetState(TSTATE_READY);
 	}
 	UtilsThread::~UtilsThread() {
+		if (Data) CloseThreadHandle(Data);
+		Data = 0;
 	}
 	bool UtilsThread::IsCallingThread() {
-		return pthread_equal(Dat.Id, pthread_self());
+		if (Data == 0) return false;
+		return pthread_equal(((PosixThreadInfo*)Data)->ThreadId, pthread_self());
 	}
 	void UtilsThread::SetThread(SizeL Id) {
-		Dat.Id = Id;
+		if (Data) CloseThreadHandle(Data);
+		Data = 0;
+		if (Id == 0) return;
+		DuplicateThreadHandle((void *)Id, &Data);
 	}
 	bool UtilsThread::Join() {
-		return pthread_join(Dat.Id, NULL) == 0;
+		if (Data == 0) return false;
+		return ((PosixThreadInfo *)Data)->WaitForState(TSTATE_STOPPED);
 	}
 	void AtomicInc(UInt32 &Num) {
-		InterlockedIncrement(&Num);
+		__sync_fetch_and_add(&Num, 1);
 	}
 	void AtomicInc(UInt64 &Num) {
-		InterlockedIncrement(&Num);
+		__sync_fetch_and_add(&Num, 1);
 	}
 	void AtomicDec(UInt32 &Num) {
-		InterlockedDecrement(&Num);
+		__sync_fetch_and_sub(&Num, 1);
 	}
 	void AtomicDec(UInt64 &Num) {
-		InterlockedDecrement(&Num);
+		__sync_fetch_and_sub(&Num, 1);
 	}
 	void AtomicAdd(UInt32 &Num, UInt32 Add) {
-		InterlockedExchangeAdd(&Num, Add);
+		__sync_fetch_and_add(&Num, Add);
 	}
 	void AtomicAdd(UInt64 &Num, UInt64 Add) {
-		InterlockedExchangeAdd(&Num, Add);
+		__sync_fetch_and_add(&Num, Add);
 	}
-	void AtomicSub(UInt32 &Num, UInt32 Add) {
-		Add -= 1;
-		Add = ~Add;
-		InterlockedExchangeAdd(&Num, Add);
+	void AtomicSub(UInt32 &Num, UInt32 Sub) {
+		__sync_fetch_and_sub(&Num, Sub);
 	}
-	void AtomicSub(UInt64 &Num, UInt64 Add) {
-		Add -= 1;
-		Add = ~Add;
-		InterlockedExchangeAdd(&Num, Add);
+	void AtomicSub(UInt64 &Num, UInt64 Sub) {
+		__sync_fetch_and_sub(&Num, Sub);
+	}
+	void AtomicSet(UInt32 &Num, UInt32 Add) {
+		Num = Add;
+	}
+	void AtomicSet(UInt64 &Num, UInt64 Add) {
+		Num = Add;
+	}
+	UInt32 AtomicXchg(UInt32 &Num, UInt32 With) {
+		__sync_synchronize();
+		return __sync_lock_test_and_set(&Num, With);
+	}
+	UInt64 AtomicXchg(UInt64 &Num, UInt64 With) {
+		__sync_synchronize();
+		return __sync_lock_test_and_set(&Num, With);
 	}
 
 	class SingleMutex : public Mutex {
 	public:
-		CRITICAL_SECTION Data;
+		pthread_mutex_t Data;
 		SingleMutex();
 		bool TryAcquire(bool Access);
 		void Acquire(bool Access);
@@ -555,26 +710,30 @@ namespace Utils {
 		~SingleMutex();
 	};
 	SingleMutex::SingleMutex() {
-		InitializeCriticalSection(&Data);
+		pthread_mutexattr_t Attr;
+		pthread_mutexattr_init(&Attr);
+		pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_NORMAL);
+		pthread_mutex_init(&Data, &Attr);
+		pthread_mutexattr_destroy(&Attr);
 	}
 	bool SingleMutex::TryAcquire(bool Access) {
-		return TryEnterCriticalSection(&Data) != 0;
+		return pthread_mutex_trylock(&Data) == 0;
 	}
 	void SingleMutex::Acquire(bool Access) {
-		EnterCriticalSection(&Data);
+		pthread_mutex_lock(&Data);
 	}
 	void SingleMutex::Release(bool Access) {
-		LeaveCriticalSection(&Data);
+		pthread_mutex_unlock(&Data);
 	}
 	SizeL SingleMutex::GetType() {
 		return 1;
 	}
 	SingleMutex::~SingleMutex() {
-		DeleteCriticalSection(&Data);
+		pthread_mutex_destroy(&Data);
 	}
 	class RWMutex : public Mutex {
 	public:
-		SRWLOCK Data;
+		pthread_rwlock_t Data;
 		RWMutex();
 		bool TryAcquire(bool Access);
 		void Acquire(bool Access);
@@ -583,18 +742,20 @@ namespace Utils {
 		~RWMutex();
 	};
 	RWMutex::RWMutex() {
-		InitializeSRWLock(&Data);
+		pthread_rwlockattr_t Attr;
+		pthread_rwlockattr_init(&Attr);
+		pthread_rwlock_init(&Data, &Attr);
+		pthread_rwlockattr_destroy(&Attr);
 	}
 	bool RWMutex::TryAcquire(bool Access) {
-		return (Access ? TryAcquireSRWLockExclusive(&Data) : TryAcquireSRWLockShared(&Data)) != 0;
+		return (Access ? pthread_rwlock_wrlock(&Data) : pthread_rwlock_rdlock(&Data)) == 0;
 	}
 	void RWMutex::Acquire(bool Access) {
-		if (Access) AcquireSRWLockExclusive(&Data);
-		else AcquireSRWLockShared(&Data);
+		if (Access) pthread_rwlock_wrlock(&Data);
+		else pthread_rwlock_rdlock(&Data);
 	}
 	void RWMutex::Release(bool Access) {
-		if (Access) ReleaseSRWLockExclusive(&Data);
-		else ReleaseSRWLockShared(&Data);
+		pthread_rwlock_unlock(&Data);
 	}
 	SizeL RWMutex::GetType() {
 		return 2;
@@ -615,64 +776,9 @@ namespace Utils {
 		delete Obj;
 	}
 	CondVar::~CondVar() {}
-	class RWCondVar : public CondVar {
-	private:
-		CONDITION_VARIABLE Data;
-		RWMutex *RWLock;
-		SizeL NumWaiting;
-		SizeL NumAllowWake;
-		SingleMutex InfLock;
-	public:
-		RWCondVar(RWMutex *TheLock);
-		void notify();
-		void notifyAll();
-		void wait(UInt32 Timeout = MAX_INT32, bool Access = false);
-		Mutex *GetInternLock();
-		~RWCondVar();
-	};
-	RWCondVar::RWCondVar(RWMutex *TheLock) {
-		IsLockRef = true;
-		PreWtNtfy = false;
-		NumWaiting = 0;
-		NumAllowWake = 0;
-		RWLock = TheLock;
-		InitializeConditionVariable(&Data);
-	}
-	void RWCondVar::notify() {
-		InfLock.Acquire(false);
-		if (PreWtNtfy) NumAllowWake += 1;
-		else if (NumWaiting > 0 && NumAllowWake < NumWaiting) NumAllowWake += 1;
-		InfLock.Release(false);
-		WakeConditionVariable(&Data);
-	}
-	void RWCondVar::notifyAll() {
-		InfLock.Acquire(false);
-		NumAllowWake = NumWaiting;
-		InfLock.Release(false);
-		WakeAllConditionVariable(&Data);
-	}
-	void RWCondVar::wait(UInt32 Timeout, bool Access) {
-		InfLock.Acquire(false);
-		++NumWaiting;
-		while (true) {
-			if (NumAllowWake) break;
-			InfLock.Release(false);
-			SleepConditionVariableSRW(&Data, &RWLock->Data, Timeout, Access ? 0 : (CONDITION_VARIABLE_LOCKMODE_SHARED));
-			InfLock.Acquire(false);
-		}
-		--NumAllowWake;
-		--NumWaiting;
-		InfLock.Release(false);
-	}
-	Mutex *RWCondVar::GetInternLock() {
-		return RWLock;
-	}
-	RWCondVar::~RWCondVar() {
-		if (!IsLockRef) DestroyMutex(RWLock);
-	}
 	class CSCondVar : public CondVar {
 	private:
-		CONDITION_VARIABLE Data;
+		pthread_cond_t Data;
 		SingleMutex *CSLock;
 		SizeL NumWaiting;
 		SizeL NumAllowWake;
@@ -690,20 +796,44 @@ namespace Utils {
 		NumWaiting = 0;
 		NumAllowWake = 0;
 		CSLock = TheLock;
-		InitializeConditionVariable(&Data);
+		pthread_condattr_t Attr;
+		pthread_condattr_init(&Attr);
+		pthread_cond_init(&Data, &Attr);
+		pthread_condattr_destroy(&Attr);
 	}
 	void CSCondVar::notify() {
 		if (PreWtNtfy) AtomicInc(NumAllowWake);
 		else if (NumWaiting > 0 && NumAllowWake < NumWaiting) AtomicInc(NumAllowWake);
-		WakeConditionVariable(&Data);
+		pthread_cond_signal(&Data);
 	}
 	void CSCondVar::notifyAll() {
-		NumAllowWake = NumWaiting;
-		WakeAllConditionVariable(&Data);
+		AtomicSet(NumAllowWake, NumWaiting);
+		pthread_cond_broadcast(&Data);
 	}
 	void CSCondVar::wait(UInt32 Timeout, bool Access) {
 		AtomicInc(NumWaiting);
-		while (NumAllowWake == 0) SleepConditionVariableCS(&Data, &CSLock->Data, Timeout);
+		if (Timeout == MAX_INT32)
+		{
+			while (NumAllowWake == 0) pthread_cond_wait(&Data, &CSLock->Data);
+		}
+		else
+		{
+			Clock Clk;
+			UInt32 CurTime = Timeout;
+			while (NumAllowWake == 0) {
+				double CurTmpTime = Clk.GetTotalTime() * 1e3;
+				if (CurTmpTime >= Timeout)
+				{
+					AtomicDec(NumWaiting);
+					return;
+				}
+				Clk.StartTime();
+				CurTime = Timeout - CurTmpTime;
+				timespec Time = { CurTime / 1000, (CurTime % 1000) * 1000000 };
+				pthread_cond_timedwait(&Data, &CSLock->Data, &Time);
+				Clk.EndTime();
+			}
+		}
 		AtomicDec(NumAllowWake);
 		AtomicDec(NumWaiting);
 	}
@@ -723,23 +853,13 @@ namespace Utils {
 		switch (TheLock->GetType()) {
 		case 1:
 			return new CSCondVar((SingleMutex *)TheLock);
-		case 2:
-			return new RWCondVar((RWMutex *)TheLock);
 		default:
 			return 0;
 		}
 	}
 	void ConQueue::ChgBytes(SizeL Amt, bool IsAdd) {
-		if (!IsAdd)
-		{
-			Amt ^= Amt;
-			Amt += 1;
-		}
-#if defined(_WIN64)
-		InterlockedExchangeAdd64((SnzL *)&TotBytes, (SnzL)Amt);
-#else
-		InterlockedExchangeAdd((SnzL *)&TotBytes, (SnzL)Amt);
-#endif
+		if (IsAdd) AtomicAdd(TotBytes, Amt);
+		else AtomicSub(TotBytes, Amt);
 	}
 	//======================================================END THREAD=============================================================
 
