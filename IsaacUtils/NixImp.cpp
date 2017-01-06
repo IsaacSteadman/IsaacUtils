@@ -56,13 +56,12 @@ namespace Utils {
 	namespace fs {
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
-		String SrchPath = "/*.*";
 		FileDesc FileDescFromStat(const wString &Path, const struct stat &Stat) {
 			FileDesc Rtn = {
 				Path,
-				Stat.st_mode,
+				(UInt16)Stat.st_mode,
 				0,
-				Stat.st_size,
+				(UInt64)Stat.st_size,
 				FileTime(Stat.st_ctim.tv_sec, Stat.st_ctim.tv_nsec),
 				FileTime(Stat.st_mtim.tv_sec, Stat.st_mtim.tv_nsec),
 				FileTime(Stat.st_atim.tv_sec, Stat.st_atim.tv_nsec)
@@ -72,7 +71,7 @@ namespace Utils {
 			case S_IFCHR: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
 			case S_IFDIR: Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY; break;
 			case S_IFIFO: Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL; break;
-			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM; break;
+			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_REPARSE_POINT; break;
 			case S_IFREG: Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL; break;
 			case S_IFSOCK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
 			}
@@ -81,9 +80,9 @@ namespace Utils {
 		FileDescA FileDescFromStat(const String &Path, const struct stat &Stat) {
 			FileDescA Rtn = {
 				Path,
-				Stat.st_mode,
+				(UInt16)Stat.st_mode,
 				0,
-				Stat.st_size,
+				(UInt64)Stat.st_size,
 				FileTime(Stat.st_ctim.tv_sec, Stat.st_ctim.tv_nsec),
 				FileTime(Stat.st_mtim.tv_sec, Stat.st_mtim.tv_nsec),
 				FileTime(Stat.st_atim.tv_sec, Stat.st_atim.tv_nsec)
@@ -93,7 +92,7 @@ namespace Utils {
 			case S_IFCHR: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
 			case S_IFDIR: Rtn.Attr |= FileAttr::FILE_ATTR_DIRECTORY; break;
 			case S_IFIFO: Rtn.Attr |= FileAttr::FILE_ATTR_VIRTUAL; break;
-			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_SYSTEM; break;
+			case S_IFLNK: Rtn.Attr |= FileAttr::FILE_ATTR_REPARSE_POINT; break;
 			case S_IFREG: Rtn.Attr |= FileAttr::FILE_ATTR_NORMAL; break;
 			case S_IFSOCK: Rtn.Attr |= FileAttr::FILE_ATTR_DEVICE; break;
 			}
@@ -235,7 +234,7 @@ namespace Utils {
 
 		Array<String> NixDrive::ListDir(const String &Path) {
 			char *cPathA = 0;
-			SizeL Len = SrchPath.Length();
+			SizeL Len = 0;
 			SizeL ChunkSzN = 64;
 			Array<String> Rtn;
 			if (!AllocPath(Path, cPathA, Len))
@@ -692,7 +691,7 @@ namespace Utils {
 			delete &Parameters;
 		}
 		Data->SetState(TSTATE_STARTED);
-		void *Rtn = (void*)Function((SizeL)Data, FunctParams);
+		void *Rtn = reinterpret_cast<void*>(Function((SizeL)Data, FunctParams));
 		Data->SetState(TSTATE_STOPPED);
 		return Rtn;
 	}
@@ -723,7 +722,7 @@ namespace Utils {
 		Data = new PosixThreadInfo(pthread_self(), false);
 	}
 	bool UtilsThread::ExitCurrentThread(UInt32 ExitCode) {
-		pthread_exit((void*)ExitCode);
+		pthread_exit(reinterpret_cast<void*>(ExitCode));
 	}
 	bool UtilsThread::Resume() {
 		return false;
@@ -1575,7 +1574,7 @@ namespace Utils {
 					delete (sockaddr_in6 *)Data;
 					break;
 				default:
-					delete Data;
+					delete (sockaddr_storage *)Data;
 				}
 				Data = 0;
 			}

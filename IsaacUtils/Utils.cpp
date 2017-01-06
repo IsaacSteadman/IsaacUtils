@@ -1478,7 +1478,7 @@ namespace Utils{
 	UInt32 ErrorFuncId = 0;
 	bool ErrIsRead = true;
 	wString FromNumber(UInt32 Num, unsigned char Radix){
-		char *Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$_";
+		const char *Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$_";
 		if ((Radix > 64) || (Radix == 0)) return "/ERROR: invalid radix";
 		Utils::wString Rtn;
 		while (Num > 0){
