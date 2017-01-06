@@ -129,7 +129,6 @@ namespace Utils {
 			wString fName;
 			UInt32 Md;
 		public:
-			NixFile(wchar_t *fName, UInt32 Mode);
 			NixFile(char *fName, UInt32 Mode);
 			virtual ByteArray Read();
 			virtual ByteArray Read(UInt32 Num);
@@ -280,9 +279,6 @@ namespace Utils {
 			SizeL Pos = 0;
 			Rtn = FileDescFromStat(((wString &)Path).RFind(Pos, '/') ? Path.SubStr(Pos + 1) : Path, Data);
 			return Rtn;
-		}
-		NixFile::NixFile(wchar_t *Path, UInt32 Mode) {//OLD Version
-			void;
 		}
 		NixFile::NixFile(char *Path, UInt32 Mode) {
 			if ((Mode & F_APP) > 0 && (Mode & F_TRUNC) > 0)
