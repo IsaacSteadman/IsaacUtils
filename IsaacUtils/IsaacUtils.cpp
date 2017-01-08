@@ -444,13 +444,7 @@ extern "C" {
 		return AddObject(&Rtn);
 	}
 	void *BigLong_newALen(char *Str, SizeL Len) {
-		Utils::BigLong &Rtn = *new Utils::BigLong();
-		Utils::ByteArray Tmp((Utils::Byte *)Str, Len);
-		Rtn.GetLongs().SetLength((Tmp.Length() + 3) / 4);
-		for (SizeL c = 0; c < Tmp.Length(); ++c) {
-			Rtn.GetByte(c) = Tmp[c];
-		}
-		return AddObject(&Rtn);
+		return AddObject(new Utils::BigLong((Utils::Byte *)Str, Len));
 	}
 	bool BigLong_FromwString(void *Bl, void *wStr, Utils::Byte base) {
 		if (!AssertType(Bl, &BigLongPool, 0, __FUNCTION__)) return 0;

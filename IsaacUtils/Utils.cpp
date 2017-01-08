@@ -502,39 +502,35 @@ namespace Utils{
 	}
 	bool BigLong::operator==(const BigLong &Cmp) const{
 		if (Sign != Cmp.Sign) return false;
-		if ((Longs != Cmp.Longs) && (Longs.Length() == Cmp.Longs.Length())) return false;
-		else if (Longs != Cmp.Longs)
-		{
-			SizeL c = 0;
-			const Array<UInt32> &Longest = (Longs.Length() > Cmp.Longs.Length()) ? Longs : Cmp.Longs;
-			SizeL LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
-			while (c < LenShort){
-				if (Longs[c] != Cmp.Longs[c]) return false;
-				++c;
-			}
-			while (c < LenLong){
-				if (Longest[c] != 0) return false;
-				++c;
-			}
+		if (Longs.Length() == Cmp.Longs.Length()) return Longs == Cmp.Longs;
+		SizeL Len = 0;
+		SizeL aLen = Longs.Length();
+		SizeL bLen = Cmp.Longs.Length();
+		const Array<UInt32> &Longest = aLen > bLen ? (Len = bLen, Longs) : (Len = aLen, Cmp.Longs);
+		SizeL c;
+		for (c = 0; c < Len; ++c) {
+			if (Longs[c] != Cmp.Longs[c]) return false;
+		}
+		Len = Longest.Length();
+		for (; c < Len; ++c) {
+			if (Longest[c] != 0) return false;
 		}
 		return true;
 	}
 	bool BigLong::operator!=(const BigLong &Cmp) const{
 		if (Sign != Cmp.Sign) return true;
-		if ((Longs != Cmp.Longs) && (Longs.Length() == Cmp.Longs.Length())) return true;
-		else if (Longs != Cmp.Longs)
-		{
-			SizeL c = 0;
-			const Array<UInt32> &Longest = (Longs.Length() > Cmp.Longs.Length()) ? Longs : Cmp.Longs;
-			SizeL LenShort = (Longs.Length() > Cmp.Longs.Length()) ? Cmp.Longs.Length() : Longs.Length(), LenLong = Longest.Length();
-			while (c < LenShort){
-				if (Longs[c] != Cmp.Longs[c]) return true;
-				++c;
-			}
-			while (c < LenLong){
-				if (Longest[c] != 0) return true;
-				++c;
-			}
+		if (Longs.Length() == Cmp.Longs.Length()) return Longs != Cmp.Longs;
+		SizeL Len = 0;
+		SizeL aLen = Longs.Length();
+		SizeL bLen = Cmp.Longs.Length();
+		const Array<UInt32> &Longest = aLen > bLen ? (Len = bLen, Longs) : (Len = aLen, Cmp.Longs);
+		SizeL c;
+		for (c = 0; c < Len; ++c) {
+			if (Longs[c] != Cmp.Longs[c]) return true;
+		}
+		Len = Longest.Length();
+		for (; c < Len; ++c) {
+			if (Longest[c] != 0) return true;
 		}
 		return false;
 	}
@@ -679,6 +675,7 @@ namespace Utils{
 				}
 			}
 		}
+		Rtn.RemNulls(); //TODO: may only fix symptom of Possible problem
 		return Rtn;
 	}
 	BigLong &BigLong::operator+=(const BigLong Add){
@@ -812,6 +809,7 @@ namespace Utils{
 			}
 			Longs.AddMissing(Num.Longs);
 		}
+		RemNulls(); //TODO: may only fix symptom of Possible problem
 		return (*this);
 	}
 	BigLong BigLong::operator&(const BigLong Num) const{
@@ -826,6 +824,7 @@ namespace Utils{
 		for (SizeL c = 0; c < Len; ++c){
 			Longs[c] &= Num.Longs[c];
 		}
+		RemNulls(); //TODO: may only fix symptom of Possible problem
 		return (*this);
 	}
 	BigLong BigLong::operator^(const BigLong Num) const{
@@ -854,6 +853,7 @@ namespace Utils{
 			}
 			Longs.AddMissing(Num.Longs);
 		}
+		RemNulls(); //TODO: may only fix symptom of Possible problem
 		return (*this);
 	}
 
