@@ -113,6 +113,7 @@ namespace Utils {
 			}
 		}
 		//		DriveBase::DriveBase() {}
+		DriveBase::~DriveBase() {}
 		HashMap<wString, DriveBase *> DriveMap;
 		FileBase::~FileBase() {}
 		//		FileBase::FileBase() {}
@@ -205,6 +206,9 @@ namespace Utils {
 				Rtn = Drv->GetFileExt(Path, Exts);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 			}
@@ -218,6 +222,9 @@ namespace Utils {
 			try {
 				Rtn = Drv->Stat(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
 			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
@@ -233,6 +240,9 @@ namespace Utils {
 				Rtn = Drv->ListDirSt(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 			}
@@ -246,6 +256,9 @@ namespace Utils {
 			try {
 				Rtn = Drv->ListDir(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
 			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
@@ -276,6 +289,9 @@ namespace Utils {
 				Rtn = Drv->GetFileExt(Path, Exts);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 			}
@@ -289,6 +305,9 @@ namespace Utils {
 			try {
 				Rtn = Drv->Stat(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
 			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
@@ -304,6 +323,9 @@ namespace Utils {
 				Rtn = Drv->ListDirSt(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
 			}
@@ -317,6 +339,9 @@ namespace Utils {
 			try {
 				Rtn = Drv->ListDir(Path);
 				if (GetIsError(Drv)) throw Drv->Err;
+			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
 			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
@@ -347,10 +372,13 @@ namespace Utils {
 				if (Tmp == 0) throw Drv->Err;
 				else return Tmp;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-				return 0;
 			}
+			return 0;
 		}
 		FileBase *GetFileObj(wString Path, UInt32 Mode) {
 			DriveBase *Drv = 0;
@@ -361,10 +389,13 @@ namespace Utils {
 				if (Tmp == 0) throw Drv->Err;
 				else return Tmp;
 			}
+			catch (FileErrorN Msg) {
+				UtilsSetError(Msg.GetString());
+			}
 			catch (FileError Msg) {
 				UtilsSetError(Msg.Type + ": " + Msg.Msg);
-				return 0;
 			}
+			return 0;
 		}
 		UInt32 ParseModeStr(const String &ModeStr) {
 			UInt32 Rtn = 0;
@@ -425,7 +456,7 @@ namespace Utils {
 		}
 		bool DefUniDrive::IsFile(const String &Path) {
 			try {
-				return Stat(Path).Mode & FTYP_MASK == FTYP_REG;
+				return (Stat(Path).Mode & FTYP_MASK) == FTYP_REG;
 			} catch (...) {
 				return false;
 			}
@@ -439,13 +470,14 @@ namespace Utils {
 			} catch (...) {
 				return false;
 			}
+			return true;
 		}
 		bool DefUniDrive::IsDir(const wString &Path) {
 			return IsDir(Path.Str());
 		}
 		bool DefUniDrive::IsDir(const String &Path) {
 			try {
-				return Stat(Path).Mode & FTYP_MASK == FTYP_DIR;
+				return (Stat(Path).Mode & FTYP_MASK) == FTYP_DIR;
 			} catch (...) {
 				return false;
 			}
@@ -534,7 +566,7 @@ namespace Utils {
 			}
 			return Rtn;
 		}
-		
+		DefUniDrive::~DefUniDrive() {}
 	}
 	bool DefDelFl(void *Fl) {
 		delete (fs::FileBase *)Fl;
@@ -562,7 +594,7 @@ namespace Utils {
 			}
 			if (ThisObj->Buff.Length() >= ThisObj->MinMax[1] ||
 				(ThisObj->BlkLen & 0x80000000) ||
-				ThisObj->FlObj->Tell() >= ThisObj->FlLen)
+				(UInt64)ThisObj->FlObj->Tell() >= ThisObj->FlLen)
 				TheCond->wait();
 		}
 		TheCond->GetInternLock()->Release();
@@ -698,8 +730,7 @@ namespace Utils {
 			Pos += Rtn.Length();
 			return Rtn;
 		}
-		if (Pos + Num > FlLen) Num = FlLen - Pos;
-		SizeL CurPos = 0;
+		if ((UInt64)Pos + Num > FlLen) Num = FlLen - (UInt64)Pos;
 		ByteArray Rtn(Byte(0), Num);
 		Buff.GetBytes(Rtn, Num);
 		return Rtn;
@@ -716,7 +747,7 @@ namespace Utils {
 			return Rtn;
 		}
 		UInt32 Num = Data.Length();
-		if (Pos + Num > FlLen) Num = FlLen - Pos;
+		if ((UInt64)Pos + Num > FlLen) Num = FlLen - (UInt64)Pos;
 		Buff.GetBytes(Data, Num);
 		return Num;
 	}

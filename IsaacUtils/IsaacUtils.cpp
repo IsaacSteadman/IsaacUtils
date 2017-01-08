@@ -178,6 +178,14 @@ template<>
 Utils::wString ObjPool<Utils::EncProt>::GetName() {
 	return "EncProt";
 }
+template<>
+Utils::wString ObjPool<Utils::fs::FileDesc>::GetName() {
+	return "FileDesc";
+}
+template<>
+Utils::wString ObjPool<Utils::fs::FileTime>::GetName() {
+	return "FileTime";
+}
 template<typename T>
 void *ObjPool<T>::AddObject(T *Obj) {
 	Utils::Lock InstLk(Lk, true);
@@ -268,6 +276,8 @@ ObjPool<Utils::sock::Socket> SocketPool;
 ObjPool<Utils::Mutex> LockPool;
 ObjPool<Utils::fs::FileBase> FlPool;
 ObjPool<Utils::EncProt> EncProtPool;
+ObjPool<Utils::fs::FileDesc> FileDescPool;
+ObjPool<Utils::fs::FileTime> FileTimePool;
 Utils::Array<AbsObjPool *> TypePool;
 
 void *AddObject(Utils::wString *Obj) {
@@ -293,6 +303,12 @@ void *AddObject(Utils::fs::FileBase *Obj) {
 }
 void *AddObject(Utils::EncProt *Obj) {
 	return EncProtPool.AddObject(Obj);
+}
+void *AddObject(Utils::fs::FileDesc *Obj) {
+	return FileDescPool.AddObject(Obj);
+}
+void *AddObject(Utils::fs::FileTime *Obj) {
+	return FileTimePool.AddObject(Obj);
 }
 
 
@@ -325,7 +341,7 @@ extern "C" {
 			Utils::Init();
 			SafeRnd = Utils::GetCryptoRand();
 			HashPrimesLst1 = GenListnPrimes(18);
-			TypePool.SetLength(7);
+			TypePool.SetLength(9);
 			TypePool[0] = &wStrPool;
 			TypePool[1] = &BigLongPool;
 			TypePool[2] = &BArrPool;
@@ -333,6 +349,8 @@ extern "C" {
 			TypePool[4] = &SocketPool;
 			TypePool[5] = &FlPool;
 			TypePool[6] = &EncProtPool;
+			TypePool[7] = &FileDescPool;
+			TypePool[8] = &FileTimePool;
 		}
 	}
 	void *wStr_newWLen(wchar_t *Str, SizeL Len) {
@@ -630,6 +648,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 	bool Socket_bind(void *Sock, void *Addr) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
@@ -643,6 +666,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			return false;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
 		}
 		return true;
 	}
@@ -658,6 +686,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			return false;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
 		}
 		return true;
 	}
@@ -675,6 +708,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 	bool Socket_accept(void *Sock, void *Conn) {
@@ -691,6 +729,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 	bool Socket_listen(void *Sock, int Backlog) {
@@ -704,6 +747,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 	bool Socket_close(void *Sock) {
@@ -716,6 +764,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			return false;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
 		}
 		return true;
 	}
@@ -731,6 +784,11 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -750,6 +808,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 	void *Socket_recv(void *Sock, SizeL Num, int Flags) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
@@ -761,6 +824,11 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -776,6 +844,11 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -802,6 +875,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 	double Socket_gettimeout(void *Sock) {
@@ -825,6 +903,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			delete Rtn;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -885,6 +968,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 
@@ -917,6 +1005,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 		return true;
 	}
 
@@ -936,6 +1029,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 
 	void *RdBuffFile_newF(void *Fl, unsigned int Min, unsigned int Max, unsigned int BlkLen) {
@@ -948,6 +1046,11 @@ extern "C" {
 		catch (Utils::fs::FileError &Exc) {
 			LastErrCode = 24;
 			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -965,6 +1068,11 @@ extern "C" {
 		catch (Utils::fs::FileError &Exc) {
 			LastErrCode = 24;
 			LastError = Exc.Type + ": " + Exc.Msg;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 		return true;
@@ -994,6 +1102,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return false;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 
 	bool File_seek(void *FlObj, long long Pos, int From) {
@@ -1010,6 +1123,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			return false;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
 		}
 	}
 
@@ -1028,6 +1146,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 
 	void *File_read(void *FlObj, unsigned int Num) {
@@ -1043,6 +1166,11 @@ extern "C" {
 		catch (Utils::sock::SockErr &Exc) {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
+			return 0;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
 			return 0;
 		}
 	}
@@ -1063,6 +1191,11 @@ extern "C" {
 			LastErrCode = Exc.ErrCode;
 			return 0;
 		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
 	}
 
 	bool File_close(void *FlObj) {
@@ -1080,6 +1213,11 @@ extern "C" {
 			LastError = Exc.Msg;
 			LastErrCode = Exc.ErrCode;
 			return false;
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
 		}
 	}
 
@@ -1106,6 +1244,84 @@ extern "C" {
 		if (!AssertType(Lk, &LockPool, 0, __FUNCTION__)) return 0;
 		((Utils::Mutex *)Lk)->Release(Access);
 		return true;
+	}
+
+	bool FS_IsFile(void *wStr) {
+		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
+		return Utils::fs::IsFile(*(Utils::wString *)wStr);
+	}
+
+	bool FS_IsDir(void *wStr) {
+		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
+		return Utils::fs::IsDir(*(Utils::wString *)wStr);
+	}
+	bool FS_Exists(void *wStr) {
+		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
+		return Utils::fs::Exists(*(Utils::wString *)wStr);
+	}
+
+	void *FS_Stat(void *wStr) {
+		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
+		Utils::fs::FileDesc Rtn;
+		try {
+			Rtn = Utils::fs::Stat(*(Utils::wString *)wStr);
+		}
+		catch (...) {
+			LastErrCode = 11001;
+			LastError = "Unknown Error occurred";
+			return 0;
+		}
+		if (Utils::UtilsGetIsErr())
+		{
+			LastErrCode = Utils::ErrorFuncId | 0x80000000;
+			LastError = Utils::LastError;
+			return 0;
+		}
+		return AddObject(new Utils::fs::FileDesc(Rtn));
+	}
+
+	void *FileTime_newL_L(SnzL tv_sec, int tv_nsec) {
+		return AddObject(new Utils::fs::FileTime(tv_sec, tv_nsec));
+	}
+
+	SnzL FileTime_tv_sec(void *FtThis) {
+		if (!AssertType(FtThis, &FileTimePool, 0, __FUNCTION__)) return 0;
+		return ((Utils::fs::FileTime *)FtThis)->tv_sec;
+	}
+
+	int FileTime_tv_nsec(void *FtThis) {
+		if (!AssertType(FtThis, &FileTimePool, 0, __FUNCTION__)) return 0;
+		return ((Utils::fs::FileTime *)FtThis)->tv_nsec;
+	}
+
+	double FileTime_ToDouble(void *FtThis) {
+		if (!AssertType(FtThis, &FileTimePool, 0, __FUNCTION__)) return 0;
+		return (double)*((Utils::fs::FileTime *)FtThis);
+	}
+
+	SnzL FileTime_ToSnzL(void *FtThis) {
+		if (!AssertType(FtThis, &FileTimePool, 0, __FUNCTION__)) return 0;
+		return (SnzL)*((Utils::fs::FileTime *)FtThis);
+	}
+
+	float FileTime_ToFloat(void *FtThis) {
+		if (!AssertType(FtThis, &FileTimePool, 0, __FUNCTION__)) return 0;
+		return (float)*((Utils::fs::FileTime *)FtThis);
+	}
+
+	unsigned short Stat_GetMode(void *StThis) {
+		if (!AssertType(StThis, &FileDescPool, 0, __FUNCTION__)) return 0;
+		return ((Utils::fs::FileDesc *)StThis)->Mode;
+	}
+
+	unsigned int Stat_GetAttr(void *StThis) {
+		if (!AssertType(StThis, &FileDescPool, 0, __FUNCTION__)) return 0;
+		return ((Utils::fs::FileDesc *)StThis)->Attr;
+	}
+
+	unsigned long long Stat_GetSize(void *StThis) {
+		if (!AssertType(StThis, &FileDescPool, 0, __FUNCTION__)) return 0;
+		return ((Utils::fs::FileDesc *)StThis)->Size;
 	}
 
 	void *RegMyHash_10(unsigned int BitLen) {

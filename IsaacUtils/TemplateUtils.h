@@ -287,7 +287,6 @@ namespace Utils{
 				StopMax = true;
 			}
 			else if (Start <= Stop) return Array<T>();
-			SizeL Range = Start - Stop;
 			SizeL Step0 = -Step;
 			Array<T> Rtn;
 			Rtn.SetLength(((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
@@ -598,7 +597,6 @@ namespace Utils{
 	SizeL BinarySearch(T *List, SizeL Len, T &Val) {
 		SizeL CurLen = Len;
 		SizeL Pos = Len >> 1;
-		SizeL CurPos = Len >> 1;
 		while (CurLen > 0) {
 			if (Val == List[Pos]) return Pos;
 			else if (Val < List[Pos])//Less
@@ -618,7 +616,6 @@ namespace Utils{
 	SizeL BinaryApprox(T *List, SizeL Len, T &Val) {
 		SizeL CurLen = Len;
 		SizeL Pos = Len >> 1;
-		SizeL CurPos = Len >> 1;
 		while (CurLen > 0) {
 			if (Val <= List[Pos] && (Pos == 0 || Val >= List[Pos - 1])) return Pos;
 			else if (Val < List[Pos])//Less
@@ -651,7 +648,7 @@ namespace Utils{
 		DataPair *Datas;
 		SizeL AllocNum;
 		//returns false if the key holder is in the root list: pointer points to it, returns true if not: pointer points to previous key holder in linked list
-		bool GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev);
+		bool GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev) const;
 		void CleanUp(Array<DataPair *> *Pairs = 0);
 	public:
 		HashMap();
@@ -953,7 +950,7 @@ namespace Utils{
 		return DataPairs;
 	}
 	template<typename T1, typename T2>
-	bool HashMap<T1, T2>::GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev) {
+	bool HashMap<T1, T2>::GetWithKey(const T1 &KeyVal, DataPair *&PtrPrev) const {
 		SizeL Pos = Hasher(KeyVal, AllocNum);
 		PtrPrev = 0;
 		if (!Datas[Pos].IsValid) return false;

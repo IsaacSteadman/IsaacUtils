@@ -54,6 +54,9 @@ namespace Utils {
 	//=======================================================BEGIN FS==============================================================
 
 	namespace fs {
+		wString FileErrorN::GetString() {
+			return sock::ErrCodes.Get(ErrCode).wStr() + Msg;
+		}
 		wString ExtPath = "\\\\?\\";
 		String ExtPathA = ExtPath.Str();
 		FileDesc FileDescFromStat(const wString &Path, const struct stat &Stat) {
@@ -154,6 +157,7 @@ namespace Utils {
 			virtual FileBase * OpenFile(const String &Path, UInt32 Mode);
 			virtual Array<String> ListDir(const String &Path);
 			virtual FileDescA Stat(const String &Path);
+			virtual ~NixDrive();
 		};
 		//#GC-CHECK Ptr: delete[]
 		bool NixDrive::AllocPath(const String &Path, char *&Ptr, SizeL &Len) {
@@ -170,6 +174,7 @@ namespace Utils {
 			PathPartA = Mnt;
 			Name = FullName;
 		}
+		NixDrive::~NixDrive() {}
 		wString NixDrive::GetName() {
 			return Name;
 		}
@@ -244,8 +249,8 @@ namespace Utils {
 			if (TheDir == NULL) throw FileErrorN(errno, "Bad Dir");
 			dirent *Cur;
 			SizeL c = 0;
-			while (Cur = ::readdir(TheDir)) {
-				if (Cur->d_name[0] == '.' && (Cur->d_name[1] == '\0' || Cur->d_name[1] == '.' && Cur->d_name[2] == '\0'))
+			while ((Cur = ::readdir(TheDir))) {
+				if (Cur->d_name[0] == '.' && (Cur->d_name[1] == '\0' || (Cur->d_name[1] == '.' && Cur->d_name[2] == '\0')))
 					continue;
 				if (Rtn.Length() <= c)
 					Rtn.SetLength(Rtn.Length() + ChunkSzN);
@@ -302,7 +307,7 @@ namespace Utils {
 			}
 			if (Mode & F_APP) Flags |= O_APPEND;
 			if (Mode & F_TRUNC) Flags |= O_TRUNC;
-			if (Mode & F_NOREPLACE == 0) Flags |= O_CREAT;
+			if ((Mode & F_NOREPLACE) == 0) Flags |= O_CREAT;
 			if ((hFile = ::open(Path, Flags)) == -1)
 				throw FileErrorN(errno, "Bad Open");
 			if (Mode & F_ATE) ::lseek(hFile, 0, SEEK_END);
@@ -387,6 +392,7 @@ namespace Utils {
 //	extern fs::FileBase *DbgLog;
 	void OsInit() {
 		sock::ErrCodes.SetHashFunc(NumHash);
+		sock::ErrCodes.PreAlloc(200);
 		sock::ErrCodes.Put(21, "Invalid address format.");
 		sock::ErrCodes.Put(EPERM, "Operation not permitted");
 		sock::ErrCodes.Put(ENOENT, "No such file or directory");
@@ -614,7 +620,7 @@ namespace Utils {
 			if (Millis != MAX_INT32)
 			{
 				Clock Timer;
-				while (tState & StateMask != State) {
+				while ((tState & StateMask) != State) {
 					UInt32 DiffTime = Timer.GetTotalTime() * 1e3;
 					if (DiffTime >= Millis) return false;
 					Millis -= DiffTime;
@@ -625,7 +631,7 @@ namespace Utils {
 			}
 			else
 			{
-				while (tState & StateMask != State)
+				while ((tState & StateMask) != State)
 					Cond->wait();
 			}
 			return true;
@@ -896,10 +902,10 @@ namespace Utils {
 	CondVar::~CondVar() {}
 	class CSCondVar : public CondVar {
 	private:
-		pthread_cond_t Data;
-		SingleMutex *CSLock;
 		SizeL NumWaiting;
 		SizeL NumAllowWake;
+		pthread_cond_t Data;
+		SingleMutex *CSLock;
 	public:
 		CSCondVar(SingleMutex *TheLock);
 		void notify();
@@ -1177,19 +1183,19 @@ namespace Utils {
 					}
 					else
 					{
-						SizeL TmpRtn = 0;
-						if ((Rtn = ::send(Data.Fd, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						SnzL TmpRtn = 0;
+						if ((TmpRtn = ::send(Data.Fd, SendDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
 							SockErr Exc(errno);
 //							DbgLogData(Exc.ErrCode, DBGINF_EXCKYSEND);
 //							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYSEND);
 							throw Exc;
 						}
-						if (Rtn != 0)
+						if (TmpRtn != 0)
 						{
 							TmLeft = OrigTmOut;
-							CurLenDat -= Rtn;
-							SendDat += Rtn;
+							CurLenDat -= TmpRtn;
+							SendDat += TmpRtn;
 //							DbgLogData(Rtn, DBGINF_KYSEND);
 							if (!CurLenDat)
 							{
@@ -1216,10 +1222,10 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			SizeL Rtn = 0;
+			SnzL Rtn = 0;
 			if ((Rtn = ::send(Data.Fd, SendDat, LenDat, Flags)) == SOCKET_ERROR)
 				throw SockErr(errno);
-			return Rtn;
+			return (SizeL)Rtn;
 		}
 		SizeL Socket::sendtoBase(const char *SendDat, SizeL LenDat, const SockAddr &Addr, SInt32 Flags) {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
@@ -1244,21 +1250,21 @@ namespace Utils {
 					fd_set Tmp;
 					FD_ZERO(&Tmp);
 					FD_SET(Data.Fd, &Tmp);
-					SInt32 Rtn = select(0, 0, &Tmp, 0, &TimeOut);
+					SInt32 Rtn = ::select(0, 0, &Tmp, 0, &TimeOut);
 					if (MngdTmOut[1] & 0x80000000) throw SockErr(10054);
 					if (Rtn == 0) continue;
 					else if (Rtn == SOCKET_ERROR)
 						throw SockErr(errno);
 					else
 					{
-						SizeL TmpRtn = 0;
-						if ((Rtn = ::sendto(Data.Fd, SendDat, CurLenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
+						SnzL TmpRtn = 0;
+						if ((TmpRtn = ::sendto(Data.Fd, SendDat, CurLenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 							throw SockErr(errno);
-						if (Rtn != 0)
+						if (TmpRtn != 0)
 						{
 							TmLeft = OrigTmOut;
-							SendDat += Rtn;
-							CurLenDat -= Rtn;
+							SendDat += TmpRtn;
+							CurLenDat -= TmpRtn;
 							if (!CurLenDat) return LenDat;
 						}
 					}
@@ -1277,10 +1283,10 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			SizeL Rtn = 0;
+			SnzL Rtn = 0;
 			if ((Rtn = ::sendto(Data.Fd, SendDat, LenDat, Flags, (sockaddr *)Addr.GetData(), Addr.GetSize())) == SOCKET_ERROR)
 				throw SockErr(errno);
-			return Rtn;
+			return (SizeL)Rtn;
 		}
 		SizeL Socket::recvBase(char *RecvDat, SizeL LenDat, SInt32 Flags) {
 			if ((MngdTmOut[1] & 0xC0000000) || Data.Fd == INVALID_SOCKET) throw SockErr(10038);
@@ -1325,20 +1331,20 @@ namespace Utils {
 					}
 					else
 					{
-						SizeL TmpRtn = 0;
-						if ((Rtn = ::recv(Data.Fd, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
+						SnzL TmpRtn = 0;
+						if ((TmpRtn = ::recv(Data.Fd, RecvDat, CurLenDat, Flags)) == SOCKET_ERROR)
 						{
 							SockErr Exc(errno);
 //							DbgLogData(Exc.ErrCode, DBGINF_EXCKYRECV);
 //							DbgLogData((const ByteArray &)Exc.Msg.Str(), DBGINF_EXCKYRECV);
 							throw Exc;
 						}
-						if (Rtn != 0)
+						if (TmpRtn != 0)
 						{
 							NumZeroLeft = 16;
 							TmLeft = OrigTmOut;
-							RecvDat += Rtn;
-							CurLenDat -= Rtn;
+							RecvDat += TmpRtn;
+							CurLenDat -= TmpRtn;
 							if (!CurLenDat)
 							{
 //								DbgLogData(ByteArray((Byte *)RecvDat - LenDat, LenDat), DBGINF_OKKYRECV);
@@ -1365,7 +1371,7 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			SizeL Rtn = 0;
+			SnzL Rtn = 0;
 			if ((Rtn = ::recv(Data.Fd, RecvDat, LenDat, Flags)) == SOCKET_ERROR)
 				throw SockErr(errno);
 			return Rtn;
@@ -1402,15 +1408,15 @@ namespace Utils {
 					{
 						sockaddr_storage Tmp;
 						socklen_t TmpLen = sizeof(Tmp);
-						SizeL TmpRtn = 0;
-						if ((Rtn = ::recvfrom(Data.Fd, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
+						SnzL TmpRtn = 0;
+						if ((TmpRtn = ::recvfrom(Data.Fd, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)
 							throw SockErr(errno);
-						if (Rtn != 0)
+						if (TmpRtn != 0)
 						{
 							NumZeroLeft = 16;
 							TmLeft = OrigTmOut;
 							Addr.Init(&Tmp);
-							return Rtn;
+							return TmpRtn;
 						}
 						else --NumZeroLeft;
 					}
@@ -1429,7 +1435,7 @@ namespace Utils {
 				if (Rtn == 0) throw SockErr(10060);
 				else if (Rtn == SOCKET_ERROR) throw SockErr(errno);
 			}
-			SizeL Rtn = 0;
+			SnzL Rtn = 0;
 			sockaddr_storage Tmp;
 			socklen_t TmpLen = sizeof(Tmp);
 			if ((Rtn = ::recvfrom(Data.Fd, RecvDat, LenDat, Flags, (sockaddr *)&Tmp, &TmpLen)) == SOCKET_ERROR)

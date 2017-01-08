@@ -688,7 +688,6 @@ namespace Utils{
 				StopMax = true;
 			}
 			else if (Start <= Stop) return "";
-			SizeL Range = Start - Stop;
 			SizeL Step0 = -Step;
 			String Rtn(char(0), ((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
 			SizeL c = 0;
@@ -1486,7 +1485,6 @@ namespace Utils{
 				StopMax = true;
 			}
 			else if (Start <= Stop) return "";
-			SizeL Range = Start - Stop;
 			SizeL Step0 = -Step;
 			wString Rtn(wchar_t(0), ((Start - Stop) + (StopMax ? Step0 : Step0 - 1)) / Step0);
 			SizeL c = 0;

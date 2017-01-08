@@ -203,6 +203,32 @@ extern "C"{
 	ISAACUTILS_API bool Lock_acquire(void *Lk, bool Access = false);
 	// Releases the Lock [Lk]
 	ISAACUTILS_API bool Lock_release(void *Lk, bool Access = false);
+	// Queries if the path [wStr] represents a file
+	ISAACUTILS_API bool FS_IsFile(void *wStr);
+	// Queries if the path [wStr] represents a directory
+	ISAACUTILS_API bool FS_IsDir(void *wStr);
+	// Queries if [wStr] represents a valid pathname
+	ISAACUTILS_API bool FS_Exists(void *wStr);
+	// Returns the file status of what [wStr] represents or 0 if error
+	ISAACUTILS_API void *FS_Stat(void *wStr);
+	// Constructs a new FileTime object from [tv_sec] and [tv_nsec]
+	ISAACUTILS_API void *FileTime_newL_L(SnzL tv_sec, int tv_nsec);
+	// Returns the 'tv_sec' from the FileTime [FtThis]
+	ISAACUTILS_API SnzL FileTime_tv_sec(void *FtThis);
+	// Returns the 'tv_nsec' from the FileTime [FtThis]
+	ISAACUTILS_API int FileTime_tv_nsec(void *FtThis);
+	// Returns the 'double' representation of FileTime [FtThis]
+	ISAACUTILS_API double FileTime_ToDouble(void *FtThis);
+	// Returns the 'SnzL' representation of FileTime [FtThis]
+	ISAACUTILS_API SnzL FileTime_ToSnzL(void *FtThis);
+	// Returns the 'float' representation of FileTime [FtThis]
+	ISAACUTILS_API float FileTime_ToFloat(void *FtThis);
+	// Returns the 'mode' from the Stat [StThis]
+	ISAACUTILS_API unsigned short Stat_GetMode(void *StThis);
+	// Returns the 'Attr' from the Stat [StThis]
+	ISAACUTILS_API unsigned int Stat_GetAttr(void *StThis);
+	// Returns the 'size' from the Stat [StThis]
+	ISAACUTILS_API unsigned long long Stat_GetSize(void *StThis);
 	// Constructs a new empty Concurrent Queue
 	//ISAACUTILS_API void *ConQueue_new();//NextTime
 	// Constructs a new SockAddr from a human readable address [Str], a port [Port] and, for Ipv6 [FlowInf] and [ScopeId]

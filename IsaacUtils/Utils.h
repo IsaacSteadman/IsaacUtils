@@ -570,6 +570,7 @@ namespace Utils{
 			UInt32 ErrCode;
 			wString Msg;
 			FileErrorN(UInt32 Code, wString Txt);
+			wString GetString();
 		};
 		//abstract file class representing a file from a drive
 		class ISAACUTILS_API FileBase {
@@ -611,8 +612,10 @@ namespace Utils{
 			virtual Array<FileDescA> ListDirSt(const String &Path) = 0;
 			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false) = 0;
+			virtual ~DriveBase();
 		};
 		class ISAACUTILS_API DefUniDrive : public DriveBase{
+		public:
 			virtual wString GetName();
 			virtual String GetNameA() = 0;
 			virtual FileBase *OpenFile(const wString &Path, UInt32 Mode);
@@ -631,6 +634,7 @@ namespace Utils{
 			virtual Array<FileDescA> ListDirSt(const String &Path);
 			virtual Array<wString> GetFileExt(const wString &Path, const Array<wString> &Ext, bool Invert = false, bool RtnBegDots = false);
 			virtual Array<String> GetFileExt(const String &Path, const Array<String> &Ext, bool Invert = false, bool RtnBegDots = false);
+			virtual ~DefUniDrive();
 		};
 		bool ISAACUTILS_API GetIsError(DriveBase *Drv);
 		enum OpenMode {

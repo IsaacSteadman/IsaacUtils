@@ -130,12 +130,10 @@ namespace Utils{
 		return ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 	}
 	bool BigLong::GetBit(UInt64 Pos){
-		SizeL BytePos = Pos / 8;
 		Byte Mask = 1 << (Pos % 8), RtnMid = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 		return (RtnMid & Mask) > 0;
 	}
 	void BigLong::SetBit(UInt64 Pos, bool Set){
-		SizeL BytePos = Pos / 8;
 		Byte Mask = 1 << (Pos % 8);
 		Byte &ByteMod = IsBigEnd ? ((Byte*)Longs.GetData())[Pos] : ((Byte *)(&Longs.GetData()[Pos / 4]))[3 - (Pos % 4)];
 		if (Set) ByteMod |= Mask;
@@ -739,7 +737,6 @@ namespace Utils{
 		unsigned short MidShift = Shift % 32;
 		BigLong Rtn;
 		Rtn.Longs.SetLength(Longs.Length() + 1);
-		UInt32 Next = 0;
 		for (UInt32 c = 0; c < Longs.Length(); ++c){
 			UInt64 Tmp = Longs[c];
 			Tmp <<= MidShift;
@@ -955,7 +952,6 @@ namespace Utils{
 			if (Against.Length() > 4) NumQuit = 2 * Against.Length();
 			else NumQuit = 8;
 		}
-		SizeL Len = Against.Length();
 		for (unsigned short c = 0; c < NumQuit; ++c){
 			BigLong Rtn = Rnd->GetRand(a, b);
 			bool Cont = false;
@@ -1660,7 +1656,9 @@ namespace Utils{
 	}
 	String UnpackStrLen(const String &Str, SizeL HeadLen, SizeL &Pos) {
 		SizeL Len = BtToL((const ByteArray &)Str, Pos, HeadLen);
-		return Str.SubStr(Pos, Pos += Len);
+		SizeL Start = Pos;
+		Pos += Len;
+		return Str.SubStr(Start, Pos);
 	}
 	Array<String> UnpackListStrFl(fs::FileBase *Fl, SizeL HeadLen, SizeL StrHeadLen) {
 		Array<String> Rtn("", BtToL(Fl->Read(HeadLen)));
@@ -1707,7 +1705,10 @@ namespace Utils{
 		SizeL CurPos = 0;
 		for (SizeL c = 0; c < Rtn.Length(); ++c) {
 			SizeL LenPart = BigLong((Byte *)(Str.GetData() + CurPos), HeadLen).ToSizeL();
-			Rtn[c] = Str.SubStr(CurPos, CurPos += LenPart + 1);//Not a mistake to increment CurPos in the second parameter to provide the future position
+			SizeL Start = CurPos;
+			// Not a mistake to increment CurPos in the (was originally) second parameter to provide the future position
+			CurPos += LenPart + 1;
+			Rtn[c] = Str.SubStr(Start, CurPos);
 			if (CurPos >= Str.Length())
 			{
 				Rtn.SetLength(c + 1);

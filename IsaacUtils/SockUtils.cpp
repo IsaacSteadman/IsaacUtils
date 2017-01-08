@@ -140,7 +140,6 @@ namespace Utils {
 		SizeL KeyLen = bool(Enc) ? Enc->Key.Length() : 0;
 		BigLong BlKeyLen = KeyLen;
 		ByteArray EncHead = EncDat.GetLen().ToByteArray();
-		SizeL Pos = MAX_INT;
 		SizeL BegZeros = NoEncHead.Length();
 		while (BegZeros > 1) {
 			--BegZeros;
@@ -482,6 +481,7 @@ namespace Utils {
 		if (NoEnc.Length() > 0 && NoEnc[0] != 0)
 			throw fs::FileError(wString("Rfs:") + FromNumber(NoEnc[0], 10), wString((char *)&NoEnc[1], NoEnc.Length() - 1));
 		else if (NoEnc.Length() == 0) throw fs::FileError("Rfs:-1", "Unknown error occured");
+		return true; //TODO: improve error reporting
 	}
 	SInt64 RfsFile::InternTell() {
 		if (Pos != -1) return Pos;
