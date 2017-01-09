@@ -173,6 +173,8 @@ namespace Utils {
 		NixDrive::NixDrive(String Mnt, wString FullName) {
 			PathPartA = Mnt;
 			Name = FullName;
+			ErrNotRead = false;
+			Err = FileError("No Error", "No Error has occurred");
 		}
 		NixDrive::~NixDrive() {}
 		wString NixDrive::GetName() {
@@ -274,7 +276,7 @@ namespace Utils {
 			Rtn.LastWriteTime = 0;
 			Rtn.Attr = 0xFFFFFFFF;
 			struct stat Data;
-			if (::stat(cPath, &Data))
+			if (::stat(cPath, &Data) != 0)
 			{
 				delete[] cPath;
 				throw FileErrorN(errno, "Bad Stat");
@@ -375,18 +377,33 @@ namespace Utils {
 			char *cPathA = PathA.GetCString();
 			char *Rtn = realpath(cPathA, NULL);
 			delete[] cPathA;
-			PathA = Rtn;
-			free(Rtn);
-			return PathA.wStr();
+			if (Rtn != 0)
+			{
+				PathA = Rtn;
+				free(Rtn);
+				return PathA.wStr();
+			}
+			else
+			{
+				return "";
+			}
 		}
 	}
 	//========================================================END FS===============================================================
 
-	void ShowError(wString Caption, wString Text) {
-		String Disp = (wString("echo ") + Caption + "\necho " + Text + "\npython2 -c 'raw_input(\"press Enter to continue\"'").Str();
+	void ShowError(const wString &Caption, const wString &Text) {
+		ShowMessageBox(Caption, Text, 0);
+	}
+	int ShowMessageBox(const wString &Caption, const wString &Text, UInt32 uType) {
+		Dl_info Inf;
+		::dladdr((void*)ShowMessageBox, &Inf);
+		String fName = Inf.dli_fname;
+		fName = fName.RSplit("/", 1)[0];
+		String Disp = String("python2 \"") + fName + "/MessageBox.py\" \"" + Text.Str() + "\" \"" + Caption.Str() + "\" " + FromNumber(uType, 16).Str();
 		char *Cmd = Disp.GetCString();
-		::system(Cmd);
+		int Rtn = ::system(Cmd);
 		delete[] Cmd;
+		return Rtn;
 	}
 	SInt64 Clock::Tps = 0;
 //	extern fs::FileBase *DbgLog;
@@ -1042,7 +1059,7 @@ namespace Utils {
 			INVALID_SOCKET = -1
 		};
 		Socket::Socket() {
-			Data.Ptr = INVALID_SOCKET;
+			Data.Fd = INVALID_SOCKET;
 			TmOuts[0] = MAX_INT32;
 			TmOuts[1] = 0xFFFFFFFF;
 			SockLock = 0;

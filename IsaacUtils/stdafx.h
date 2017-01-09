@@ -32,5 +32,6 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dlfcn.h>
 }
 #endif

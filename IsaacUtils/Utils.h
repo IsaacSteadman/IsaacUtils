@@ -1,4 +1,30 @@
 #include "TemplateUtils.h"
+#if defined(_WIN32) || defined(_WIN64)
+#define AF_UNSPEC 0
+#define AF_INET 2
+#define AF_IPX 6
+#define AF_APPLETALK 16
+#define AF_NETBIOS 17
+#define AF_INET6 23
+#define AF_IRDA 26
+#define AF_BTH 32
+#define SOCK_STREAM 1
+#define SOCK_DGRAM 2
+#define SOCK_RAW 3
+#define SOCK_RDM 4
+#define SOCK_SEQPACKET 5
+#define IPPROTO_ICMP 1
+#define IPPROTO_IGMP 2
+#define BTHPROTO_RFCOMM 3
+#define IPPROTO_TCP 6
+#define IPPROTO_UDP 17
+#define IPPROTO_ICMPV6 58
+#define IPPROTO_RM 113
+#elif defined(__linux__)
+#include <sys/socket.h>
+#else
+#error "unrecognized platform"
+#endif
 namespace Utils{
 	typedef unsigned char Byte;
 	typedef Array<Byte> ISAACUTILS_API ByteArray;
@@ -440,6 +466,7 @@ namespace Utils{
 	ISAACUTILS_API wString UtilsGetError();
 	ISAACUTILS_API bool UtilsGetIsErr();
 	ISAACUTILS_API void UtilsSetError(wString Err, UInt32 FuncErrId = 0);
+	ISAACUTILS_API int ShowMessageBox(const wString &Caption, const wString &Text, UInt32 uType);
 	/* File System namespace:
 	*   Can be hooked to expose virtual file systems in the same process
 	*/
@@ -656,14 +683,93 @@ namespace Utils{
 	}
 	namespace sock {
 		enum AddrFam {
-			UNSPEC = 0,
-			INET = 2,
-			IPX = 6,
-			APPLETALK = 16,
-			NETBIOS = 17,
-			INET6 = 23,
-			IRDA = 26,
-			BTH = 32
+#ifdef AF_UNSPEC
+			UNSPEC = AF_UNSPEC,
+#endif
+#ifdef AF_UNIX
+			UNIX = AF_UNIX,
+#endif
+#ifdef AF_INET
+			INET = AF_INET,
+#endif
+#ifdef AF_AX25
+			AX25 = AF_AX25,
+#endif
+#ifdef AF_IPX
+			IPX = AF_IPX,
+#endif
+#ifdef AF_APPLETALK
+			APPLETALK = AF_APPLETALK,
+#endif
+#ifdef AF_NETROM
+			NETROM = AF_NETROM,
+#endif
+#ifdef AF_BRIDGE
+			BRIDGE = AF_BRIDGE,
+#endif
+#ifdef AF_ATMPVC
+			ATMPVC = AF_ATMPVC,
+#endif
+#ifdef AF_X25
+			X25 = AF_X25,
+#endif
+#ifdef AF_INET6
+			INET6 = AF_INET6,
+#endif
+#ifdef AF_ROSE
+			ROSE = AF_ROSE,
+#endif
+#ifdef AF_DECnet
+			DECnet = AF_DECnet,
+#endif
+#ifdef AF_NETBEUI
+			NETBEUI = AF_NETBEUI,
+#endif
+#ifdef AF_SECURITY
+			SECURITY = AF_SECURITY,
+#endif
+#ifdef AF_KEY
+			KEY = AF_KEY,
+#endif
+#ifdef AF_NETLINK
+			NETLINK = AF_NETLINK,
+#endif
+#ifdef AF_ROUTE
+			ROUTE = AF_ROUTE,
+#endif
+#ifdef AF_PACKET
+			PACKET = AF_PACKET,
+#endif
+#ifdef AF_ASH
+			ASH = AF_ASH,
+#endif
+#ifdef AF_ECONET
+			ECONET = AF_ECONET,
+#endif
+#ifdef AF_ATMSVC
+			ATMSVC = AF_ATMSVC,
+#endif
+#ifdef AF_SNA
+			SNA = AF_SNA,
+#endif
+#ifdef AF_IRDA
+			IRDA = AF_IRDA,
+#endif
+#ifdef AF_PPPOX
+			PPPOX = AF_PPPOX,
+#endif
+#ifdef AF_WANPIPE
+			WANPIPE = AF_WANPIPE,
+#endif
+#ifdef AF_LLC
+			LLC = AF_LLC,
+#endif
+#ifdef AF_TIPC
+			TIPC = AF_TIPC,
+#endif
+#ifdef AF_BLUETOOTH
+			BLUETOOTH = AF_BLUETOOTH,
+#endif
 		};
 		enum Types {
 			STREAM = 1,
@@ -919,7 +1025,7 @@ namespace Utils{
 	ISAACUTILS_API void DeInit();
 	ISAACUTILS_API SizeL wStrLen(wchar_t *wStr);
 	ISAACUTILS_API SizeL StrLen(char *Str);
-	ISAACUTILS_API void ShowError(wString Caption, wString Text);
+	ISAACUTILS_API void ShowError(const wString &Caption, const wString &Text);
 	extern ISAACUTILS_API const Utils::BigLong Two;
 	extern ISAACUTILS_API const Utils::BigLong Six;
 	extern ISAACUTILS_API const Utils::BigLong One;

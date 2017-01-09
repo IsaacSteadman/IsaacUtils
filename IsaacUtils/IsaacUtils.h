@@ -229,6 +229,8 @@ extern "C"{
 	ISAACUTILS_API unsigned int Stat_GetAttr(void *StThis);
 	// Returns the 'size' from the Stat [StThis]
 	ISAACUTILS_API unsigned long long Stat_GetSize(void *StThis);
+	// shows an error
+	ISAACUTILS_API int Utils_ShowMessageBox(void *wStrCaption, void *wStrText, unsigned int uType);
 	// Constructs a new empty Concurrent Queue
 	//ISAACUTILS_API void *ConQueue_new();//NextTime
 	// Constructs a new SockAddr from a human readable address [Str], a port [Port] and, for Ipv6 [FlowInf] and [ScopeId]

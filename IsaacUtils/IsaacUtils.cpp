@@ -336,6 +336,7 @@ bool AssertType(void *Obj, AbsObjPool *Type, UInt32 ParamNum, const Utils::wStri
 
 extern "C" {
 	void Init() {
+		LastErrCode = 0;
 		if (SafeRnd == 0)
 		{
 			Utils::Init();
@@ -658,7 +659,6 @@ extern "C" {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(Addr, &SockAddrPool, 1, __FUNCTION__)) return 0;
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
-		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->bind(*TheAddr);
 		}
@@ -678,7 +678,6 @@ extern "C" {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(Addr, &SockAddrPool, 1, __FUNCTION__)) return 0;
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
-		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->connect(*TheAddr);
 		}
@@ -699,7 +698,6 @@ extern "C" {
 		if (!AssertType(bArray, &BArrPool, 3, __FUNCTION__)) return 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		Utils::ByteArray *ThebArr = (Utils::ByteArray *)bArray;
-		LastErrCode = 0;
 		try {
 			TheSock->setsockopt(Lvl, OptName, (void *)ThebArr->GetData(), ThebArr->Length());
 		}
@@ -720,7 +718,6 @@ extern "C" {
 		if (!AssertType(Conn, &SocketPool, 1, __FUNCTION__)) return 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		Utils::sock::Socket *TheConn = (Utils::sock::Socket *)Conn;
-		LastErrCode = 0;
 		try {
 			TheSock->accept(*TheConn);
 		}
@@ -738,7 +735,6 @@ extern "C" {
 	}
 	bool Socket_listen(void *Sock, int Backlog) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
-		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->listen(Backlog);
 		}
@@ -756,7 +752,6 @@ extern "C" {
 	}
 	bool Socket_close(void *Sock) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
-		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->close();
 		}
@@ -776,7 +771,6 @@ extern "C" {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		if (!AssertType(bArray, &BArrPool, 1, __FUNCTION__)) return 0;
 		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
-		LastErrCode = 0;
 		try {
 			SizeL Rtn = ((Utils::sock::Socket *)Sock)->send(*bArr, Flags);
 			return Rtn;
@@ -798,7 +792,6 @@ extern "C" {
 		if (!AssertType(bArray, &BArrPool, 2, __FUNCTION__)) return 0;
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
 		Utils::ByteArray *bArr = (Utils::ByteArray *)bArray;
-		LastErrCode = 0;
 		try {
 			SizeL Rtn = ((Utils::sock::Socket *)Sock)->sendto(*bArr, *TheAddr, Flags);
 			return Rtn;
@@ -817,7 +810,6 @@ extern "C" {
 	void *Socket_recv(void *Sock, SizeL Num, int Flags) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
-		LastErrCode = 0;
 		try {
 			return AddObject(new Utils::ByteArray(TheSock->recv(Num, Flags)));
 		}
@@ -837,7 +829,6 @@ extern "C" {
 		if (!AssertType(Addr, &SockAddrPool, 1, __FUNCTION__)) return 0;
 		Utils::sock::SockAddr *TheAddr = (Utils::sock::SockAddr *)Addr;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
-		LastErrCode = 0;
 		try {
 			return AddObject(new Utils::ByteArray(TheSock->recvfrom(*TheAddr, Num, Flags)));
 		}
@@ -854,19 +845,16 @@ extern "C" {
 	}
 	void *Socket_getsockname(void *Sock) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
-		LastErrCode = 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		return AddObject(new Utils::sock::SockAddr(TheSock->getsockname()));
 	}
 	void *Socket_getpeername(void *Sock) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
-		LastErrCode = 0;
 		Utils::sock::Socket *TheSock = (Utils::sock::Socket *)Sock;
 		return AddObject(new Utils::sock::SockAddr(TheSock->getpeername()));
 	}
 	bool Socket_settimeout(void *Sock, double Time) {
 		if (!AssertType(Sock, &SocketPool, 0, __FUNCTION__)) return 0;
-		LastErrCode = 0;
 		try {
 			((Utils::sock::Socket *)Sock)->settimeout(Time);
 		}
@@ -1079,6 +1067,7 @@ extern "C" {
 	}
 
 	void *File_newA(char *fName, char *Mode) {
+		LastErrCode = 0;
 		void *Rtn = AddObject(Utils::fs::GetFileObj(Utils::String(fName), Utils::fs::ParseModeStr(Mode)));
 		if (Rtn) return Rtn;
 		LastErrCode = 24;
@@ -1222,10 +1211,12 @@ extern "C" {
 	}
 
 	void *SingleMutex_new() {
+		LastErrCode = 0;
 		return AddObject(Utils::GetSingleMutex());
 	}
 
 	void *RWMutex_new() {
+		LastErrCode = 0;
 		return AddObject(Utils::GetRWMutex());
 	}
 
@@ -1264,20 +1255,24 @@ extern "C" {
 		if (!AssertType(wStr, &wStrPool, 0, __FUNCTION__)) return 0;
 		Utils::fs::FileDesc Rtn;
 		try {
+			//ShowError("FS_Stat", *(Utils::wString *)wStr);
 			Rtn = Utils::fs::Stat(*(Utils::wString *)wStr);
+			//ShowError("FS_Stat Other", *(Utils::wString *)wStr);
 		}
 		catch (...) {
+			//ShowError("FS_Stat catch(...)", *(Utils::wString *)wStr);
 			LastErrCode = 11001;
 			LastError = "Unknown Error occurred";
 			return 0;
 		}
 		if (Utils::UtilsGetIsErr())
 		{
+			//ShowError("FS_Stat if(Utils::UtilsGetIsErr())", *(Utils::wString *)wStr);
 			LastErrCode = Utils::ErrorFuncId | 0x80000000;
 			LastError = Utils::LastError;
 			return 0;
 		}
-		return AddObject(new Utils::fs::FileDesc(Rtn));
+		return AddObject(new Utils::fs::FileDesc((Utils::fs::FileDesc &&)Rtn));
 	}
 
 	void *FileTime_newL_L(SnzL tv_sec, int tv_nsec) {
@@ -1324,6 +1319,12 @@ extern "C" {
 		return ((Utils::fs::FileDesc *)StThis)->Size;
 	}
 
+	int Utils_ShowMessageBox(void *wStrCaption, void *wStrText, unsigned int uType) {
+		if (!AssertType(wStrCaption, &wStrPool, 0, __FUNCTION__)) return 0;
+		if (!AssertType(wStrText, &wStrPool, 1, __FUNCTION__)) return 0;
+		return Utils::ShowMessageBox(*(Utils::wString *)wStrCaption, *(Utils::wString *)wStrText, uType);
+	}
+
 	void *RegMyHash_10(unsigned int BitLen) {
 		for (BitLenNum &Elem : HashPrimes1) {
 			if (Elem.BitLen == BitLen) return AddObject(new Utils::BigLong(Elem.Num));
@@ -1353,15 +1354,18 @@ extern "C" {
 	}
 
 	bool DelObj(void *Obj) {
+		LastErrCode = 0;
 		for (AbsObjPool *&CurType : TypePool)
 			if (CurType->RemDelObject(Obj)) return true;
 		return false;
 	}
 	void CleanHeap() {
+		LastErrCode = 0;
 		for (AbsObjPool *&CurType : TypePool)
 			CurType->CleanPool();
 	}
 	void DeInit() {
+		LastErrCode = 0;
 		if (SafeRnd != 0)
 		{
 			delete SafeRnd;

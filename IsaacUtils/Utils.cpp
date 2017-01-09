@@ -1477,10 +1477,10 @@ namespace Utils{
 		const char *Digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$_";
 		if ((Radix > 64) || (Radix == 0)) return "/ERROR: invalid radix";
 		Utils::wString Rtn;
-		while (Num > 0){
+		do {
 			Rtn += Digits[Num % Radix];
 			Num /= Radix;
-		}
+		} while (Num > 0);
 		return Rtn;
 	}
 	BigLong GetNumStrTest(wString Str){
