@@ -1,4 +1,19 @@
 #include "Test1IsaacUtils.h"
+using Utils::Array;
+using Utils::String;
+Test_String::Test_String() {
+	Name = "Test_String";
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Split));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_RSplit));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Join));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Replace_Ch_Ch));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Replace_Ch_Str));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Replace_Str_Ch));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Find_Ch));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_Find_Str));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_RFind_Ch));
+	Tests.push_back((TestCase::TestFunc)(&Test_String::test_RFind_Str));
+}
 void Test_String::test_Split() {
 	String a("hello there spaces");
 	{

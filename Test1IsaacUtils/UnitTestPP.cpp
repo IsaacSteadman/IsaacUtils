@@ -81,4 +81,6 @@ int main() {
 	for (TestEntry &Cur : AllTestCases) {
 		Cur.Deleter(Cur.Obj);
 	}
+	DeInitTests();
+	return 0;
 }
