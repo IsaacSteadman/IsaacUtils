@@ -119,7 +119,8 @@ namespace Utils{
 			if (Longs[LenNoNull] != 0) break;
 		}
 		++LenNoNull;
-		if (LenNoNull < Longs.Length()) Longs = Array<UInt32>(Longs, LenNoNull);
+		if (LenNoNull < Longs.Length()) Longs.SetLength(LenNoNull);
+		if (Zero() == 1) Sign = false;
 		return LenNoNull;
 	}
 	Array<UInt32> &BigLong::GetLongs(){
@@ -242,88 +243,79 @@ namespace Utils{
 		return *this;
 	}
 	bool BigLong::FromwStr(const wString &wStr, Byte Radix) {
+		if (Radix < 1 || Radix > 64) return false;
 		SizeL c = wStr.Length();
+		if (c == 0 || (c == 1 && wStr[0] == '-') ) return false;
 		BigLong Power = (UInt32)1;
-		while (c > 0) {
-			--c;
-			if ((c == 0) && (wStr[0] == '-'))
+		Sign = false;
+		Longs.SetLength(1);
+		Longs[0] = 0;
+		UInt32 PowerMul = Radix;
+		UInt32 CapsAdd = (Radix <= 36) ? 10 : 36;
+		while (c-- > 0) {
+			if (c == 0 && wStr[0] == '-')
 			{
 				Sign = true;
-				return true;
+				break;
 			}
-			if ((wStr[c] >= '0') && (wStr[c] <= (Radix < 10 ? '0' + Radix - 1 : '9')))
-				(*this) += Power * (UInt32)(wStr[c] - '0');
-			else if (Radix <= 36)
-			{
-				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
-					(*this) += Power * (UInt32)((wStr[c] - 'a') + 10);
-				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 36 ? 'A' + (Radix - 10) - 1 : 'Z')))
-					(*this) += Power * (UInt32)((wStr[c] - 'A') + 10);
-				else return false;
-			}
-			else if (Radix <= 64)
-			{
-				if ((wStr[c] >= 'a') && (wStr[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
-					(*this) += Power * (UInt32)((wStr[c] - 'a') + 10);
-				else if ((wStr[c] >= 'A') && (wStr[c] <= (Radix < 62 ? 'A' + (Radix - 36) - 1 : 'Z')))
-					(*this) += Power * (UInt32)((wStr[c] - 'A') + 36);
-				else if ((wStr[c] == '_') && (Radix >= 63))
-					(*this) += Power * (UInt32)62;
-				else if ((wStr[c] == '$') && (Radix >= 64))
-					(*this) += Power * (UInt32)63;
-				else return false;
-			}
-			Power *= (UInt32)Radix;
+			UInt32 Val = 0;
+			if (wStr[c] >= '0' && wStr[c] <= '9') Val = wStr[c] - '0';
+			else if (wStr[c] >= 'a' && wStr[c] <= 'z') Val = 10 + (wStr[c] - 'a');
+			else if (wStr[c] >= 'A' && wStr[c] <= 'Z') Val = CapsAdd + (wStr[c] - 'A');
+			else if (wStr[c] == '_') Val = 62;
+			else if (wStr[c] == '$') Val = 63;
+			else return false;
+			if (Val >= Radix) return false;
+			(*this) += Power * Val;
+			Power *= PowerMul;
 			Power.RemNulls();
 		}
 		RemNulls();
 		return true;
 	}
 	bool BigLong::FromStr(const String &Str, Byte Radix) {
+		if (Radix < 1 || Radix > 64) return false;
 		SizeL c = Str.Length();
+		if (c == 0 || (c == 1 && Str[0] == '-') ) return false;
 		BigLong Power = (UInt32)1;
-		while (c > 0) {
-			--c;
-			if ((c == 0) && (Str[0] == '-'))
+		Sign = false;
+		Longs.SetLength(1);
+		Longs[0] = 0;
+		UInt32 PowerMul = Radix;
+		UInt32 CapsAdd = (Radix <= 36) ? 10 : 36;
+		while (c-- > 0) {
+			if (c == 0 && Str[0] == '-')
 			{
 				Sign = true;
-				return true;
+				break;
 			}
-			if ((Str[c] >= '0') && (Str[c] <= (Radix < 10 ? '0' + Radix - 1 : '9')))
-				(*this) += Power * (UInt32)(Str[c] - '0');
-			else if (Radix <= 36)
-			{
-				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
-					(*this) += Power * (UInt32)((Str[c] - 'a') + 10);
-				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 36 ? 'A' + (Radix - 10) - 1 : 'Z')))
-					(*this) += Power * (UInt32)((Str[c] - 'A') + 10);
-				else return false;
-			}
-			else if (Radix <= 64)
-			{
-				if ((Str[c] >= 'a') && (Str[c] <= (Radix < 36 ? 'a' + (Radix - 10) - 1 : 'z')))
-					(*this) += Power * (UInt32)((Str[c] - 'a') + 10);
-				else if ((Str[c] >= 'A') && (Str[c] <= (Radix < 62 ? 'A' + (Radix - 36) - 1 : 'Z')))
-					(*this) += Power * (UInt32)((Str[c] - 'A') + 36);
-				else if ((Str[c] == '_') && (Radix >= 63))
-					(*this) += Power * (UInt32)62;
-				else if ((Str[c] == '$') && (Radix >= 64))
-					(*this) += Power * (UInt32)63;
-				else return false;
-			}
-			Power *= (UInt32)Radix;
+			UInt32 Val = 0;
+			if (Str[c] >= '0' && Str[c] <= '9') Val = Str[c] - '0';
+			else if (Str[c] >= 'a' && Str[c] <= 'z') Val = 10 + (Str[c] - 'a');
+			else if (Str[c] >= 'A' && Str[c] <= 'Z') Val = CapsAdd + (Str[c] - 'A');
+			else if (Str[c] == '_') Val = 62;
+			else if (Str[c] == '$') Val = 63;
+			else return false;
+			if (Val >= Radix) return false;
+			(*this) += Power * Val;
+			Power *= PowerMul;
 			Power.RemNulls();
 		}
 		RemNulls();
 		return true;
 	}
 	void BigLong::TowStr(wString &wStr, Byte Radix){
-		if (Radix == 0) return;
+		if (Radix == 0 || Radix > 64) return;
+		if (Zero() == 1)
+		{
+			wStr = "0";
+			return;
+		}
 		BigLong BlRadix = (UInt32)Radix;
-		BigLong Tmp = (*this);
+		BigLong Tmp = this->Abs();
 		char Digits[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 		wStr = "";
-		while (Tmp > (UInt32)0){
+		while (Tmp.Zero() == 2){
 			BigLong *Val = Tmp.DivRem(BlRadix);
 			wStr.Insert(0, Digits[Val[1].GetByte(0)]);
 			Tmp = (BigLong &&)Val[0];
@@ -332,12 +324,17 @@ namespace Utils{
 		if (Sign) wStr.Insert(0, '-');
 	}
 	void BigLong::ToStr(String &Str, Byte Radix){
-		if (Radix == 0) return;
+		if (Radix == 0 || Radix > 64) return;
+		if (Zero() == 1)
+		{
+			Str = "0";
+			return;
+		}
 		BigLong BlRadix = (UInt32)Radix;
-		BigLong Tmp = (*this);
+		BigLong Tmp = this->Abs();
 		char Digits[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
 		Str = "";
-		while (Tmp > (UInt32)0){
+		while (Tmp.Zero() == 2){
 			BigLong *Val = Tmp.DivRem(BlRadix);
 			Str.Insert(0, Digits[Val[1].GetByte(0)]);
 			Tmp = (BigLong &&)Val[0];
@@ -357,7 +354,8 @@ namespace Utils{
 	}
 	SizeL BigLong::ToSizeL() const {
 		if (Longs.Length() == 0) return 0;
-#ifdef _WIN64
+#if defined(_M_X64) || defined(_M_AMD64) || defined(__amd64__) || defined(__amd64)\
+	|| defined(__x86_64__) || defined(__x86_64) || defined(__aarch64__)
 		if (Longs.Length() == 1) return Longs[0];
 		if (IsBigEnd) return ((SizeL *)Longs.GetData())[0];
 		else
@@ -394,6 +392,16 @@ namespace Utils{
 	}
 	void BigLong::Minus(){
 		Sign = !Sign;
+	}
+	BigLong BigLong::Abs() const{
+		BigLong Rtn = *this;
+		Rtn.Sign = false;
+		return Rtn;
+	}
+	BigLong BigLong::nAbs() const{
+		BigLong Rtn = *this;
+		Rtn.Sign = true;
+		return Rtn;
 	}
 	BigLong BigLong::Negate() const{
 		BigLong Rtn = *this;
@@ -579,15 +587,14 @@ namespace Utils{
 		}
 		return Rtn;
 	}
-	BigLong BigLong::operator*(BigLong Num) const{
+	BigLong BigLong::operator*(const BigLong &Num) const{
 		FuncTimer Tmr(BlMulTm);
-		BigLong Rtn = KarMul(*this, Num);
-		Rtn.Sign = Sign ^ Num.Sign;
+		BigLong Rtn = NomMul(*this, Num);
+		Rtn.Sign = (Sign != Num.Sign);
 		return Rtn;
 	}
-	BigLong &BigLong::operator*=(BigLong Num){
-		(*this) = this->operator*(Num);
-		RemNulls();
+	BigLong &BigLong::operator*=(const BigLong &Num){
+		(*this) = NomMul(*this, Num);
 		return (*this);
 	}
 	BigLong &BigLong::IMulLim(const BigLong &MulBy, SizeL LimNum) {
@@ -609,7 +616,7 @@ namespace Utils{
 		return *this;
 	}
 
-	BigLong BigLong::operator+(const BigLong Add) const{
+	BigLong BigLong::operator+(const BigLong &Add) const{
 		BigLong Rtn;
 		if (Sign == Add.Sign)
 		{
@@ -676,59 +683,58 @@ namespace Utils{
 		Rtn.RemNulls(); //TODO: may only fix symptom of Possible problem
 		return Rtn;
 	}
-	BigLong &BigLong::operator+=(const BigLong Add){
+	BigLong &BigLong::operator+=(const BigLong &Add){
 		(*this) = this->operator+(Add);
 		RemNulls();
 		return (*this);
 	}
-	BigLong BigLong::operator-(BigLong Add) const{
-		Add.Minus();
-		return operator+(Add);
+	BigLong BigLong::operator-(const BigLong &Add) const{
+		return operator+(Add.Negate());
 	}
-	BigLong &BigLong::operator-=(const BigLong Num){
+	BigLong &BigLong::operator-=(const BigLong &Num){
 		(*this) = this->operator-(Num);
 		RemNulls();
 		return (*this);
 	}
-	BigLong &BigLong::operator%=(const BigLong Num){
+	BigLong &BigLong::operator%=(const BigLong &Num){
 		if (Num.IsPow2())
 		{
 			return *this &= (Num - One);
 		}
 		BigLong *Tmp = this->DivRem(Num);
-		operator=(Tmp[1]);
+		operator=((BigLong &&)Tmp[1]);
 		delete[] Tmp;
 		RemNulls();
 		return (*this);
 	}
-	BigLong BigLong::operator%(const BigLong Num) const{
+	BigLong BigLong::operator%(const BigLong &Num) const{
 		if (Num.IsPow2())
 		{
 			return *this & (Num - One);
 		}
 		BigLong *Tmp = this->DivRem(Num);
-		BigLong Rtn = Tmp[1];
+		BigLong Rtn = (BigLong &&)Tmp[1];
 		delete[] Tmp;
 		return Rtn;
 	}
-	BigLong &BigLong::operator/=(const BigLong Num){
+	BigLong &BigLong::operator/=(const BigLong &Num){
 		if (Num.IsPow2())
 		{
 			return *this >>= Num.BitLength();
 		}
 		BigLong *Tmp = this->DivRem(Num);
-		operator=(Tmp[0]);
+		operator=((BigLong &&)Tmp[0]);
 		delete[] Tmp;
 		RemNulls();
 		return (*this);
 	}
-	BigLong BigLong::operator/(const BigLong Num) const{
+	BigLong BigLong::operator/(const BigLong &Num) const{
 		if (Num.IsPow2())
 		{
 			return *this >> Num.BitLength();
 		}
 		BigLong *Tmp = this->DivRem(Num);
-		BigLong Rtn = Tmp[0];
+		BigLong Rtn = (BigLong &&)Tmp[0];
 		delete[] Tmp;
 		return Rtn;
 	}
@@ -780,12 +786,12 @@ namespace Utils{
 		(*this) = this->operator>>(Shift);
 		return (*this);
 	}
-	BigLong BigLong::operator|(const BigLong Num) const{
+	BigLong BigLong::operator|(const BigLong &Num) const{
 		BigLong Rtn = *this;
 		Rtn |= Num;
 		return Rtn;
 	}
-	BigLong &BigLong::operator|=(const BigLong Num){
+	BigLong &BigLong::operator|=(const BigLong &Num){
 		Sign |= Num.Sign;
 		if (Longs.Length() >= Num.Longs.Length())
 		{
@@ -809,12 +815,12 @@ namespace Utils{
 		RemNulls(); //TODO: may only fix symptom of Possible problem
 		return (*this);
 	}
-	BigLong BigLong::operator&(const BigLong Num) const{
+	BigLong BigLong::operator&(const BigLong &Num) const{
 		BigLong Rtn = *this;
 		Rtn &= Num;
 		return Rtn;
 	}
-	BigLong &BigLong::operator&=(const BigLong Num){
+	BigLong &BigLong::operator&=(const BigLong &Num){
 		Sign &= Num.Sign;
 		SizeL Len = (Longs.Length() < Num.Longs.Length()) ? Longs.Length() : Num.Longs.Length();
 		if (Longs.Length() > Len) Longs.SetLength(Len);
@@ -824,12 +830,12 @@ namespace Utils{
 		RemNulls(); //TODO: may only fix symptom of Possible problem
 		return (*this);
 	}
-	BigLong BigLong::operator^(const BigLong Num) const{
+	BigLong BigLong::operator^(const BigLong &Num) const{
 		BigLong Rtn = *this;
 		Rtn ^= Num;
 		return Rtn;
 	}
-	BigLong &BigLong::operator^=(const BigLong Num){
+	BigLong &BigLong::operator^=(const BigLong &Num){
 		Sign ^= Num.Sign;
 		if (Longs.Length() >= Num.Longs.Length())
 		{
@@ -861,18 +867,15 @@ namespace Utils{
 	}
 	BigLong BigLong::NomMul(const BigLong &Bl1, const BigLong &Bl2){
 		BigLong Sum;
-		SizeL c = 0;
-		while (c < Bl1.Longs.Length()){
-			BigLong CurrNum;
-			CurrNum.Longs = Array<UInt32>((UInt32)0, Bl2.Longs.Length() + 1);
-			for (SizeL c1 = 0; c1 < Bl2.Longs.Length(); ++c1){
-				UInt64 Tmp = (UInt64)Bl1.Longs[c] * (UInt64)Bl2.Longs[c1];
-				CurrNum.Longs[c1] += Tmp & 0x00000000FFFFFFFF;
-				CurrNum.Longs[c1 + 1] = (Tmp & 0xFFFFFFFF00000000) >> 32;
+		Sum.Longs = Array<UInt32>((UInt32)0, Bl1.Longs.Length() + Bl2.Longs.Length());
+		for (SizeL c = 0; c < Bl1.Longs.Length(); ++c) {
+			UInt64 Tmp = 0;
+			for (SizeL c1 = 0; c1 < Bl2.Longs.Length(); ++c1) {
+				Tmp += (UInt64)Bl1.Longs[c] * (UInt64)Bl2.Longs[c1] + (UInt64)Sum.Longs[c+c1];
+				Sum.Longs[c+c1] = Tmp & 0xFFFFFFFF;
+				Tmp >>= 32;
 			}
-			CurrNum.Longs = Array<UInt32>((UInt32)0, c) + CurrNum.Longs;
-			Sum = Sum + CurrNum;
-			++c;
+			Sum.Longs[c+Bl2.Longs.Length()] = Tmp & 0xFFFFFFFF;
 		}
 		Sum.RemNulls();
 		return Sum;
@@ -1478,10 +1481,12 @@ namespace Utils{
 		if ((Radix > 64) || (Radix == 0)) return "/ERROR: invalid radix";
 		Utils::wString Rtn;
 		do {
-			Rtn += Digits[Num % Radix];
+			UInt32 Val = Num % Radix;
+			Rtn += Digits[Val];
+			Num -= Val;
 			Num /= Radix;
 		} while (Num > 0);
-		return Rtn;
+		return Rtn.SubStr(Rtn.Length()-1, MAX_INT, -1);
 	}
 	BigLong GetNumStrTest(wString Str){
 		BigLong Rtn;

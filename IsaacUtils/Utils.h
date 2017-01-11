@@ -218,6 +218,10 @@ namespace Utils{
 		//Not Tested
 		BigLong &PreDec(UInt32 Num);
 		void Minus();
+		// Absolute value
+		BigLong Abs() const;
+		// negative Absolute value
+		BigLong nAbs() const;
 		BigLong Negate() const;
 		bool FromStr(const String &Str, Byte Radix = 10);
 		void ToStr(String &Str, Byte Radix = 10);
@@ -238,26 +242,26 @@ namespace Utils{
 		BigLong &operator=(BigLong &&Cpy);
 		BigLong &operator=(const BigLong &Cpy);
 		UInt64 BitLength() const;
-		BigLong &operator*=(BigLong Num);
-		BigLong operator*(BigLong Num) const;
-		BigLong operator+(const BigLong Add) const;
-		BigLong &operator+=(const BigLong Add);
-		BigLong &operator%=(const BigLong Num);
-		BigLong operator%(const BigLong Num) const;
-		BigLong &operator/=(const BigLong Num);
-		BigLong operator/(const BigLong Num) const;
-		BigLong &operator-=(const BigLong Num);
-		BigLong operator-(BigLong Num) const;
+		BigLong &operator*=(const BigLong &Num);
+		BigLong operator*(const BigLong &Num) const;
+		BigLong operator+(const BigLong &Add) const;
+		BigLong &operator+=(const BigLong &Add);
+		BigLong &operator%=(const BigLong &Num);
+		BigLong operator%(const BigLong &Num) const;
+		BigLong &operator/=(const BigLong &Num);
+		BigLong operator/(const BigLong &Num) const;
+		BigLong &operator-=(const BigLong &Num);
+		BigLong operator-(const BigLong &Num) const;
 		BigLong operator<<(const SizeL Shift) const;
 		BigLong operator>>(const SizeL Shift) const;
 		BigLong &operator<<=(const SizeL Shift);
 		BigLong &operator>>=(const SizeL Shift);
-		BigLong operator|(const BigLong Num) const;
-		BigLong &operator|=(const BigLong Num);
-		BigLong operator&(const BigLong Num) const;
-		BigLong &operator&=(const BigLong Num);
-		BigLong operator^(const BigLong Num) const;
-		BigLong &operator^=(const BigLong Num);
+		BigLong operator|(const BigLong &Num) const;
+		BigLong &operator|=(const BigLong &Num);
+		BigLong operator&(const BigLong &Num) const;
+		BigLong &operator&=(const BigLong &Num);
+		BigLong operator^(const BigLong &Num) const;
+		BigLong &operator^=(const BigLong &Num);
 		//tests for zeroness, if zero returns 1, if greater than zero returns 2, if less than zero returns 0
 		Byte Zero() const;
 	};
