@@ -58,6 +58,18 @@ public:
 	void test_And();
 	void test_Or();
 	void test_Xor();
+	void test_RShift();
+	void test_LShift();
+	void test_IAdd();
+	void test_ISub();
+	void test_IMul();
+	void test_IDiv();
+	void test_IMod();
+	void test_IAnd();
+	void test_IOr();
+	void test_IXor();
+	void test_IRShift();
+	void test_ILShift();
 	void test_IsEq();
 	void test_IsGe();
 	void test_IsGt();
