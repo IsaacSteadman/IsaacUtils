@@ -122,12 +122,15 @@ class ObjPool : public AbsObjPool{
 public:
 	Utils::Mutex *Lk;
 	Utils::Array<void *> Objects;
+	Utils::Array<bool> Owned;
 
 	ObjPool();
 	//O(1)
 	Utils::wString GetName();
 	//O(n log(n))
 	void *AddObject(T *Obj);
+	//O(n log(n))
+	void *TrackObject(T *Obj);
 	//O(log(n))
 	bool HasObject(void *Obj);
 	//O(n log(n))
@@ -186,11 +189,24 @@ template<>
 Utils::wString ObjPool<Utils::fs::FileTime>::GetName() {
 	return "FileTime";
 }
+template<>
+Utils::wString ObjPool<Utils::Array<Utils::wString> >::GetName() {
+	return "Array<wString>";
+}
 template<typename T>
 void *ObjPool<T>::AddObject(T *Obj) {
 	Utils::Lock InstLk(Lk, true);
 	SizeL NewPos = Utils::BinaryApprox((void **)Objects.GetData(), Objects.Length(), (void *&)Obj);
 	Objects.Insert(NewPos, Obj);
+	Owned.Insert(NewPos, false);
+	return Obj;
+}
+template<typename T>
+void *ObjPool<T>::TrackObject(T *Obj) {
+	Utils::Lock InstLk(Lk, true);
+	SizeL NewPos = Utils::BinaryApprox((void **)Objects.GetData(), Objects.Length(), (void *&)Obj);
+	Objects.Insert(NewPos, Obj);
+	Owned.Insert(NewPos, true);
 	return Obj;
 }
 template<typename T>
@@ -207,7 +223,10 @@ bool ObjPool<T>::RemDelObject(void *Obj) {
 			Utils::Lock InstLk(Lk, true);
 			SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
 			if (Pos >= Objects.Length()) return false;
+			bool IsOwned = Owned[Pos];
 			Objects.Remove(Pos);
+			Owned.Remove(Pos);
+			if (!IsOwned) return true;
 		}
 		delete (T *)Obj;
 		return true;
@@ -222,7 +241,10 @@ bool ObjPool<Utils::EncProt>::RemDelObject(void *Obj) {
 			Utils::Lock InstLk(Lk, true);
 			SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
 			if (Pos >= Objects.Length()) return false;
+			bool IsOwned = Owned[Pos];
 			Objects.Remove(Pos);
+			Owned.Remove(Pos);
+			if (!IsOwned) return true;
 		}
 		delete ((Utils::EncProt *)Obj)->Enc;
 		((Utils::EncProt *)Obj)->Enc = 0;
@@ -239,6 +261,7 @@ bool ObjPool<T>::RemObject(void *Obj) {
 		SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
 		if (Pos >= Objects.Length()) return false;
 		Objects.Remove(Pos);
+		Owned.Remove(Pos);
 		return true;
 	}
 }
@@ -253,12 +276,21 @@ void ObjPool<T>::CleanPool() {
 template<>
 void ObjPool<Utils::EncProt>::CleanPool() {
 	Utils::Lock InstLk(Lk, true);
+	SizeL c = 0;
+	Utils::Array<SizeL> KeepPos;
 	for (void *&Obj : Objects) {
+		if (!Owned[c])
+		{
+			KeepPos += c;
+			continue;
+		}
 		delete ((Utils::EncProt *)Obj)->Enc;
 		((Utils::EncProt *)Obj)->Enc = 0;
 		delete (Utils::EncProt *)Obj;
+		c += 1;
 	}
-	Objects.SetLength(0);
+	Objects.Keep(KeepPos);
+	Owned.Keep(KeepPos);
 }
 template<typename T>
 ObjPool<T>::~ObjPool() {
@@ -278,6 +310,30 @@ ObjPool<Utils::fs::FileBase> FlPool;
 ObjPool<Utils::EncProt> EncProtPool;
 ObjPool<Utils::fs::FileDesc> FileDescPool;
 ObjPool<Utils::fs::FileTime> FileTimePool;
+
+template<>
+bool ObjPool<Utils::Array<Utils::wString> >::RemDelObject(void *Obj) {
+	if (Obj == 0) return false;
+	else
+	{
+		{
+			Utils::Lock InstLk(Lk, true);
+			SizeL Pos = Utils::BinarySearch((void **)Objects.GetData(), Objects.Length(), Obj);
+			if (Pos >= Objects.Length()) return false;
+			bool IsOwned = Owned[Pos];
+			Objects.Remove(Pos);
+			Owned.Remove(Pos);
+			if (!IsOwned) return true;
+		}
+		Utils::Array<Utils::wString> *Cur = (Utils::Array<Utils::wString> *)Obj;
+		for (Utils::wString &wStr : *Cur) {
+			wStrPool.RemObject(&wStr);
+		}
+		return true;
+	}
+}
+
+ObjPool<Utils::Array<Utils::wString> > Array_wString_Pool;
 Utils::Array<AbsObjPool *> TypePool;
 
 void *AddObject(Utils::wString *Obj) {
