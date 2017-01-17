@@ -49,6 +49,7 @@ namespace Utils{
 		const T AtEnd() const;
 		Array<T> &operator*=(SizeL Num);
 		Array<T> operator*(SizeL Num) const;
+		Array<T> &Keep(const Array<SizeL> &Indices);
 		IterArray<T> begin();
 		IterArray<T> end();
 		//friend class ReprArray;
@@ -162,7 +163,7 @@ namespace Utils{
 		if (AllocNum == Len) return;
 		T *NewData = new T[Len];
 		for (SizeL c = 0; (c < Len) && (c < AllocNum); ++c){
-			NewData[c] = Data[c];
+			NewData[c] = (T &&)Data[c];
 		}
 		delete[] Data;
 		Data = NewData;
@@ -562,6 +563,33 @@ namespace Utils{
 		Rtn.AllocNum = Num * AllocNum;
 		return Rtn;
 	}
+
+	template<typename T>
+	Array<T> &Array<T>::Keep(const Array<SizeL> &Indices) {
+		SizeL NewAllocNum = Indices.Length();
+		for (SizeL c = 0; c < NewAllocNum; ++c) {
+			if (Indices[c] >= AllocNum) return *this;
+		}
+		if (NewAllocNum == 0)
+		{
+			if (AllocNum > 0)
+			{
+				delete[] Data;
+				AllocNum = 0;
+				Data = 0;
+			}
+			return *this;
+		}
+		T *NewData = new T[NewAllocNum];
+		for (SizeL c = 0; c < NewAllocNum; ++c) {
+			NewData[c] = Data[Indices[c]];
+		}
+		if (AllocNum > 0) delete[] Data;
+		Data = NewData;
+		AllocNum = NewAllocNum;
+		return *this;
+	}
+
 	template<typename T>
 	IterArray<T> Array<T>::begin(){
 		return IterArray<T>(this, 0);
